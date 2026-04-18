@@ -2,7 +2,7 @@
 
 VibeWriting is a modern, privacy-first, professional screenwriting web application built with **Next.js** and **TipTap**. It is designed for screenwriters, directors, and hobbyists who want a distraction-free, fluid writing experience that automatically formats scripts to WGA industry standards.
 
-![Dashboard Preview](https://vibewriting.netlify.app)
+(https://vibewriting.netlify.app)
 
 ## ✨ Key Features
 
