@@ -460,3 +460,6 @@ FodyWeavers.xsd
 *.msm
 *.msp
 >>>>>>> 67525c4a7b51e030c8c0d642cfad18f0c963abc4
+
+# Local Netlify folder
+.netlify
