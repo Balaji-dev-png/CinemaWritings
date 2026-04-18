@@ -1,26 +1,156 @@
 @import "tailwindcss";
 
+@variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: var(--font-poppins), system-ui, sans-serif;
+  --font-courier: var(--font-courier-prime), monospace;
+  --font-inter: var(--font-inter), sans-serif;
+  --font-roboto: var(--font-roboto), sans-serif;
+  --font-open-sans: var(--font-open-sans), sans-serif;
+  --font-lato: var(--font-lato), sans-serif;
+  --font-montserrat: var(--font-montserrat), sans-serif;
+  --font-playfair: var(--font-playfair), serif;
+  --font-lora: var(--font-lora), serif;
+  --font-comic-neue: var(--font-comic-neue), cursive;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #f4f5f7;
+  --foreground: #1c1d20;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ─── Scrollbar Hiding ─── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Script Page: Industry Standard ─── */
+.script-page {
+  font-family: var(--font-courier);
+  width: 100%;
+  max-width: 8.5in;
+  min-height: 11in;
+  padding: 1in 1in 1in 1.5in;
+  background-color: #ffffff;
+  color: #000000;
+  box-shadow: 0 2px 20px -4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  border-radius: 2px;
+}
+
+.dark .script-page {
+  background-color: #1a1a1a;
+  color: #e5e5e5;
+  box-shadow: 0 0 0 1px #2a2a2a, 0 4px 20px -4px rgba(0,0,0,0.4);
+}
+
+/* ─── TipTap Editor ─── */
+.ProseMirror { outline: none; font-size: 12pt; }
+.ProseMirror p { line-height: 1; min-height: 1em; }
+
+/* Scene Heading: ALL CAPS, Bold */
+.ProseMirror p.scene-heading {
+  text-transform: uppercase;
+  font-weight: bold;
+  margin: 1rem 0 0.5rem 0;
+}
+
+/* Action: Standard case */
+.ProseMirror p.action {
+  margin: 0 0 1rem 0;
+  max-width: 6.0in;
+}
+
+/* Character: ALL CAPS, 2" indent from page left margin */
+.ProseMirror p.character {
+  text-transform: uppercase;
+  margin: 1rem 0 0 2.0in;
+  max-width: 4.0in;
+}
+
+/* Parenthetical: 1.5" indent */
+.ProseMirror p.parenthetical {
+  margin: 0 0 0 1.5in;
+  max-width: 2.0in;
+}
+
+/* Dialogue: 1" indent, 3.5" width */
+.ProseMirror p.dialogue {
+  margin: 0 0 0.5rem 1.0in;
+  max-width: 3.5in;
+}
+
+/* Transition: Right-aligned, ALL CAPS */
+.ProseMirror p.transition {
+  text-transform: uppercase;
+  margin: 1rem 0 1rem 4.5in;
+  max-width: 2.0in;
+}
+
+/* Shot: ALL CAPS */
+.ProseMirror p.shot {
+  text-transform: uppercase;
+  margin: 0.5rem 0;
+}
+
+/* ─── Placeholder ─── */
+.ProseMirror p.is-editor-empty:first-child::before,
+.ProseMirror .is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+}
+.dark .ProseMirror .is-empty::before,
+.dark .ProseMirror p.is-editor-empty:first-child::before {
+  color: #555;
+}
+
+/* ─── Focus Mode ─── */
+.focus-mode {
+  cursor: none;
+}
+.focus-mode:hover {
+  cursor: text;
+}
+
+/* ─── CSS Animations ─── */
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-in-top { from { transform: translateY(-4px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.animate-in { animation: fade-in 0.15s ease-out, slide-in-top 0.15s ease-out; }
+
+/* ─── Print Rules ─── */
+@media print {
+  body { background: white !important; color: black !important; }
+  header, footer, aside, button, nav, .toolbar, .script-note,
+  [class*="sticky"], [class*="fixed"] { display: none !important; }
+  .script-page {
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 1in 1in 1in 1.5in !important;
+    min-height: auto !important;
+    border-radius: 0 !important;
+  }
+  .no-scrollbar { overflow: visible !important; }
+}
+
+/* ─── Mobile Responsive ─── */
+@media (max-width: 768px) {
+  .script-page {
+    padding: 0.5in 0.5in 0.5in 0.75in;
+    min-height: auto;
+    font-size: 10pt;
+  }
+  .ProseMirror p.character { margin-left: 1.0in; }
+  .ProseMirror p.parenthetical { margin-left: 0.75in; }
+  .ProseMirror p.dialogue { margin-left: 0.5in; }
+  .ProseMirror p.transition { margin-left: 2.0in; }
 }
