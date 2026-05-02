@@ -12,9 +12,9 @@ export const ScriptKeymap = Extension.create({
         const currentNodeType = $head.parent.type.name;
         const textContent = $head.parent.textContent;
 
-        // Empty block? Pressing Enter should escape to Action
-        if (textContent.length === 0 && currentNodeType !== "action" && currentNodeType !== "paragraph") {
-          editor.commands.setNode("action");
+        // Empty block? Pressing Enter should escape to SceneHeading
+        if (textContent.length === 0 && currentNodeType !== "sceneHeading") {
+          editor.commands.setNode("sceneHeading");
           return true;
         }
 
@@ -36,7 +36,7 @@ export const ScriptKeymap = Extension.create({
             nextNodeType = "dialogue";
             break;
           case "dialogue":
-            nextNodeType = "action";
+            nextNodeType = "character";
             break;
           case "transition":
             nextNodeType = "sceneHeading";

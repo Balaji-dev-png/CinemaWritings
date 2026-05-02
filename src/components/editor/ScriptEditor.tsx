@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useEditor, EditorContent, Editor } from "@tiptap/react";
+import { motion } from "framer-motion";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
@@ -28,21 +29,29 @@ import {
   CaseUpper,
   Type,
   FileText,
+  GripVertical,
 } from "lucide-react";
 
-/* ─── Autocomplete Dictionaries ─── */
-const SCENE_PREFIXES = ["INT. ", "EXT. ", "INT./EXT. "];
-const SCENE_TIMES = ["DAY", "NIGHT", "CONTINUOUS", "LATER", "MOMENTS LATER", "MORNING", "EVENING", "DAWN", "DUSK"];
-const TRANSITIONS_LIST = [
-  "CUT TO:", "FADE IN:", "FADE OUT.", "FADE TO BLACK.",
-  "DISSOLVE TO:", "SMASH CUT TO:", "MATCH CUT TO:",
-  "JUMP CUT TO:", "WIPE TO:", "TIME CUT:",
+/* ─── Autocomplete / Suggestions Data ─── */
+const SCENE_PREFIXES = ["INT.", "EXT.", "INT./EXT."];
+const SCENE_TIMES = ["DAY", "NIGHT", "MORNING", "EVENING", "LATER", "CONTINUOUS", "MOMENTS LATER"];
+const TRANSITIONS_LIST = ["CUT TO:", "FADE OUT.", "SMASH CUT:", "MATCH CUT:", "DISSOLVE TO:"];
+
+const ELEMENT_COMMANDS = [
+  { id: "sceneHeading", label: "Scene Heading", shortcut: "Ctrl+1", type: "command" },
+  { id: "action", label: "Action", shortcut: "Ctrl+2", type: "command" },
+  { id: "character", label: "Character", shortcut: "Ctrl+3", type: "command" },
+  { id: "dialogue", label: "Dialogue", shortcut: "Ctrl+4", type: "command" },
+  { id: "parenthetical", label: "Parenthetical", shortcut: "Ctrl+5", type: "command" },
+  { id: "transition", label: "Transition", shortcut: "Ctrl+6", type: "command" },
+  { id: "shot", label: "Shot", shortcut: "Ctrl+7", type: "command" },
 ];
 
-/* ─── Completion Engine (pure function — no hooks) ─── */
-function getCompletions(query: string, nodeType: string, ed: Editor): { id: string; label?: string }[] {
-  if (!query || query.trim() === "") return [];
+function getCompletions(query: string, nodeType: string, ed: Editor): Array<{ id: string; label?: string; shortcut?: string; type?: string }> {
+  if (!query) return [];
+  
   const upper = query.toUpperCase().trim();
+  if (upper.length === 0) return [];
 
   // ── Characters: dynamically learned from document ──
   if (nodeType === "character") {
@@ -172,32 +181,49 @@ export const ScriptEditor = ({
   const [popup, setPopup] = useState<{
     top: number;
     left: number;
-    items: { id: string }[];
+    items: Array<{ id: string; label?: string; shortcut?: string; type?: string }>;
     selected: number;
   } | null>(null);
-  const popupItemsRef = useRef<{ id: string }[]>([]);
+  const popupItemsRef = useRef<Array<{ id: string; label?: string; shortcut?: string; type?: string }>>([]);
+  const [showElementMenu, setShowElementMenu] = useState(false);
 
   /* ── Apply a completion ── */
   const applyCompletion = useCallback((completionId: string) => {
-    const ed = editorRef.current;
-    if (!ed) return;
-
-    const { from } = ed.state.selection;
-    const $pos = ed.state.doc.resolve(from);
-    const blockStart = from - $pos.parentOffset;
-
-    // Replace entire block content with completion
-    ed.chain().focus().deleteRange({ from: blockStart, to: from }).insertContent(completionId).run();
-
+    if (!editorRef.current) return;
+    const { from, to } = editorRef.current.state.selection;
+    const $pos = editorRef.current.state.doc.resolve(from);
+    const text = $pos.parent.textContent;
+    const match = text.match(/[\w']+$/);
+    if (match) {
+      const start = from - match[0].length;
+      editorRef.current.chain().focus().deleteRange({ from: start, to }).insertContent(completionId).run();
+    } else {
+      editorRef.current.chain().focus().insertContent(completionId).run();
+    }
+    
     // Auto-convert block type
     if (/^(INT\.|EXT\.|INT\.\/EXT\.)\s/i.test(completionId)) {
-      ed.chain().focus().setNode("sceneHeading").run();
+      editorRef.current.chain().focus().setNode("sceneHeading").run();
     } else if (TRANSITIONS_LIST.includes(completionId)) {
-      ed.chain().focus().setNode("transition").run();
+      editorRef.current.chain().focus().setNode("transition").run();
     }
-
+    
     setPopup(null);
     popupItemsRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector('.overflow-y-auto');
+    const handleScroll = () => {
+      setPopup(null);
+      popupItemsRef.current = [];
+    };
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+    }
+    return () => {
+      if (scrollContainer) scrollContainer.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   /* ── Editor ── */
@@ -252,8 +278,17 @@ export const ScriptEditor = ({
 
         if (items.length > 0) {
           const coords = ed.view.coordsAtPos(from);
-          popupItemsRef.current = items;
-          setPopup({ top: coords.bottom + 4, left: coords.left, items, selected: 0 });
+          const editorElement = ed.view.dom.parentElement;
+          if (editorElement) {
+            const rect = editorElement.getBoundingClientRect();
+            popupItemsRef.current = items;
+            setPopup({ 
+              top: (coords.bottom - rect.top) + 4, 
+              left: (coords.left - rect.left), 
+              items, 
+              selected: 0 
+            });
+          }
         } else {
           popupItemsRef.current = [];
           setPopup(null);
@@ -281,6 +316,24 @@ export const ScriptEditor = ({
         spellcheck: "true",
       },
       handleKeyDown: (_view, event) => {
+        if (event.ctrlKey && event.code === "Space") {
+          event.preventDefault();
+          const { from } = editorRef.current!.state.selection;
+          const coords = _view.coordsAtPos(from);
+          const editorElement = _view.dom.parentElement;
+          if (editorElement) {
+            const rect = editorElement.getBoundingClientRect();
+            popupItemsRef.current = ELEMENT_COMMANDS;
+            setPopup({ 
+              top: (coords.bottom - rect.top) + 4, 
+              left: (coords.left - rect.left), 
+              items: ELEMENT_COMMANDS, 
+              selected: 0 
+            });
+          }
+          return true;
+        }
+
         if (popupItemsRef.current.length === 0) return false;
 
         if (event.key === "ArrowDown") {
@@ -297,12 +350,38 @@ export const ScriptEditor = ({
           );
           return true;
         }
-        if (event.key === "Tab" || (event.key === "Enter" && popupItemsRef.current.length > 0)) {
+        if (event.key === "Enter" || event.key === "Tab") {
           event.preventDefault();
-          const current = popupItemsRef.current;
           setPopup((p) => {
-            if (p && current[p.selected]) {
-              setTimeout(() => applyCompletion(current[p.selected].id), 0);
+            if (p && editorRef.current) {
+              const selectedItem = popupItemsRef.current[p.selected];
+              if (!selectedItem) return null;
+              
+              const { from, to } = editorRef.current.state.selection;
+              const $pos = editorRef.current.state.doc.resolve(from);
+              const text = $pos.parent.textContent;
+
+              setTimeout(() => {
+                if (selectedItem.type === "command") {
+                  editorRef.current?.chain()
+                    .focus()
+                    .setNode(selectedItem.id)
+                    .run();
+                } else {
+                  const match = text.match(/[\w']+$/);
+                  if (match) {
+                    const start = from - match[0].length;
+                    editorRef.current?.chain()
+                      .setTextSelection({ from: start, to })
+                      .deleteSelection()
+                      .insertContent(selectedItem.id)
+                      .focus()
+                      .run();
+                  } else {
+                    applyCompletion(selectedItem.id);
+                  }
+                }
+              }, 0);
             }
             return null;
           });
@@ -341,12 +420,44 @@ export const ScriptEditor = ({
   const currentElement = ELEMENT_LABELS[editor.state.selection.$head.parent.type.name] || "ACTION";
 
   return (
-    <div className="w-full flex flex-col items-center gap-4">
+    <div className="w-full flex flex-col items-center gap-4 relative">
       {/* ─── Formatting Toolbar ─── */}
-      <div className="sticky top-4 z-40 flex items-center gap-1 p-1.5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-lg shadow-black/5 dark:shadow-black/30 transition-colors duration-300">
-        {/* Element Type Indicator */}
-        <div className="px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-400 dark:text-zinc-500 border-r border-zinc-200 dark:border-zinc-700 uppercase min-w-[90px] text-center select-none">
-          {currentElement}
+      <motion.div 
+        drag 
+        dragMomentum={false}
+        className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 max-md:top-auto max-md:bottom-4 max-md:left-1/2 max-md:-translate-x-1/2 max-md:-translate-y-0 z-40 flex flex-col max-md:flex-row items-center gap-1.5 max-md:gap-3 p-1.5 max-md:p-2 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-2xl max-md:rounded-[20px] border border-zinc-200/80 dark:border-zinc-800 shadow-xl shadow-black/10 dark:shadow-black/40 transition-opacity duration-300 opacity-60 hover:opacity-100 focus-within:opacity-100 group cursor-grab active:cursor-grabbing max-md:w-[90vw] max-md:max-w-md max-md:overflow-x-auto max-md:no-scrollbar"
+      >
+        {/* Drag Handle */}
+        <div className="p-1 opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center max-md:hidden">
+           <GripVertical className="w-3.5 h-3.5 text-zinc-500" />
+        </div>
+
+        {/* Element Type Dropdown */}
+        <div className="relative">
+          <button 
+            onClick={() => setShowElementMenu(!showElementMenu)}
+            className="py-2 max-md:py-1 px-1.5 max-md:px-3 text-[10px] font-bold tracking-widest text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors border-b max-md:border-b-0 max-md:border-r border-zinc-200 dark:border-zinc-700 uppercase [writing-mode:vertical-lr] max-md:[writing-mode:horizontal-tb] rotate-180 max-md:rotate-0 select-none cursor-pointer"
+            title="Change Element Type"
+          >
+            {currentElement}
+          </button>
+          
+          {showElementMenu && (
+            <div className="absolute right-full mr-4 max-md:right-auto max-md:mr-0 max-md:left-0 top-0 max-md:top-auto max-md:bottom-full max-md:mb-4 bg-white dark:bg-zinc-800 shadow-xl rounded-xl border border-zinc-200 dark:border-zinc-700 flex flex-col py-1 min-w-[150px]">
+              {ELEMENT_COMMANDS.map((cmd) => (
+                <button
+                  key={cmd.id}
+                  onClick={() => {
+                    editor.chain().focus().setNode(cmd.id).run();
+                    setShowElementMenu(false);
+                  }}
+                  className={`px-4 py-2 text-sm text-left hover:bg-zinc-100 dark:hover:bg-zinc-700 ${editor.isActive(cmd.id) ? "text-blue-500 font-medium" : "text-zinc-700 dark:text-zinc-300"}`}
+                >
+                  {cmd.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Text Color */}
@@ -359,7 +470,7 @@ export const ScriptEditor = ({
           />
         </div>
 
-        <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700" />
+        <div className="h-px w-5 max-md:w-px max-md:h-5 bg-zinc-200 dark:bg-zinc-700 shrink-0" />
 
         <button
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -390,7 +501,7 @@ export const ScriptEditor = ({
           <Strikethrough className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700" />
+        <div className="h-px w-5 bg-zinc-200 dark:bg-zinc-700" />
 
         <button
           onClick={handleUppercase}
@@ -406,7 +517,7 @@ export const ScriptEditor = ({
         >
           <Eraser className="w-3.5 h-3.5" />
         </button>
-      </div>
+      </motion.div>
 
       {/* ─── Paper ─── */}
       <div
@@ -419,33 +530,55 @@ export const ScriptEditor = ({
         <EditorContent editor={editor} />
 
         {/* ─── Autocomplete Popup ─── */}
-        {popup && popup.items.length > 0 && (
-          <div
-            className="fixed z-[100] bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl shadow-2xl shadow-black/10 dark:shadow-black/50 border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden py-1 min-w-[180px] max-w-[300px] text-sm animate-in fade-in slide-in-from-top-1 duration-150"
+        {popup && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="absolute z-50 bg-white dark:bg-zinc-800 shadow-2xl rounded-xl border border-zinc-200 dark:border-zinc-700 overflow-hidden flex flex-col py-1 min-w-[200px]"
             style={{ top: popup.top, left: popup.left }}
           >
-            {popup.items.map((item, i) => (
-              <button
-                key={i}
-                className={`w-full text-left px-3 py-2 flex items-center gap-2 transition-colors ${
-                  i === popup.selected
-                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium"
-                    : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+            {popup.items.map((item, idx) => (
+              <div
+                key={item.id}
+                className={`px-4 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between ${
+                  idx === popup.selected
+                    ? "bg-blue-500 text-white"
+                    : "text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
                 }`}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  applyCompletion(item.id);
+                  if (editorRef.current) {
+                    const { from, to } = editorRef.current.state.selection;
+                    const $pos = editorRef.current.state.doc.resolve(from);
+                    const text = $pos.parent.textContent;
+                    
+                    const match = text.match(/[\w']+$/);
+                    if (match) {
+                      const start = from - match[0].length;
+                      editorRef.current.chain()
+                        .setTextSelection({ from: start, to })
+                        .deleteSelection()
+                        .insertContent(item.id)
+                        .focus()
+                        .run();
+                    } else {
+                      applyCompletion(item.id);
+                    }
+                    
+                    setPopup(null);
+                    popupItemsRef.current = [];
+                  }
                 }}
-                onMouseEnter={() => setPopup((p) => (p ? { ...p, selected: i } : null))}
+                onMouseEnter={() => setPopup((p) => (p ? { ...p, selected: idx } : null))}
               >
-                <Type className="w-3 h-3 opacity-40 shrink-0" />
-                <span className="truncate font-mono text-xs">{item.id}</span>
-              </button>
+                <span>{item.id}</span>
+              </div>
             ))}
             <div className="px-3 py-1 border-t border-zinc-100 dark:border-zinc-800">
               <span className="text-[10px] text-zinc-400">↑↓ navigate · Tab accept · Esc dismiss</span>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

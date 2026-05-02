@@ -152,26 +152,26 @@ export function ScriptAnalytics({ editor }: { editor: Editor | null }) {
             </div>
 
             {/* INT/EXT Breakdown */}
-            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3">
-              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Scene Breakdown</div>
-              <div className="flex gap-2 text-xs">
-                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full font-medium">INT. {data.intCount}</span>
-                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full font-medium">EXT. {data.extCount}</span>
-                <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full font-medium">DAY {data.dayCount}</span>
-                <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full font-medium">NIGHT {data.nightCount}</span>
+            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-4 shadow-sm border border-zinc-100 dark:border-zinc-800">
+              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Scene Breakdown</div>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-lg font-medium border border-blue-200 dark:border-blue-800/50 flex gap-1.5"><span className="opacity-70">INT</span> {data.intCount}</span>
+                <span className="px-2.5 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-lg font-medium border border-green-200 dark:border-green-800/50 flex gap-1.5"><span className="opacity-70">EXT</span> {data.extCount}</span>
+                <span className="px-2.5 py-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded-lg font-medium border border-amber-200 dark:border-amber-800/50 flex gap-1.5"><span className="opacity-70">DAY</span> {data.dayCount}</span>
+                <span className="px-2.5 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-lg font-medium border border-purple-200 dark:border-purple-800/50 flex gap-1.5"><span className="opacity-70">NIGHT</span> {data.nightCount}</span>
               </div>
             </div>
 
             {/* Dialogue-to-Action Ratio */}
-            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3">
-              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Dialogue vs Action</div>
-              <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden flex">
-                <div className="bg-blue-500 transition-all duration-500" style={{ width: `${ratio}%` }} />
-                <div className="bg-orange-400 flex-1" />
+            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl p-4 shadow-sm border border-zinc-100 dark:border-zinc-800">
+              <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Dialogue vs Action</div>
+              <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden flex shadow-inner">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-700 ease-out" style={{ width: `${ratio}%` }} />
+                <div className="bg-gradient-to-r from-orange-400 to-orange-500 flex-1 transition-all duration-700 ease-out" />
               </div>
-              <div className="flex justify-between mt-1.5 text-[10px] text-zinc-500">
-                <span>Dialogue {ratio}%</span>
-                <span>Action {100 - ratio}%</span>
+              <div className="flex justify-between mt-2.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                <span className="text-blue-600 dark:text-blue-400">Dialogue {ratio}%</span>
+                <span className="text-orange-600 dark:text-orange-500">Action {100 - ratio}%</span>
               </div>
             </div>
           </div>

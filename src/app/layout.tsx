@@ -28,7 +28,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export const metadata: Metadata = {
-  title: "Retainable UI - Screenplay Editor",
+  title: "CinemaWritings - Screenplay Editor",
   description: "A soft UI typewriter-style screenplay editor.",
 };
 

@@ -11,6 +11,7 @@ export interface ScriptMeta {
   contact: string;
   logline?: string;
   synopsis?: string;
+  writtenByPrefix?: string;
 }
 
 export interface ScriptVersion {
@@ -31,7 +32,7 @@ export interface Script {
   color?: string;
 }
 
-const STORAGE_KEY = "vibewriting_scripts";
+const STORAGE_KEY = "cinemawritings_scripts";
 
 export const getScripts = (): Script[] => {
   if (typeof window === "undefined") return [];
@@ -49,10 +50,10 @@ export const getScriptById = (id: string): Script | undefined => {
   return getScripts().find((s) => s.id === id);
 };
 
-export const createScript = (): Script => {
+export const createScript = (title: string = "Untitled Script"): Script => {
   const newScript: Script = {
     id: uuidv4(),
-    title: "Untitled Script",
+    title,
     content: `<p class="scene-heading">INT. NEW SCENE - DAY</p><p class="action"></p>`,
     updatedAt: Date.now(),
     historyList: [
@@ -141,10 +142,21 @@ export const restoreVersion = (id: string, versionIndex: number): string | null 
 };
 
 /* ─── Fountain Export ─── */
-export const exportToFountain = (html: string): string => {
+export const exportToFountain = (html: string, meta?: ScriptMeta, title?: string): string => {
   const div = document.createElement("div");
   div.innerHTML = html;
   const lines: string[] = [];
+
+  // Title page header block
+  if (title) lines.push(`Title: ${title}`);
+  if (meta?.author) lines.push(`Author: ${meta.author}`);
+  if (meta?.contact) lines.push(`Contact: ${meta.contact.replace(/\n/g, " | ")}`);
+  if (meta?.logline) lines.push(`Logline: ${meta.logline}`);
+  if (meta?.synopsis) lines.push(`Synopsis: ${meta.synopsis.replace(/\n/g, " ")}`);
+
+  lines.push("");
+  lines.push("=".repeat(60));
+  lines.push("");
 
   div.querySelectorAll("p").forEach((p) => {
     const text = p.textContent?.trim() || "";

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Editor } from "@tiptap/react";
+import { motion } from "framer-motion";
 import { ScriptEditor } from "@/components/editor/ScriptEditor";
 import { TitlePage } from "@/components/editor/TitlePage";
 import { SceneNavigator } from "@/components/editor/SceneNavigator";
@@ -11,6 +12,7 @@ import { VersionManager } from "@/components/editor/VersionManager";
 import { ShortcutsPanel } from "@/components/ui/ShortcutsPanel";
 import { Corkboard } from "@/components/editor/Corkboard";
 import { getScriptById, updateScript, exportToFountain, importFromFountain, Script } from "@/lib/storage";
+import { exportToPdf } from "@/lib/exportPdf";
 import { useTheme } from "next-themes";
 import {
   ArrowLeft,
@@ -21,6 +23,7 @@ import {
   Keyboard,
   Eye,
   FileText,
+  PenTool,
   Printer,
   Download,
   BookOpen,
@@ -37,6 +40,7 @@ export default function EditorPage() {
   const params = useParams();
   const router = useRouter();
   const [script, setScript] = useState<Script | null>(null);
+  const [title, setTitle] = useState("");
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -49,6 +53,7 @@ export default function EditorPage() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [showCorkboard, setShowCorkboard] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Style states
   const [docBgColor, setDocBgColor] = useState("default");
@@ -60,8 +65,12 @@ export default function EditorPage() {
   useEffect(() => {
     if (params.id) {
       const found = getScriptById(params.id as string);
-      if (found) setScript(found);
-      else router.push("/");
+      if (found) {
+        setScript(found);
+        setTitle(found.title);
+      } else {
+        router.push("/");
+      }
     }
   }, [params.id, router]);
 
@@ -81,6 +90,23 @@ export default function EditorPage() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value);
+  };
+
+  const handleTitleBlur = () => {
+    if (script && title !== script.title) {
+      updateScript(script.id, { title });
+      setScript(getScriptById(script.id) || null);
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+  };
+
   const handleVersionRestore = (newContent: string) => {
     setShowVersions(false);
     // Reload script data
@@ -88,23 +114,61 @@ export default function EditorPage() {
       const updated = getScriptById(params.id as string);
       if (updated) setScript(updated);
     }
-    // Force page reload to reinitialize editor with new content
-    window.location.reload();
+    // Update editor programmatically to avoid page flash
+    if (editorInstance) {
+      editorInstance.commands.setContent(newContent);
+    }
   };
 
   const handleExportFountain = () => {
     if (!script) return;
-    const fountain = exportToFountain(script.content);
+    const freshScript = getScriptById(script.id)!;
+    const content = editorInstance?.getHTML() || freshScript.content;
+    const fountain = exportToFountain(content, freshScript.meta, freshScript.title);
     const blob = new Blob([fountain], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${script.title || "script"}.fountain`;
+    a.download = `${freshScript.title || "script"}.fountain`;
     a.click();
     URL.revokeObjectURL(url);
+    setShowExportMenu(false);
   };
 
-  const handlePrint = () => window.print();
+  const handleExportText = () => {
+    if (!script) return;
+    const freshScript = getScriptById(script.id)!;
+    const content = editorInstance?.getHTML() || freshScript.content;
+    const text = exportToFountain(content, freshScript.meta, freshScript.title);
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${freshScript.title || "script"}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  const handleExportPdf = () => {
+    if (!script) return;
+    const freshScript = getScriptById(script.id)!;
+    const content = editorInstance?.getHTML() || freshScript.content;
+    exportToPdf(content, {
+      title: freshScript.title || "Untitled",
+      writtenByPrefix: freshScript.meta?.writtenByPrefix || "written by",
+      author: freshScript.meta?.author || "",
+      contact: freshScript.meta?.contact || "",
+      logline: freshScript.meta?.logline || "",
+      synopsis: freshScript.meta?.synopsis || "",
+    });
+    setShowExportMenu(false);
+  };
+
+  const handlePrint = () => {
+    setShowExportMenu(false);
+    window.print();
+  };
 
   const handleImportFountain = () => {
     const input = document.createElement("input");
@@ -118,7 +182,9 @@ export default function EditorPage() {
         const text = reader.result as string;
         const html = importFromFountain(text);
         updateScript(script!.id, { content: html });
-        window.location.reload();
+        if (editorInstance) {
+          editorInstance.commands.setContent(html);
+        }
       };
       reader.readAsText(file);
     };
@@ -128,11 +194,13 @@ export default function EditorPage() {
   if (!script) return null;
 
   return (
-    <div className={`h-screen flex flex-col bg-[#f4f5f7] dark:bg-[#0a0a0a] font-sans transition-colors duration-300 overflow-hidden ${focusMode ? "focus-mode" : ""}`}>
+    <div 
+      className={`h-screen flex flex-col bg-[#f4f5f7] dark:bg-[#0a0a0a] font-sans transition-colors duration-300 overflow-hidden ${focusMode ? "focus-mode" : ""}`}
+    >
 
       {/* ─── Top Bar ─── */}
       {!focusMode && (
-        <header className="flex items-center justify-between px-2 sm:px-4 py-2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-200/60 dark:border-zinc-800 z-30 shrink-0 overflow-x-auto no-scrollbar">
+        <header className="anim-slide-1 flex items-center justify-between px-2 sm:px-4 py-2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-200/60 dark:border-zinc-800 z-30 shrink-0 overflow-x-auto no-scrollbar">
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <button onClick={() => router.push("/")} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -151,9 +219,17 @@ export default function EditorPage() {
           </div>
 
           {/* Center: Script Title */}
-          <div className="hidden md:flex items-center gap-2 mx-4 shrink-0">
-            <FileText className="w-3.5 h-3.5 text-zinc-400" />
-            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300 max-w-[200px] truncate">{script.title}</span>
+          <div className="flex items-center gap-2 mx-4 shrink-0 max-w-[150px] sm:max-w-[300px]">
+            <PenTool className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+            <input
+              type="text"
+              value={title}
+              onChange={handleTitleChange}
+              onBlur={handleTitleBlur}
+              onKeyDown={handleTitleKeyDown}
+              className="text-xs font-medium text-zinc-800 dark:text-zinc-200 bg-transparent border-none outline-none hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:bg-zinc-100 dark:focus:bg-zinc-800 px-2 py-1 rounded transition-colors w-full truncate placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+              placeholder="Untitled Script"
+            />
           </div>
 
           {/* Right actions */}
@@ -164,14 +240,13 @@ export default function EditorPage() {
             <button onClick={() => setShowVersions(true)} className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all" title="Versions">
               <Save className="w-3.5 h-3.5" />
             </button>
-            <button onClick={handleExportFountain} className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all" title="Export Fountain">
-              <Download className="w-3.5 h-3.5" />
-            </button>
+            <div className="relative">
+              <button onClick={() => setShowExportMenu(!showExportMenu)} className={`p-1.5 rounded-lg transition-all ${showExportMenu ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`} title="Download Options">
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <button onClick={handleImportFountain} className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all" title="Import Fountain">
               <Upload className="w-3.5 h-3.5" />
-            </button>
-            <button onClick={handlePrint} className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all" title="Print / PDF">
-              <Printer className="w-3.5 h-3.5" />
             </button>
             <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-1" />
             <button onClick={() => setShowSettings(!showSettings)} className={`p-1.5 rounded-lg transition-all ${showSettings ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`} title="Style Settings">
@@ -191,6 +266,21 @@ export default function EditorPage() {
             )}
           </div>
         </header>
+      )}
+
+      {/* Export Dropdown */}
+      {showExportMenu && !focusMode && (
+        <div className="absolute top-12 right-12 z-50 bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-52 flex flex-col gap-1">
+          <button onClick={handleExportPdf} className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2">
+            <span className="text-base">📄</span> Download PDF
+          </button>
+          <button onClick={handleExportFountain} className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2">
+            <span className="text-base">🖋</span> Fountain (.fountain)
+          </button>
+          <button onClick={handleExportText} className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2">
+            <span className="text-base">📝</span> Plain Text (.txt)
+          </button>
+        </div>
       )}
 
       {/* Settings Dropdown */}
@@ -225,7 +315,7 @@ export default function EditorPage() {
       )}
 
       {/* ─── Main Area ─── */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="anim-slide-2 flex-1 flex overflow-hidden relative">
         {/* Left: Scene Navigator */}
         {showNav && !focusMode && (
           <aside className="absolute inset-y-0 left-0 z-40 w-64 md:relative md:w-56 shrink-0 bg-white/95 dark:bg-zinc-900/95 md:bg-white md:dark:bg-zinc-900/60 backdrop-blur-xl md:backdrop-blur-none border-r border-zinc-200/60 dark:border-zinc-800 overflow-hidden flex flex-col shadow-2xl md:shadow-none transition-transform">
@@ -258,7 +348,7 @@ export default function EditorPage() {
 
       {/* ─── Bottom Status Bar ─── */}
       {!focusMode && (
-        <footer className="flex items-center justify-between px-2 sm:px-4 py-1.5 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-t border-zinc-200/60 dark:border-zinc-800 text-[9px] sm:text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold tracking-widest shrink-0 z-20 overflow-x-auto no-scrollbar">
+        <footer className="anim-slide-3 flex items-center justify-between px-2 sm:px-4 py-1.5 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-t border-zinc-200/60 dark:border-zinc-800 text-[9px] sm:text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold tracking-widest shrink-0 z-20 overflow-x-auto no-scrollbar">
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <span className="flex items-center gap-1"><Film className="w-3 h-3" /> <span className="hidden sm:inline">{stats.scenes} scenes</span><span className="sm:hidden">{stats.scenes} scn</span></span>
             <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /> <span className="hidden sm:inline">{stats.words.toLocaleString()} words</span><span className="sm:hidden">{stats.words.toLocaleString()}</span></span>
@@ -283,7 +373,7 @@ export default function EditorPage() {
       )}
 
       {/* ─── Modals ─── */}
-      {showVersions && <VersionManager scriptId={script.id} onRestore={handleVersionRestore} onClose={() => setShowVersions(false)} />}
+      {showVersions && <VersionManager scriptId={script.id} currentContent={editorInstance?.getHTML() || ""} onRestore={handleVersionRestore} onClose={() => setShowVersions(false)} />}
       {showShortcuts && <ShortcutsPanel onClose={() => setShowShortcuts(false)} />}
       {showCorkboard && <Corkboard editor={editorInstance} onClose={() => setShowCorkboard(false)} />}
     </div>

@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import { saveVersion, restoreVersion, getScriptById, Script, ScriptVersion } from "@/lib/storage";
-import { Save, RotateCcw, X, Clock, Tag } from "lucide-react";
+import { Save, RotateCcw, X, Clock, Tag, SplitSquareHorizontal } from "lucide-react";
+import { CompareModal } from "./CompareModal";
 
 export function VersionManager({
   scriptId,
+  currentContent,
   onRestore,
   onClose,
 }: {
   scriptId: string;
+  currentContent: string;
   onRestore: (newContent: string) => void;
   onClose: () => void;
 }) {
@@ -17,6 +20,7 @@ export function VersionManager({
   const [versionName, setVersionName] = useState("");
   const [versions, setVersions] = useState<ScriptVersion[]>(script?.versions || []);
   const [saved, setSaved] = useState(false);
+  const [comparingVersion, setComparingVersion] = useState<{ content: string; name: string } | null>(null);
 
   const handleSave = () => {
     const name = versionName.trim() || `Draft ${versions.length + 1}`;
@@ -32,6 +36,22 @@ export function VersionManager({
     const content = restoreVersion(scriptId, index);
     if (content) onRestore(content);
   };
+
+  const handleCompare = (index: number, name: string) => {
+    const content = restoreVersion(scriptId, index);
+    if (content) setComparingVersion({ content, name });
+  };
+
+  if (comparingVersion) {
+    return (
+      <CompareModal
+        currentContent={currentContent}
+        savedContent={comparingVersion.content}
+        versionName={comparingVersion.name}
+        onClose={() => setComparingVersion(null)}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
@@ -87,13 +107,22 @@ export function VersionManager({
                     <div className="text-[10px] text-zinc-400">{new Date(v.timestamp).toLocaleString()}</div>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleRestore(realIndex)}
-                  className="px-3 py-1.5 text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  Restore
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleCompare(realIndex, v.name)}
+                    className="px-3 py-1.5 text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 hover:text-orange-700 dark:hover:text-orange-300 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1"
+                  >
+                    <SplitSquareHorizontal className="w-3 h-3" />
+                    Compare
+                  </button>
+                  <button
+                    onClick={() => handleRestore(realIndex)}
+                    className="px-3 py-1.5 text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Restore
+                  </button>
+                </div>
               </div>
             );
           })}

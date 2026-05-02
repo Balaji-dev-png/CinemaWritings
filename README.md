@@ -1,92 +1,135 @@
-# VibeWriting — Screenplay Editor 🎬
+# 🎬 CinemaWritings
 
-VibeWriting is a modern, privacy-first, professional screenwriting web application built with **Next.js** and **TipTap**. It is designed for screenwriters, directors, and hobbyists who want a distraction-free, fluid writing experience that automatically formats scripts to WGA industry standards.
+**CinemaWritings** is a professional, browser-based screenplay editor built for writers who want industry-standard formatting without the complexity of traditional screenwriting software. Write, format, export, and version your scripts — all in one beautiful, responsive app.
 
-(https://vibewriting.netlify.app)
+**Live:** [https://cinemawritings.netlify.app](https://cinemawritings.netlify.app)
 
-## ✨ Key Features
+---
 
-### 🖋️ Professional Screenplay Formatting
-- **Automatic WGA Auto-Formatting**: Effortlessly writes Scene Headings, Action, Characters, Dialogues, Parentheticals, and Transitions.
-- **Smart Element Switching**: Use `Tab`, `Enter`, and `Shift+Tab` to seamlessly flow between character names, dialogue, and action lines just like industry-standard software (Final Draft, Arc Studio).
-- **Native Autocomplete Engine**: Dynamic, context-aware suggestions. The engine "learns" your Character names and Scene Locations as you type, adding them to the suggestion dropdown magically.
+## ✨ Features
 
-### 🗂️ Organization & Navigation
-- **Corkboard / Index Card View**: Visualize your entire screenplay. Drag-and-drop scene cards to reorganize your story flow instantly.
-- **Scene Navigator**: A left sidebar that lets you jump to any scene with a single click.
-- **Script Analytics**: Track crucial writer metrics — scene count, word count, estimated page count (1 page = ~1 minute), and even the breakdown of Action vs. Dialogue.
+### Editor
+- **TipTap-powered rich editor** with native bold, italic, and underline support
+- **Screenplay element types** via keyboard shortcuts or the floating toolbar:
+  - Scene Heading (`Ctrl+1`)
+  - Action (`Ctrl+2`)
+  - Character (`Ctrl+3`)
+  - Dialogue (`Ctrl+4`)
+  - Parenthetical (`Ctrl+5`)
+  - Transition (`Ctrl+6`)
+  - Shot (`Ctrl+7`)
+- **Smart autocomplete** for character names, scene prefixes (`INT.` / `EXT.`), and standard transitions
+- **`Ctrl+Space`** — opens the element selector menu at the cursor
+- **Focus Mode** — a cinematic, distraction-free writing environment with a film-grain overlay
 
-### 💾 Privacy & Persistence
-- **100% Local Storage**: Your scripts never leave your browser. Everything is saved instantly to your device's `localStorage`.
-- **Version History (Snapshots)**: Save named drafts (e.g., "Draft 1", "Polished Version") and restore them anytime without losing your current progress.
+### Title Page
+- Editable title, author, "written by" prefix, and contact block
+- **Logline** and **Synopsis** fields (collapsible) — included in all exports
 
-### 📤 Import & Export
-- **Fountain Support**: Full support for `.fountain` files. Download your screenplay instantly or import existing Fountain files to continue working.
-- **Print / PDF**: Native browser printing creates perfectly formatted, paginated scripts ready for production.
+### Version History & Draft Comparison
+- **Save named drafts** at any point
+- **Restore** any previous draft with zero page flash
+- **Side-by-side split-screen comparison** of any two drafts with full screenplay formatting preserved
 
-### 🎨 Beautiful, Distraction-Free UI
-- **Light & Dark Mode**: A sleek theme toggle adjusts the environment for late-night writing.
-- **Focus Mode**: Hide all sidebars and distractions — just you and the page.
-- **Customization**: Adjust document background colors and choose from professional fonts like *Courier Prime*, *Lora*, *Inter*, or *Playfair Display*.
+### Exports
+| Format | Description |
+|---|---|
+| **Download PDF** | Direct download — no print dialog. WGA-standard layout with correct character, dialogue, and transition positioning. Preserves bold, italic, underline formatting. Includes title page, logline, synopsis, and contact info. |
+| **Fountain (.fountain)** | Standard Fountain plain-text format with title metadata header block |
+| **Plain Text (.txt)** | Human-readable export in Fountain syntax with metadata |
+
+### Multi-Document Dashboard
+- Create, organize, and delete multiple scripts
+- Script history timeline per document
+- Pastel gradient card system with dark mode
+
+### Responsive Design
+- **Desktop**: renders as a physical 8.5×11 page with WGA-standard inch margins
+- **Tablet**: condensed padding while preserving the page feel
+- **Mobile**: flat-card layout, fluid percentage-based indents, bottom-docked formatting toolbar
+- Full **dark mode** support
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16.2 (Turbopack) |
+| Editor Core | TipTap / ProseMirror |
+| Animations | Framer Motion + CSS keyframes |
+| PDF Generation | jsPDF (vector text, no rasterizing) |
+| Styling | Tailwind CSS v4 + custom CSS |
+| Fonts | Courier Prime (editor/PDF), Poppins (UI) |
+| Storage | localStorage (client-side persistence) |
+| Deployment | Netlify |
 
 ---
 
 ## 🚀 Getting Started
 
-### Prerequisites
-Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
+```bash
+# Install dependencies
+npm install
 
-### Installation
+# Start the development server
+npm run dev
+```
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/Balaji-dev-png/VibeWriting.git
-   cd VibeWriting
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-3. **Run the development server:**
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-4. **Open the App:**
-   Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 🛠️ Built With
+## 📁 Project Structure
 
-- **[Next.js 14+ (App Router)](https://nextjs.org/)** — React meta-framework
-- **[Tailwind CSS](https://tailwindcss.com/)** — Styling and responsive design
-- **[TipTap (ProseMirror)](https://tiptap.dev/)** — Headless, block-based rich text editor
-- **[Framer Motion](https://www.framer.com/motion/)** — Beautiful animations and micro-interactions
-- **[Lucide React](https://lucide.dev/)** — Clean and consistent iconography
-- **[next-themes](https://github.com/pacocoursey/next-themes)** — Effortless dark mode implementation
+```
+src/
+├── app/
+│   ├── page.tsx              # Dashboard
+│   ├── layout.tsx            # Root layout + fonts
+│   ├── globals.css           # Global styles + screenplay CSS
+│   └── editor/[id]/page.tsx  # Editor page
+│
+├── components/
+│   ├── editor/
+│   │   ├── ScriptEditor.tsx  # Main TipTap editor + toolbar
+│   │   ├── TitlePage.tsx     # Title page with logline/synopsis
+│   │   ├── VersionManager.tsx# Save, restore, compare drafts
+│   │   ├── CompareModal.tsx  # Side-by-side draft comparison
+│   │   ├── SceneNavigator.tsx# Left panel scene list
+│   │   ├── ScriptAnalytics.tsx# Word/scene/page stats
+│   │   └── nodes/            # TipTap custom screenplay node types
+│   └── ui/
+│       ├── ThemeToggle.tsx
+│       └── ShortcutsPanel.tsx
+│
+└── lib/
+    ├── storage.ts            # localStorage CRUD + Fountain export/import
+    └── exportPdf.ts          # jsPDF-based PDF generation with full formatting
+```
 
 ---
 
 ## ⌨️ Keyboard Shortcuts
 
 | Shortcut | Action |
-|----------|--------|
-| `Enter` | Move to next logical element (e.g., Scene -> Action, Character -> Dialogue) |
-| `Tab` / `Shift+Tab` | Cycle forwards/backwards through screenplay element types |
-| `Ctrl + S` | Save a new version/snapshot |
-| `Ctrl + /` | Toggle Help & Shortcuts overlay |
-| `Ctrl + \` | Toggle Scene Navigator |
-| `Shift + F` | Toggle Focus Mode |
+|---|---|
+| `Ctrl+1` | Scene Heading |
+| `Ctrl+2` | Action |
+| `Ctrl+3` | Character |
+| `Ctrl+4` | Dialogue |
+| `Ctrl+5` | Parenthetical |
+| `Ctrl+6` | Transition |
+| `Ctrl+7` | Shot |
+| `Ctrl+Space` | Open element selector menu |
+| `Ctrl+B` | Bold |
+| `Ctrl+I` | Italic |
+| `Ctrl+U` | Underline |
+| `Tab` | Accept autocomplete suggestion |
+| `Escape` | Close autocomplete / exit focus mode |
 
 ---
 
 ## 📄 License
 
-This project is open-source and available under the [MIT License](LICENSE).
+MIT

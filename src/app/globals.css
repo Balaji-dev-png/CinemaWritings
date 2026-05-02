@@ -29,17 +29,21 @@ body {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* ─── Script Page: Industry Standard ─── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCRIPT PAGE — Desktop: renders as a physical 8.5×11 sheet in the browser
+   ═══════════════════════════════════════════════════════════════════════════ */
 .script-page {
   font-family: var(--font-courier);
   width: 100%;
   max-width: 8.5in;
   min-height: 11in;
+  /* WGA standard: 1.5in left, 1in everywhere else */
   padding: 1in 1in 1in 1.5in;
   background-color: #ffffff;
   color: #000000;
   box-shadow: 0 2px 20px -4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
   border-radius: 2px;
+  box-sizing: border-box;
 }
 
 .dark .script-page {
@@ -48,53 +52,58 @@ body {
   box-shadow: 0 0 0 1px #2a2a2a, 0 4px 20px -4px rgba(0,0,0,0.4);
 }
 
-/* ─── TipTap Editor ─── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROSEMIRROR — uses % indents so they scale with the writing area width
+   On desktop the writing area is 6", so these percentages match WGA inches.
+   ═══════════════════════════════════════════════════════════════════════════ */
 .ProseMirror { outline: none; font-size: 12pt; }
-.ProseMirror p { line-height: 1; min-height: 1em; }
+.ProseMirror p { line-height: 1.4; min-height: 1em; box-sizing: border-box; }
 
 /* Scene Heading: ALL CAPS, Bold */
 .ProseMirror p.scene-heading {
   text-transform: uppercase;
   font-weight: bold;
-  margin: 1rem 0 0.5rem 0;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
 }
 
-/* Action: Standard case */
+/* Action: full writing width */
 .ProseMirror p.action {
-  margin: 0 0 1rem 0;
-  max-width: 6.0in;
+  margin-bottom: 0.8rem;
 }
 
-/* Character: ALL CAPS, 2" indent from page left margin */
+/* Character: sits ~35% from the left of the writing area (≈ 2.1" on desktop) */
 .ProseMirror p.character {
   text-transform: uppercase;
-  margin: 1rem 0 0 2.0in;
-  max-width: 4.0in;
+  margin-top: 0.8rem;
+  margin-left: 35%;
 }
 
-/* Parenthetical: 1.5" indent */
+/* Parenthetical: ~25% left, narrow column */
 .ProseMirror p.parenthetical {
-  margin: 0 0 0 1.5in;
-  max-width: 2.0in;
+  margin-left: 25%;
+  max-width: 50%;
 }
 
-/* Dialogue: 1" indent, 3.5" width */
+/* Dialogue: inset on both sides */
 .ProseMirror p.dialogue {
-  margin: 0 0 0.5rem 1.0in;
-  max-width: 3.5in;
+  margin-left: 17%;
+  margin-right: 17%;
+  margin-bottom: 0.6rem;
 }
 
-/* Transition: Right-aligned, ALL CAPS */
+/* Transition: always right-aligned */
 .ProseMirror p.transition {
   text-transform: uppercase;
-  margin: 1rem 0 1rem 4.5in;
-  max-width: 2.0in;
+  text-align: right;
+  margin-top: 0.8rem;
+  margin-bottom: 0.8rem;
 }
 
-/* Shot: ALL CAPS */
+/* Shot: ALL CAPS, full width */
 .ProseMirror p.shot {
   text-transform: uppercase;
-  margin: 0.5rem 0;
+  margin: 0.4rem 0;
 }
 
 /* ─── Placeholder ─── */
@@ -114,43 +123,152 @@ body {
 /* ─── Focus Mode ─── */
 .focus-mode {
   cursor: none;
+  background-color: #050505 !important;
 }
-.focus-mode:hover {
-  cursor: text;
+.focus-mode::after {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
+.focus-mode:hover { cursor: text; }
+.focus-mode .script-page {
+  background-color: #0a0a0a !important;
+  box-shadow: 0 0 120px rgba(0,0,0,0.9);
+  border: 1px solid #1a1a1a;
+  color: #c8c8c8 !important;
+}
+.focus-mode .ProseMirror { caret-color: #fff; }
 
 /* ─── CSS Animations ─── */
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slide-in-top { from { transform: translateY(-4px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes fade-in-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 .animate-in { animation: fade-in 0.15s ease-out, slide-in-top 0.15s ease-out; }
+.animate-fade-in-up { animation: fade-in-up 0.4s ease-out forwards; }
+.anim-slide-1 { opacity: 0; animation: fade-in-up 0.35s ease-out 0.05s forwards; }
+.anim-slide-2 { opacity: 0; animation: fade-in-up 0.35s ease-out 0.15s forwards; }
+.anim-slide-3 { opacity: 0; animation: fade-in-up 0.35s ease-out 0.25s forwards; }
 
-/* ─── Print Rules ─── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRINT / PDF via browser
+   Restores absolute WGA inch margins (the browser's physical coordinate space)
+   ═══════════════════════════════════════════════════════════════════════════ */
 @media print {
-  body { background: white !important; color: black !important; }
-  header, footer, aside, button, nav, .toolbar, .script-note,
+  @page { margin: 0; size: letter; }
+  body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
+  header, footer, aside, button, nav, .toolbar,
   [class*="sticky"], [class*="fixed"] { display: none !important; }
-  .script-page {
-    box-shadow: none !important;
-    margin: 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-    padding: 1in 1in 1in 1.5in !important;
-    min-height: auto !important;
-    border-radius: 0 !important;
+  html, body, main, .overflow-y-auto, .flex-1, .w-full {
+    display: block !important; overflow: visible !important;
+    height: auto !important; min-height: 0 !important;
+    width: 100% !important; max-width: none !important;
+    position: static !important; background: transparent !important;
   }
-  .no-scrollbar { overflow: visible !important; }
+  .script-page {
+    box-shadow: none !important; border: none !important; border-radius: 0 !important;
+    margin: 0 !important; width: 8.5in !important; max-width: 8.5in !important;
+    min-height: 0 !important; padding: 1.0in 1.0in 1.0in 1.5in !important;
+    font-family: var(--font-courier), "Courier Prime", Courier, monospace !important;
+    font-size: 12pt !important; line-height: 1 !important;
+    background-color: transparent !important;
+  }
+  .ProseMirror { padding: 0 !important; margin: 0 !important; }
+  .ProseMirror p { margin: 0 !important; line-height: 1 !important; }
+  .ProseMirror p.scene-heading, .ProseMirror p.action {
+    margin-left: 0 !important; margin-right: 0 !important; max-width: 6in !important;
+  }
+  .ProseMirror p.character {
+    margin-left: 2.2in !important; margin-right: 0 !important; max-width: 3.8in !important;
+  }
+  .ProseMirror p.dialogue {
+    margin-left: 1.0in !important; margin-right: 1.0in !important; max-width: 4in !important;
+  }
+  .ProseMirror p.parenthetical {
+    margin-left: 1.5in !important; margin-right: 0 !important; max-width: 2in !important;
+  }
+  .ProseMirror p.transition {
+    text-align: right !important; margin: 0 !important; max-width: 100% !important;
+  }
+  .title-page-content {
+    display: block !important; text-align: center !important;
+    padding-top: 3.5in !important; margin: 0 !important;
+  }
+  .title-author-block { display: block !important; margin: 0 !important; }
+  .title-input {
+    font-weight: normal !important; text-decoration: none !important;
+    font-size: 12pt !important; display: block !important; text-align: center !important; padding: 0 !important;
+  }
+  .title-written-by, .title-author {
+    margin-top: 48pt !important; display: block !important;
+    text-align: center !important; font-size: 12pt !important;
+  }
+  input, textarea {
+    border: none !important; background: transparent !important;
+    color: black !important; outline: none !important; box-shadow: none !important;
+  }
+  ::placeholder { color: transparent !important; }
+  .page-break { break-after: page; }
 }
 
-/* ─── Mobile Responsive ─── */
-@media (max-width: 768px) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLET  769–1024px — shrink padding so the page still looks like a page
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 769px) and (max-width: 1024px) {
   .script-page {
-    padding: 0.5in 0.5in 0.5in 0.75in;
+    max-width: 100%;
+    padding: 0.75in 0.75in 0.75in 1in;
     min-height: auto;
-    font-size: 10pt;
   }
-  .ProseMirror p.character { margin-left: 1.0in; }
-  .ProseMirror p.parenthetical { margin-left: 0.75in; }
-  .ProseMirror p.dialogue { margin-left: 0.5in; }
-  .ProseMirror p.transition { margin-left: 2.0in; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE  ≤ 768px — flat card layout, no horizontal overflow, fluid indents
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Global overflow guard */
+  html, body { overflow-x: hidden !important; max-width: 100vw; }
+
+  /* Script page becomes a full-width flat card */
+  .script-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    /* extra bottom padding keeps content above the docked toolbar */
+    padding: 1rem 1rem 5rem 1rem !important;
+    font-size: 11pt !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Reset all ProseMirror inch-based margins */
+  .ProseMirror p { margin-left: 0 !important; margin-right: 0 !important; }
+
+  .ProseMirror p.scene-heading {
+    margin-left: 0 !important; max-width: 100% !important;
+  }
+  .ProseMirror p.action {
+    margin-left: 0 !important; max-width: 100% !important;
+  }
+  /* Character: ~30% from left of mobile writing area */
+  .ProseMirror p.character {
+    margin-left: 28% !important; max-width: 72% !important;
+  }
+  /* Parenthetical: inside the character column */
+  .ProseMirror p.parenthetical {
+    margin-left: 18% !important; max-width: 64% !important;
+  }
+  /* Dialogue: light symmetric indentation */
+  .ProseMirror p.dialogue {
+    margin-left: 8% !important; margin-right: 8% !important; max-width: 84% !important;
+  }
+  /* Transition: always right-aligned, no left margin override */
+  .ProseMirror p.transition {
+    margin-left: 0 !important; margin-right: 0 !important;
+    text-align: right !important; max-width: 100% !important;
+  }
 }

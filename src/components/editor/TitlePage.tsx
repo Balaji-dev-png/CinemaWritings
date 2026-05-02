@@ -6,6 +6,7 @@ import { updateScript, Script } from "@/lib/storage";
 export function TitlePage({ script, docBgColor, docFont }: { script: Script; docBgColor?: string; docFont?: string }) {
   const [title, setTitle] = useState(script.title || "");
   const [author, setAuthor] = useState(script.meta?.author || "");
+  const [writtenByPrefix, setWrittenByPrefix] = useState(script.meta?.writtenByPrefix || "written by");
   const [contact, setContact] = useState(script.meta?.contact || "");
   const [logline, setLogline] = useState(script.meta?.logline || "");
   const [synopsis, setSynopsis] = useState(script.meta?.synopsis || "");
@@ -16,38 +17,44 @@ export function TitlePage({ script, docBgColor, docFont }: { script: Script; doc
     const timeout = setTimeout(() => {
       updateScript(script.id, {
         title: title || "Untitled Script",
-        meta: { author, contact, logline, synopsis },
+        meta: { author, writtenByPrefix, contact, logline, synopsis },
       });
     }, 1000);
     return () => clearTimeout(timeout);
-  }, [title, author, contact, logline, synopsis, script.id]);
+  }, [title, author, writtenByPrefix, contact, logline, synopsis, script.id]);
 
   return (
-    <div className="w-full flex justify-center mb-8">
+    <div className="w-full flex justify-center mb-8 page-break">
       <div
-        className="script-page flex flex-col justify-between transition-all duration-300 relative border border-transparent dark:border-[#333]"
+        className="script-page flex flex-col justify-between transition-all duration-300 relative border border-transparent dark:border-[#333] print:border-none"
         style={{
           backgroundColor: docBgColor && docBgColor !== "default" ? docBgColor : undefined,
           fontFamily: docFont && docFont !== "default" ? docFont : undefined,
         }}
       >
         {/* Title & Author Center Block */}
-        <div className="flex-1 flex flex-col justify-center items-center h-full w-full max-w-2xl mx-auto space-y-10 pb-32">
+        <div className="flex-1 flex flex-col justify-center items-center h-full w-full max-w-2xl mx-auto space-y-4 md:space-y-10 pb-10 md:pb-32 title-page-content">
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="SCRIPT TITLE"
-            className="w-full text-center text-2xl uppercase tracking-widest font-bold bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 underline decoration-1 underline-offset-4"
+            className="w-full text-center text-xl md:text-2xl uppercase tracking-widest font-bold bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 underline decoration-1 underline-offset-4 title-input"
           />
-          <div className="flex flex-col items-center space-y-2 w-full text-center">
-            <span className="text-sm">written by</span>
+          <div className="flex flex-col items-center space-y-2 w-full text-center title-author-block">
+            <input
+              type="text"
+              value={writtenByPrefix}
+              onChange={(e) => setWrittenByPrefix(e.target.value)}
+              placeholder="written by"
+              className="w-full text-center text-sm bg-transparent border-none focus:outline-none focus:ring-0 text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors title-written-by"
+            />
             <input
               type="text"
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
               placeholder="Author Name"
-              className="w-full text-center bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
+              className="w-full text-center bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 title-author"
             />
           </div>
 
