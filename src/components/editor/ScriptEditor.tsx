@@ -13,8 +13,10 @@ import {
   Parenthetical,
   Transition,
   Shot,
+  Extension,
 } from "./nodes/ScriptNodes";
 import { ScriptKeymap } from "./extensions/KeymapLogic";
+import { SlashCommandsExtension } from "./extensions/SlashCommands";
 import { updateScript } from "@/lib/storage";
 import { Underline } from "@tiptap/extension-underline";
 import { Color } from "@tiptap/extension-color";
@@ -45,6 +47,7 @@ const ELEMENT_COMMANDS = [
   { id: "parenthetical", label: "Parenthetical", shortcut: "Ctrl+5", type: "command" },
   { id: "transition", label: "Transition", shortcut: "Ctrl+6", type: "command" },
   { id: "shot", label: "Shot", shortcut: "Ctrl+7", type: "command" },
+  { id: "extension", label: "Extension (V.O./O.S.)", shortcut: "Ctrl+8", type: "command" },
 ];
 
 function getCompletions(query: string, nodeType: string, ed: Editor): Array<{ id: string; label?: string; shortcut?: string; type?: string }> {
@@ -157,6 +160,7 @@ const ELEMENT_LABELS: Record<string, string> = {
   parenthetical: "PAREN",
   transition: "TRANSITION",
   shot: "SHOT",
+  extension: "EXTENSION",
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -167,6 +171,7 @@ export const ScriptEditor = ({
   initialContent,
   docBgColor,
   docFont,
+  docTextColor,
   onStatsUpdate,
   onEditorReady,
 }: {
@@ -174,6 +179,7 @@ export const ScriptEditor = ({
   initialContent: string;
   docBgColor?: string;
   docFont?: string;
+  docTextColor?: string;
   onStatsUpdate?: (stats: { words: number; pages: number; scenes: number; currentElement: string }) => void;
   onEditorReady?: (editor: Editor) => void;
 }) => {
@@ -248,7 +254,9 @@ export const ScriptEditor = ({
       Parenthetical,
       Transition,
       Shot,
+      Extension,
       ScriptKeymap,
+      SlashCommandsExtension,
       Placeholder.configure({
         placeholder: ({ node }) => {
           const type = node.type.name;
@@ -257,8 +265,9 @@ export const ScriptEditor = ({
           if (type === "dialogue") return "Dialogue…";
           if (type === "parenthetical") return "(beat)";
           if (type === "transition") return "CUT TO:";
+          if (type === "extension") return "(V.O.)";
           if (type === "action" || type === "paragraph") return "Action description…";
-          return "Start typing…";
+          return "Start typing… (type / for elements)";
         },
       }),
     ],
@@ -312,10 +321,29 @@ export const ScriptEditor = ({
 
     editorProps: {
       attributes: {
-        class: "prose-none focus:outline-none w-full max-w-full min-h-[11in]",
+        class: "prose-none focus:outline-none w-full max-w-full min-h-[11in] screenplay-canvas",
         spellcheck: "true",
       },
       handleKeyDown: (_view, event) => {
+        // ── Ctrl+1 through Ctrl+8: Set element type ──
+        if (event.ctrlKey && !event.shiftKey && !event.altKey) {
+          const keyMap: Record<string, string> = {
+            "1": "sceneHeading",
+            "2": "action",
+            "3": "character",
+            "4": "dialogue",
+            "5": "parenthetical",
+            "6": "transition",
+            "7": "shot",
+            "8": "extension",
+          };
+          if (keyMap[event.key]) {
+            event.preventDefault();
+            editorRef.current?.chain().focus().setNode(keyMap[event.key]).run();
+            return true;
+          }
+        }
+
         if (event.ctrlKey && event.code === "Space") {
           event.preventDefault();
           const { from } = editorRef.current!.state.selection;
@@ -421,6 +449,17 @@ export const ScriptEditor = ({
 
   return (
     <div className="w-full flex flex-col items-center gap-4 relative">
+      <style jsx global>{`
+        ${docTextColor ? `
+        .screenplay-canvas p {
+          color: ${docTextColor} !important;
+        }
+        ` : ""}
+        .screenplay-canvas {
+          font-family: '${docFont}', 'Courier Prime', monospace !important;
+        }
+      `}</style>
+
       {/* ─── Formatting Toolbar ─── */}
       <motion.div 
         drag 
@@ -435,7 +474,7 @@ export const ScriptEditor = ({
         {/* Element Type Dropdown */}
         <div className="relative">
           <button 
-            onClick={() => setShowElementMenu(!showElementMenu)}
+            onMouseDown={(e) => { e.preventDefault(); setShowElementMenu(!showElementMenu); }}
             className="py-2 max-md:py-1 px-1.5 max-md:px-3 text-[10px] font-bold tracking-widest text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors border-b max-md:border-b-0 max-md:border-r border-zinc-200 dark:border-zinc-700 uppercase [writing-mode:vertical-lr] max-md:[writing-mode:horizontal-tb] rotate-180 max-md:rotate-0 select-none cursor-pointer"
             title="Change Element Type"
           >
@@ -443,58 +482,50 @@ export const ScriptEditor = ({
           </button>
           
           {showElementMenu && (
-            <div className="absolute right-full mr-4 max-md:right-auto max-md:mr-0 max-md:left-0 top-0 max-md:top-auto max-md:bottom-full max-md:mb-4 bg-white dark:bg-zinc-800 shadow-xl rounded-xl border border-zinc-200 dark:border-zinc-700 flex flex-col py-1 min-w-[150px]">
+            <div className="absolute right-full mr-4 max-md:right-auto max-md:mr-0 max-md:left-0 top-0 max-md:top-auto max-md:bottom-full max-md:mb-4 bg-white dark:bg-zinc-800 shadow-xl rounded-xl border border-zinc-200 dark:border-zinc-700 flex flex-col py-1 min-w-[180px]">
               {ELEMENT_COMMANDS.map((cmd) => (
                 <button
                   key={cmd.id}
-                  onClick={() => {
+                  onMouseDown={(e) => {
+                    e.preventDefault();
                     editor.chain().focus().setNode(cmd.id).run();
                     setShowElementMenu(false);
                   }}
-                  className={`px-4 py-2 text-sm text-left hover:bg-zinc-100 dark:hover:bg-zinc-700 ${editor.isActive(cmd.id) ? "text-blue-500 font-medium" : "text-zinc-700 dark:text-zinc-300"}`}
+                  className={`px-4 py-2 text-sm text-left hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center justify-between ${editor.isActive(cmd.id) ? "text-blue-500 font-medium" : "text-zinc-700 dark:text-zinc-300"}`}
                 >
-                  {cmd.label}
+                  <span>{cmd.label}</span>
+                  <span className="text-[10px] text-zinc-400 ml-3">{cmd.shortcut}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Text Color */}
-        <div className="px-2 flex items-center" title="Text Color">
-          <input
-            type="color"
-            onInput={(e) => editor.chain().focus().setColor((e.target as HTMLInputElement).value).run()}
-            value={editor.getAttributes("textStyle").color || "#000000"}
-            className="w-5 h-5 p-0 border-0 rounded-full cursor-pointer bg-transparent"
-          />
-        </div>
-
         <div className="h-px w-5 max-md:w-px max-md:h-5 bg-zinc-200 dark:bg-zinc-700 shrink-0" />
 
         <button
-          onClick={() => editor.chain().focus().toggleBold().run()}
+          onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleBold().run(); }}
           className={`p-2 rounded-xl transition-all ${editor.isActive("bold") ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
           title="Bold"
         >
           <BoldIcon className="w-3.5 h-3.5" />
         </button>
         <button
-          onClick={() => editor.chain().focus().toggleItalic().run()}
+          onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); }}
           className={`p-2 rounded-xl transition-all ${editor.isActive("italic") ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
           title="Italic"
         >
           <ItalicIcon className="w-3.5 h-3.5" />
         </button>
         <button
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleUnderline().run(); }}
           className={`p-2 rounded-xl transition-all ${editor.isActive("underline") ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
           title="Underline"
         >
           <UnderlineIcon className="w-3.5 h-3.5" />
         </button>
         <button
-          onClick={() => editor.chain().focus().toggleStrike().run()}
+          onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleStrike().run(); }}
           className={`p-2 rounded-xl transition-all ${editor.isActive("strike") ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
           title="Strikethrough"
         >
@@ -504,14 +535,14 @@ export const ScriptEditor = ({
         <div className="h-px w-5 bg-zinc-200 dark:bg-zinc-700" />
 
         <button
-          onClick={handleUppercase}
+          onMouseDown={(e) => { e.preventDefault(); handleUppercase(); }}
           className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
           title="Force Uppercase"
         >
           <CaseUpper className="w-3.5 h-3.5" />
         </button>
         <button
-          onClick={() => Object.keys(editor.schema.marks).forEach((m) => editor.chain().focus().unsetMark(m).run())}
+          onMouseDown={(e) => { e.preventDefault(); Object.keys(editor.schema.marks).forEach((m) => editor.chain().focus().unsetMark(m).run()); }}
           className="p-2 rounded-xl text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
           title="Clear Formatting"
         >
@@ -523,8 +554,7 @@ export const ScriptEditor = ({
       <div
         className="script-page transition-all duration-300 relative"
         style={{
-          ...(docBgColor && docBgColor !== "default" ? { backgroundColor: docBgColor } : {}),
-          ...(docFont && docFont !== "default" ? { fontFamily: docFont } : {}),
+          ...(docBgColor ? { backgroundColor: docBgColor } : {}),
         }}
       >
         <EditorContent editor={editor} />
@@ -540,7 +570,7 @@ export const ScriptEditor = ({
           >
             {popup.items.map((item, idx) => (
               <div
-                key={item.id}
+                key={idx}
                 className={`px-4 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between ${
                   idx === popup.selected
                     ? "bg-blue-500 text-white"
@@ -549,34 +579,40 @@ export const ScriptEditor = ({
                 onMouseDown={(e) => {
                   e.preventDefault();
                   if (editorRef.current) {
-                    const { from, to } = editorRef.current.state.selection;
-                    const $pos = editorRef.current.state.doc.resolve(from);
-                    const text = $pos.parent.textContent;
-                    
-                    const match = text.match(/[\w']+$/);
-                    if (match) {
-                      const start = from - match[0].length;
-                      editorRef.current.chain()
-                        .setTextSelection({ from: start, to })
-                        .deleteSelection()
-                        .insertContent(item.id)
-                        .focus()
-                        .run();
+                    if (item.type === "command") {
+                      editorRef.current.chain().focus().setNode(item.id).run();
                     } else {
-                      applyCompletion(item.id);
+                      const { from, to } = editorRef.current.state.selection;
+                      const $pos = editorRef.current.state.doc.resolve(from);
+                      const text = $pos.parent.textContent;
+                      const match = text.match(/[\w']+$/);
+                      if (match) {
+                        const start = from - match[0].length;
+                        editorRef.current.chain()
+                          .setTextSelection({ from: start, to })
+                          .deleteSelection()
+                          .insertContent(item.id)
+                          .focus()
+                          .run();
+                      } else {
+                        applyCompletion(item.id);
+                      }
                     }
-                    
                     setPopup(null);
                     popupItemsRef.current = [];
                   }
                 }}
                 onMouseEnter={() => setPopup((p) => (p ? { ...p, selected: idx } : null))}
               >
-                <span>{item.id}</span>
+                <div className="flex flex-col">
+                  <span className="font-medium">{item.label || item.id}</span>
+                  {item.shortcut && <span className="text-[10px] opacity-60">{item.shortcut}</span>}
+                </div>
+                {editor.isActive(item.id) && <span className="text-[10px] font-bold">ACTIVE</span>}
               </div>
             ))}
             <div className="px-3 py-1 border-t border-zinc-100 dark:border-zinc-800">
-              <span className="text-[10px] text-zinc-400">↑↓ navigate · Tab accept · Esc dismiss</span>
+              <span className="text-[10px] text-zinc-400">↑↓ navigate · Enter accept · Esc dismiss</span>
             </div>
           </motion.div>
         )}

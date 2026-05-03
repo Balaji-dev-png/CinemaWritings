@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { saveVersion, restoreVersion, getScriptById, Script, ScriptVersion } from "@/lib/storage";
 import { Save, RotateCcw, X, Clock, Tag, SplitSquareHorizontal } from "lucide-react";
 import { CompareModal } from "./CompareModal";
@@ -16,29 +16,38 @@ export function VersionManager({
   onRestore: (newContent: string) => void;
   onClose: () => void;
 }) {
-  const script = getScriptById(scriptId);
+  const [script, setScript] = useState<Script | null>(null);
   const [versionName, setVersionName] = useState("");
-  const [versions, setVersions] = useState<ScriptVersion[]>(script?.versions || []);
+  const [versions, setVersions] = useState<ScriptVersion[]>([]);
   const [saved, setSaved] = useState(false);
   const [comparingVersion, setComparingVersion] = useState<{ content: string; name: string } | null>(null);
 
-  const handleSave = () => {
+  useEffect(() => {
+    getScriptById(scriptId).then((found) => {
+      if (found) {
+        setScript(found);
+        setVersions(found.versions || []);
+      }
+    });
+  }, [scriptId]);
+
+  const handleSave = async () => {
     const name = versionName.trim() || `Draft ${versions.length + 1}`;
-    saveVersion(scriptId, name);
-    const updated = getScriptById(scriptId);
+    await saveVersion(scriptId, name);
+    const updated = await getScriptById(scriptId);
     setVersions(updated?.versions || []);
     setVersionName("");
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleRestore = (index: number) => {
-    const content = restoreVersion(scriptId, index);
+  const handleRestore = async (index: number) => {
+    const content = await restoreVersion(scriptId, index);
     if (content) onRestore(content);
   };
 
-  const handleCompare = (index: number, name: string) => {
-    const content = restoreVersion(scriptId, index);
+  const handleCompare = async (index: number, name: string) => {
+    const content = await restoreVersion(scriptId, index);
     if (content) setComparingVersion({ content, name });
   };
 

@@ -14,6 +14,8 @@ import { Corkboard } from "@/components/editor/Corkboard";
 import { getScriptById, updateScript, exportToFountain, importFromFountain, Script } from "@/lib/storage";
 import { exportToPdf } from "@/lib/exportPdf";
 import { useTheme } from "next-themes";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import {
   ArrowLeft,
   Settings2,
@@ -56,21 +58,47 @@ export default function EditorPage() {
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Style states
-  const [docBgColor, setDocBgColor] = useState("default");
-  const [docFont, setDocFont] = useState("default");
+  const [docBgColor, setDocBgColor] = useState("");
+  const [docFont, setDocFont] = useState("Courier Prime");
+  const [docTextColor, setDocTextColor] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const printRef = useRef<HTMLDivElement>(null);
+
+  // Metadata state for sync
+  const [metadata, setMetadata] = useState({
+    author: "",
+    contact: "",
+    logline: "",
+    synopsis: "",
+    writtenByPrefix: "written by"
+  });
 
   // Stats from editor
   const [stats, setStats] = useState({ words: 0, pages: 0, scenes: 0, currentElement: "ACTION" });
 
   useEffect(() => {
-    if (params.id) {
-      const found = getScriptById(params.id as string);
-      if (found) {
-        setScript(found);
-        setTitle(found.title);
-      } else {
-        router.push("/");
-      }
+    if (params.id && params.id !== "new") {
+      getScriptById(params.id as string).then((found) => {
+        if (found) {
+          setScript(found);
+          setTitle(found.title);
+          if (found.meta) {
+            setMetadata({
+              author: found.meta.author || "",
+              contact: found.meta.contact || "",
+              logline: found.meta.logline || "",
+              synopsis: found.meta.synopsis || "",
+              writtenByPrefix: found.meta.writtenByPrefix || "written by"
+            });
+          }
+          if (found.paperColor) setDocBgColor(found.paperColor);
+          if (found.fontFamily) setDocFont(found.fontFamily);
+          if (found.textColor) setDocTextColor(found.textColor);
+        } else {
+          router.push("/");
+        }
+      });
     }
   }, [params.id, router]);
 
@@ -91,14 +119,15 @@ export default function EditorPage() {
   }, []);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTitle(e.target.value);
+    const newTitle = e.target.value;
+    setTitle(newTitle);
+    if (script) {
+      updateScript(script.id, { title: newTitle });
+    }
   };
 
   const handleTitleBlur = () => {
-    if (script && title !== script.title) {
-      updateScript(script.id, { title });
-      setScript(getScriptById(script.id) || null);
-    }
+    // Already saved on change
   };
 
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -107,11 +136,21 @@ export default function EditorPage() {
     }
   };
 
-  const handleVersionRestore = (newContent: string) => {
+  const handleMetaChange = (newMeta: any) => {
+    setMetadata(prev => {
+      const updated = { ...prev, ...newMeta };
+      if (script) {
+        updateScript(script.id, { meta: updated });
+      }
+      return updated;
+    });
+  };
+
+  const handleVersionRestore = async (newContent: string) => {
     setShowVersions(false);
     // Reload script data
     if (params.id) {
-      const updated = getScriptById(params.id as string);
+      const updated = await getScriptById(params.id as string);
       if (updated) setScript(updated);
     }
     // Update editor programmatically to avoid page flash
@@ -122,14 +161,13 @@ export default function EditorPage() {
 
   const handleExportFountain = () => {
     if (!script) return;
-    const freshScript = getScriptById(script.id)!;
-    const content = editorInstance?.getHTML() || freshScript.content;
-    const fountain = exportToFountain(content, freshScript.meta, freshScript.title);
+    const content = editorInstance?.getHTML() || script.content;
+    const fountain = exportToFountain(content, metadata, title);
     const blob = new Blob([fountain], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${freshScript.title || "script"}.fountain`;
+    a.download = `${title || "script"}.fountain`;
     a.click();
     URL.revokeObjectURL(url);
     setShowExportMenu(false);
@@ -137,32 +175,71 @@ export default function EditorPage() {
 
   const handleExportText = () => {
     if (!script) return;
-    const freshScript = getScriptById(script.id)!;
-    const content = editorInstance?.getHTML() || freshScript.content;
-    const text = exportToFountain(content, freshScript.meta, freshScript.title);
+    const content = editorInstance?.getHTML() || script.content;
+    const text = exportToFountain(content, metadata, title);
     const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${freshScript.title || "script"}.txt`;
+    a.download = `${title || "script"}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     setShowExportMenu(false);
   };
 
-  const handleExportPdf = () => {
-    if (!script) return;
-    const freshScript = getScriptById(script.id)!;
-    const content = editorInstance?.getHTML() || freshScript.content;
-    exportToPdf(content, {
-      title: freshScript.title || "Untitled",
-      writtenByPrefix: freshScript.meta?.writtenByPrefix || "written by",
-      author: freshScript.meta?.author || "",
-      contact: freshScript.meta?.contact || "",
-      logline: freshScript.meta?.logline || "",
-      synopsis: freshScript.meta?.synopsis || "",
-    });
+  const handleExportPdf = async () => {
+    if (!script || !printRef.current) return;
+    setIsExporting(true);
     setShowExportMenu(false);
+
+    try {
+      const element = printRef.current;
+      // Get all .script-page elements
+      const pages = element.querySelectorAll(".script-page");
+      
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "in",
+        format: "letter"
+      });
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i] as HTMLElement;
+        const canvas = await html2canvas(page, {
+          scale: 2, // Higher resolution
+          useCORS: true,
+          backgroundColor: docBgColor || "#ffffff",
+          logging: false
+        });
+
+        const imgData = canvas.toDataURL("image/jpeg", 0.95);
+        
+        if (i > 0) pdf.addPage();
+        
+        // Letter size is 8.5 x 11 inches
+        pdf.addImage(imgData, "JPEG", 0, 0, 8.5, 11);
+      }
+
+      pdf.save(`${title || "script"}.pdf`);
+    } catch (err) {
+      console.error("Client-side PDF export failed, falling back to backend:", err);
+      // Fallback to backend export
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const token = typeof window !== "undefined" ? localStorage.getItem("cinemawritings_token") : null;
+      
+      const res = await fetch(`${apiUrl}/api/scripts/${script.id}/export/pdf/`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title || "script"}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handlePrint = () => {
@@ -272,7 +349,7 @@ export default function EditorPage() {
       {showExportMenu && !focusMode && (
         <div className="absolute top-12 right-12 z-50 bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-52 flex flex-col gap-1">
           <button onClick={handleExportPdf} className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2">
-            <span className="text-base">📄</span> Download PDF
+            <span className="text-base">📄</span> {isExporting ? "Exporting..." : "Download PDF"}
           </button>
           <button onClick={handleExportFountain} className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2">
             <span className="text-base">🖋</span> Fountain (.fountain)
@@ -289,26 +366,56 @@ export default function EditorPage() {
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Paper Color</label>
-              <button onClick={() => setDocBgColor("default")} className="text-[10px] text-zinc-400 hover:text-black dark:hover:text-white">Reset</button>
+              <button onClick={() => { setDocBgColor(""); updateScript(script.id, { paperColor: "" }); }} className="text-[10px] text-zinc-400 hover:text-black dark:hover:text-white">Reset</button>
             </div>
-            <input type="color" value={docBgColor === "default" ? "#ffffff" : docBgColor} onChange={(e) => setDocBgColor(e.target.value)} className="w-full h-8 rounded-lg cursor-pointer border-0 p-0 bg-transparent" />
+            <input 
+              type="color" 
+              value={docBgColor || "#ffffff"} 
+              onChange={(e) => {
+                setDocBgColor(e.target.value);
+                updateScript(script.id, { paperColor: e.target.value });
+              }} 
+              className="w-full h-8 rounded-lg cursor-pointer border-0 p-0 bg-transparent" 
+            />
+          </div>
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Text Color</label>
+              <button onClick={() => { setDocTextColor(""); updateScript(script.id, { textColor: "" }); }} className="text-[10px] text-zinc-400 hover:text-black dark:hover:text-white">Reset</button>
+            </div>
+            <input 
+              type="color" 
+              value={docTextColor || "#000000"} 
+              onChange={(e) => {
+                setDocTextColor(e.target.value);
+                updateScript(script.id, { textColor: e.target.value });
+              }} 
+              className="w-full h-8 rounded-lg cursor-pointer border-0 p-0 bg-transparent" 
+            />
           </div>
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Font</label>
-              <button onClick={() => setDocFont("default")} className="text-[10px] text-zinc-400 hover:text-black dark:hover:text-white">Reset</button>
+              <button onClick={() => { setDocFont("Courier Prime"); updateScript(script.id, { fontFamily: "Courier Prime" }); }} className="text-[10px] text-zinc-400 hover:text-black dark:hover:text-white">Reset</button>
             </div>
-            <select value={docFont} onChange={(e) => setDocFont(e.target.value)} className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black text-black dark:text-white px-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-400">
-              <option value="default">Courier Prime (Default)</option>
-              <option value="var(--font-poppins)">Poppins</option>
-              <option value="var(--font-inter)">Inter</option>
-              <option value="var(--font-roboto)">Roboto</option>
-              <option value="var(--font-open-sans)">Open Sans</option>
-              <option value="var(--font-lato)">Lato</option>
-              <option value="var(--font-montserrat)">Montserrat</option>
-              <option value="var(--font-playfair)">Playfair Display</option>
-              <option value="var(--font-lora)">Lora</option>
-              <option value="var(--font-comic-neue)">Comic Neue</option>
+            <select 
+              value={docFont} 
+              onChange={(e) => {
+                setDocFont(e.target.value);
+                updateScript(script.id, { fontFamily: e.target.value });
+              }} 
+              className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black text-black dark:text-white px-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            >
+              <option value="Courier Prime">Courier Prime (Default)</option>
+              <option value="Poppins">Poppins</option>
+              <option value="Inter">Inter</option>
+              <option value="Roboto">Roboto</option>
+              <option value="Open Sans">Open Sans</option>
+              <option value="Lato">Lato</option>
+              <option value="Montserrat">Montserrat</option>
+              <option value="Playfair Display">Playfair Display</option>
+              <option value="Lora">Lora</option>
+              <option value="Comic Neue">Comic Neue</option>
             </select>
           </div>
         </div>
@@ -326,15 +433,27 @@ export default function EditorPage() {
         {/* Center: Editor */}
         <main className="flex-1 overflow-y-auto no-scrollbar pb-32 relative">
           <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8 w-full">
-            <TitlePage script={script} docBgColor={docBgColor} docFont={docFont} />
-            <ScriptEditor
-              scriptId={script.id}
-              initialContent={script.content}
-              docBgColor={docBgColor}
-              docFont={docFont}
-              onStatsUpdate={setStats}
-              onEditorReady={setEditorInstance}
-            />
+            <div ref={printRef} className="w-full flex flex-col items-center printable-content">
+              <TitlePage 
+                scriptId={script.id}
+                title={title}
+                metadata={metadata}
+                onTitleChange={(val) => setTitle(val)}
+                onMetaChange={handleMetaChange}
+                docBgColor={docBgColor} 
+                docFont={docFont} 
+                docTextColor={docTextColor}
+              />
+              <ScriptEditor
+                scriptId={script.id}
+                initialContent={script.content}
+                docBgColor={docBgColor}
+                docFont={docFont}
+                docTextColor={docTextColor}
+                onStatsUpdate={setStats}
+                onEditorReady={setEditorInstance}
+              />
+            </div>
           </div>
         </main>
 

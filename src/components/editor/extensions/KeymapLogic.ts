@@ -44,6 +44,9 @@ export const ScriptKeymap = Extension.create({
           case "shot":
             nextNodeType = "action";
             break;
+          case "extension":
+            nextNodeType = "dialogue";
+            break;
           case "action":
           case "paragraph":
           default:
@@ -66,7 +69,8 @@ export const ScriptKeymap = Extension.create({
           const cycle: Record<string, string> = {
             action: "character",
             paragraph: "character",
-            character: "sceneHeading",
+            character: "extension",
+            extension: "sceneHeading",
             sceneHeading: "shot",
             shot: "transition",
             transition: "action",
@@ -99,7 +103,8 @@ export const ScriptKeymap = Extension.create({
         const reverseCycle: Record<string, string> = {
           character: "action",
           paragraph: "transition",
-          sceneHeading: "character",
+          extension: "character",
+          sceneHeading: "extension",
           shot: "sceneHeading",
           transition: "shot",
           action: "transition",

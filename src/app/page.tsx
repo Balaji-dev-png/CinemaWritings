@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { History as HistoryIcon, X, Plus, PenTool } from "lucide-react";
 import { getScripts, createScript, deleteScript, Script, HistoryEvent } from "@/lib/storage";
+import { isAuthenticated, logout } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
@@ -21,29 +22,59 @@ export default function Dashboard() {
   const [activeHistory, setActiveHistory] = useState<HistoryEvent[] | null>(null);
   const [showNewScriptModal, setShowNewScriptModal] = useState(false);
   const [newScriptTitle, setNewScriptTitle] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Floating theme toggle — only on dashboard
   const themeToggle = (
-    <div className="fixed top-8 right-8 z-50">
+    <div className="fixed top-8 right-8 z-50 flex items-center gap-4">
+      {authenticated && (
+        <button 
+          onClick={logout}
+          className="text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors"
+        >
+          Logout
+        </button>
+      )}
       <ThemeToggle />
     </div>
   );
 
   useEffect(() => {
-    setScripts(getScripts());
+    const checkAuth = async () => {
+      const isAuth = await isAuthenticated();
+      setAuthenticated(isAuth);
+      setAuthChecked(true);
+      if (isAuth) {
+        try {
+          const fetched = await getScripts();
+          setScripts(fetched);
+        } catch (err) {
+          console.error("Failed to fetch scripts:", err);
+          setAuthenticated(false);
+        }
+      }
+    };
+    checkAuth();
   }, []);
 
-  const handleCreate = (e?: React.FormEvent) => {
+  const handleCreate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const title = newScriptTitle.trim() || "Untitled Script";
-    const newScript = createScript(title);
-    router.push(`/editor/${newScript.id}`);
+    try {
+      const newScript = await createScript(title);
+      router.push(`/editor/${newScript.id}`);
+    } catch (err) {
+      console.error("Failed to create script:", err);
+      alert("Failed to create script. Please check your connection and try again.");
+    }
   };
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    deleteScript(id);
-    setScripts(getScripts());
+    await deleteScript(id);
+    const updated = await getScripts();
+    setScripts(updated);
   };
 
   const handleShowHistory = (e: React.MouseEvent, script: Script) => {
@@ -92,77 +123,95 @@ export default function Dashboard() {
           transition={{ delay: 0.5, duration: 0.5, type: "spring" }}
           className="flex justify-center mt-8 sm:mt-12 mb-8 sm:mb-16 relative z-10"
         >
-          <button 
-            onClick={() => setShowNewScriptModal(true)}
-            className="group flex items-center gap-3 bg-[#1c1d20] dark:bg-zinc-100 hover:bg-black dark:hover:bg-white text-white dark:text-black px-8 py-4 rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95"
-          >
-            <div className="grid grid-cols-2 gap-0.5 opacity-80 group-hover:opacity-100">
-              <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
-              <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
-              <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
-              <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
+          {authChecked && authenticated ? (
+            <button 
+              onClick={() => setShowNewScriptModal(true)}
+              className="group flex items-center gap-3 bg-[#1c1d20] dark:bg-zinc-100 hover:bg-black dark:hover:bg-white text-white dark:text-black px-8 py-4 rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95"
+            >
+              <div className="grid grid-cols-2 gap-0.5 opacity-80 group-hover:opacity-100">
+                <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
+                <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
+                <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
+                <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
+              </div>
+              <span className="font-medium mr-2">New Script</span>
+            </button>
+          ) : authChecked && !authenticated ? (
+            <div className="flex gap-4">
+              <button 
+                onClick={() => router.push("/login")}
+                className="bg-white dark:bg-[#1a1a1a] text-black dark:text-white border border-zinc-200 dark:border-zinc-800 px-8 py-4 rounded-full font-medium shadow-sm transition-all hover:scale-105 active:scale-95"
+              >
+                Sign In
+              </button>
+              <button 
+                onClick={() => router.push("/signup")}
+                className="bg-[#1c1d20] dark:bg-zinc-100 text-white dark:text-black px-8 py-4 rounded-full font-medium shadow-2xl transition-all hover:scale-105 active:scale-95"
+              >
+                Get Started
+              </button>
             </div>
-            <span className="font-medium mr-2">New Script</span>
-          </button>
+          ) : null}
         </motion.div>
 
         {/* Scripts Grid Matrix (Pastel Cards) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 relative z-10 w-full max-w-5xl mx-auto flex-1">
-          {scripts.map((script, index) => {
-            const gradient = PASTEL_GRADIENTS[index % PASTEL_GRADIENTS.length];
-            return (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 + index * 0.1, duration: 0.5 }}
-                key={script.id}
-                onClick={() => router.push(`/editor/${script.id}`)}
-                className={`${gradient} relative flex flex-col p-5 sm:p-7 rounded-2xl sm:rounded-[2rem] border shadow-sm hover:shadow-md transition-all cursor-pointer group h-56 sm:h-72 hover:-translate-y-1 hover:shadow-xl`}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-white/80 dark:bg-black/50 rounded-md shadow-sm flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full bg-current opacity-50" />
+        {authenticated && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 relative z-10 w-full max-w-5xl mx-auto flex-1">
+            {scripts.map((script, index) => {
+              const gradient = PASTEL_GRADIENTS[index % PASTEL_GRADIENTS.length];
+              return (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 + index * 0.1, duration: 0.5 }}
+                  key={script.id}
+                  onClick={() => router.push(`/editor/${script.id}`)}
+                  className={`${gradient} relative flex flex-col p-5 sm:p-7 rounded-2xl sm:rounded-[2rem] border shadow-sm hover:shadow-md transition-all cursor-pointer group h-56 sm:h-72 hover:-translate-y-1 hover:shadow-xl`}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-white/80 dark:bg-black/50 rounded-md shadow-sm flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-current opacity-50" />
+                      </div>
+                      <span className="text-sm font-semibold line-clamp-1">{script.title || "Untitled"}</span>
                     </div>
-                    <span className="text-sm font-semibold line-clamp-1">{script.title || "Untitled"}</span>
                   </div>
-                </div>
 
-                <p className="text-xs opacity-70 mb-6 line-clamp-2">
-                  Gain real-time insights into your revisions, track scene counts and formatting.
-                </p>
+                  <p className="text-xs opacity-70 mb-6 line-clamp-2">
+                    Gain real-time insights into your revisions, track scene counts and formatting.
+                  </p>
 
-                {/* Internal floating styling block mimicking the UI details inside the cards in image */}
-                <div className="bg-white/60 dark:bg-black/40 backdrop-blur-md rounded-2xl p-4 mt-auto border border-white/50 dark:border-white/10 shadow-sm transition-transform group-hover:-translate-y-1">
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <span className="block text-[10px] uppercase font-bold opacity-50 mb-1">Edited</span>
-                      <span className="text-xl font-medium">{new Date(script.updatedAt).toLocaleDateString()}</span>
+                  <div className="bg-white/60 dark:bg-black/40 backdrop-blur-md rounded-2xl p-4 mt-auto border border-white/50 dark:border-white/10 shadow-sm transition-transform group-hover:-translate-y-1">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <span className="block text-[10px] uppercase font-bold opacity-50 mb-1">Edited</span>
+                        <span className="text-xl font-medium">{new Date(script.updatedAt).toLocaleDateString()}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => handleShowHistory(e, script)}
+                          className="p-2 rounded-full bg-zinc-100/50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                          title="View History"
+                        >
+                          <HistoryIcon className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={(e) => handleDelete(e, script.id)}
+                          className="text-[10px] bg-red-100/80 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-2 py-2 rounded-full font-bold uppercase transition-colors hover:bg-red-200 dark:hover:bg-red-900"
+                        >
+                          Delete
+                        </button>
+                      </div>
+
                     </div>
-                    
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={(e) => handleShowHistory(e, script)}
-                        className="p-2 rounded-full bg-zinc-100/50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                        title="View History"
-                      >
-                        <HistoryIcon className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={(e) => handleDelete(e, script.id)}
-                        className="text-[10px] bg-red-100/80 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-2 py-2 rounded-full font-bold uppercase transition-colors hover:bg-red-200 dark:hover:bg-red-900"
-                      >
-                        Delete
-                      </button>
-                    </div>
-
                   </div>
-                </div>
 
-              </motion.div>
-            );
-          })}
-        </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
         
         {/* Ambient aesthetic background lines mapping exactly to image wiring */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30 dark:opacity-10 space-y-4">

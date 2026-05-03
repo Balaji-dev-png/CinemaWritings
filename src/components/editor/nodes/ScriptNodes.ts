@@ -41,3 +41,6 @@ export const Dialogue = createScriptNode("dialogue", "dialogue");
 export const Parenthetical = createScriptNode("parenthetical", "parenthetical");
 export const Transition = createScriptNode("transition", "transition");
 export const Shot = createScriptNode("shot", "shot");
+
+// Extension node for V.O. (Voice Over) and O.S. (Off Screen) annotations
+export const Extension = createScriptNode("extension", "extension");

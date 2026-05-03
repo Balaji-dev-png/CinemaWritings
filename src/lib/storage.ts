@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { supabase } from "./supabase";
 
 export interface HistoryEvent {
   action: "CREATED" | "TITLE_CHANGED" | "CONTENT_UPDATED" | "VERSION_SAVED" | "VERSION_RESTORED";
@@ -29,125 +29,187 @@ export interface Script {
   meta?: ScriptMeta;
   versions?: ScriptVersion[];
   tags?: string[];
-  color?: string;
+  paperColor?: string;
+  fontFamily?: string;
+  textColor?: string;
 }
 
-const STORAGE_KEY = "cinemawritings_scripts";
+/* ─── Data Access ─── */
 
-export const getScripts = (): Script[] => {
-  if (typeof window === "undefined") return [];
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
-};
+export const getScripts = async (): Promise<Script[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('scripts')
+      .select('*')
+      .order('updated_at', { ascending: false });
 
-export const saveScripts = (scripts: Script[]) => {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(scripts));
+    if (error) throw error;
+
+    return (data || []).map((s: any) => ({
+      id: s.id,
+      title: s.title,
+      content: "",
+      updatedAt: new Date(s.updated_at).getTime(),
+      historyList: [],
+      tags: s.tags || [],
+      paperColor: s.paper_color,
+      fontFamily: s.font_family,
+      textColor: s.text_color,
+    }));
+  } catch (e: any) {
+    console.error("Supabase getScripts failed:", e.message || JSON.stringify(e) || e);
+    return [];
   }
 };
 
-export const getScriptById = (id: string): Script | undefined => {
-  return getScripts().find((s) => s.id === id);
+export const getScriptById = async (id: string): Promise<Script | undefined> => {
+  try {
+    const { data: s, error } = await supabase
+      .from('scripts')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    return {
+      id: s.id,
+      title: s.title,
+      content: s.content,
+      updatedAt: new Date(s.updated_at).getTime(),
+      historyList: (s.history || []).map((h: any) => ({
+        action: h.action,
+        timestamp: new Date(h.timestamp).getTime(),
+        details: h.details,
+      })),
+      meta: {
+        author: s.author || "",
+        contact: s.contact || "",
+        logline: s.logline || "",
+        synopsis: s.synopsis || "",
+        writtenByPrefix: s.written_by_prefix || "written by",
+      },
+      versions: (s.versions || []).map((v: any) => ({
+        name: v.name,
+        content: v.content_snapshot,
+        timestamp: new Date(v.created_at).getTime(),
+      })),
+      tags: s.tags || [],
+      paperColor: s.paper_color,
+      fontFamily: s.font_family,
+      textColor: s.text_color,
+    };
+  } catch (e: any) {
+    console.error("Supabase getScriptById failed:", e.message || JSON.stringify(e) || e);
+    return undefined;
+  }
 };
 
-export const createScript = (title: string = "Untitled Script"): Script => {
-  const newScript: Script = {
-    id: uuidv4(),
-    title,
-    content: `<p class="scene-heading">INT. NEW SCENE - DAY</p><p class="action"></p>`,
-    updatedAt: Date.now(),
-    historyList: [
-      { action: "CREATED", timestamp: Date.now(), details: "Script created" },
-    ],
-    meta: { author: "", contact: "", logline: "", synopsis: "" },
-    versions: [],
-    tags: [],
-  };
-  const scripts = getScripts();
-  saveScripts([newScript, ...scripts]);
-  return newScript;
-};
+export const createScript = async (title: string = "Untitled Script"): Promise<Script> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("User not authenticated");
 
-export const updateScript = (id: string, updates: Partial<Script>) => {
-  const scripts = getScripts();
-  const index = scripts.findIndex((s) => s.id === id);
-
-  if (index !== -1) {
-    const existing = scripts[index];
-    const now = Date.now();
-    const newHistory = [...(existing.historyList || [])];
-
-    // Throttle content updates to once per 10 minutes
-    if (updates.content !== undefined && updates.content !== existing.content) {
-      const last = newHistory
-        .filter((h) => h.action === "CONTENT_UPDATED")
-        .sort((a, b) => b.timestamp - a.timestamp)[0];
-      if (!last || now - last.timestamp > 600000) {
-        newHistory.push({ action: "CONTENT_UPDATED", timestamp: now, details: "Edit session recorded" });
+  const content = `<p class="scene-heading">INT. NEW SCENE - DAY</p><p class="action"></p>`;
+  
+  const { data: s, error } = await supabase
+    .from('scripts')
+    .insert([
+      { 
+        title, 
+        content,
+        user_id: user.id,
+        paper_color: "",
+        font_family: "Courier Prime",
+        text_color: ""
       }
-    }
+    ])
+    .select()
+    .single();
 
-    if (updates.title !== undefined && updates.title !== existing.title) {
-      newHistory.push({ action: "TITLE_CHANGED", timestamp: now, details: `Title → "${updates.title}"` });
-    }
+  if (error) throw error;
 
-    scripts[index] = { ...existing, ...updates, updatedAt: now, historyList: newHistory };
-    saveScripts(scripts);
-  }
+  return {
+    id: s.id,
+    title: s.title,
+    content: s.content,
+    updatedAt: new Date(s.updated_at).getTime(),
+    historyList: [],
+  };
 };
 
-export const deleteScript = (id: string) => {
-  saveScripts(getScripts().filter((s) => s.id !== id));
+// Debounce helper for content updates
+let updateTimeout: NodeJS.Timeout | null = null;
+
+export const updateScript = async (id: string, updates: Partial<Script>) => {
+  const payload: any = {};
+  if (updates.title !== undefined) payload.title = updates.title;
+  if (updates.content !== undefined) payload.content = updates.content;
+  if (updates.meta) {
+    if (updates.meta.author !== undefined) payload.author = updates.meta.author;
+    if (updates.meta.contact !== undefined) payload.contact = updates.meta.contact;
+    if (updates.meta.logline !== undefined) payload.logline = updates.meta.logline;
+    if (updates.meta.synopsis !== undefined) payload.synopsis = updates.meta.synopsis;
+    if (updates.meta.writtenByPrefix !== undefined) payload.written_by_prefix = updates.meta.writtenByPrefix;
+  }
+  if (updates.tags !== undefined) payload.tags = updates.tags;
+  if (updates.paperColor !== undefined) payload.paper_color = updates.paperColor;
+  if (updates.fontFamily !== undefined) payload.font_family = updates.fontFamily;
+  if (updates.textColor !== undefined) payload.text_color = updates.textColor;
+  
+  if (Object.keys(payload).length === 0) return;
+
+  if (updateTimeout) clearTimeout(updateTimeout);
+  updateTimeout = setTimeout(async () => {
+    try {
+      const { error } = await supabase
+        .from('scripts')
+        .update(payload)
+        .eq('id', id);
+      
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase updateScript failed", e);
+    }
+  }, 1000);
+};
+
+export const deleteScript = async (id: string) => {
+  try {
+    const { error } = await supabase
+      .from('scripts')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  } catch (e) {
+    console.error("Supabase deleteScript failed", e);
+  }
 };
 
 /* ─── Version Management ─── */
-export const saveVersion = (id: string, name: string): boolean => {
-  const scripts = getScripts();
-  const index = scripts.findIndex((s) => s.id === id);
-  if (index === -1) return false;
-
-  const script = scripts[index];
-  const versions = [...(script.versions || [])];
-  versions.push({ name, content: script.content, timestamp: Date.now() });
-
-  const history = [...script.historyList, {
-    action: "VERSION_SAVED" as const,
-    timestamp: Date.now(),
-    details: `Saved version: "${name}"`,
-  }];
-
-  scripts[index] = { ...script, versions, historyList: history, updatedAt: Date.now() };
-  saveScripts(scripts);
-  return true;
+export const saveVersion = async (id: string, name: string): Promise<boolean> => {
+  try {
+    // For simplicity, we could store versions in a separate table or a jsonb column
+    // Here we'll just log failure as it requires more schema work
+    console.warn("saveVersion not fully implemented for Supabase yet");
+    return false;
+  } catch (e) {
+    console.error("Supabase saveVersion failed", e);
+    return false;
+  }
 };
 
-export const restoreVersion = (id: string, versionIndex: number): string | null => {
-  const scripts = getScripts();
-  const index = scripts.findIndex((s) => s.id === id);
-  if (index === -1) return null;
-
-  const script = scripts[index];
-  const version = script.versions?.[versionIndex];
-  if (!version) return null;
-
-  const history = [...script.historyList, {
-    action: "VERSION_RESTORED" as const,
-    timestamp: Date.now(),
-    details: `Restored version: "${version.name}"`,
-  }];
-
-  scripts[index] = { ...script, content: version.content, historyList: history, updatedAt: Date.now() };
-  saveScripts(scripts);
-  return version.content;
+export const restoreVersion = async (id: string, versionIdOrIndex: string | number): Promise<string | null> => {
+  console.warn("restoreVersion not fully implemented for Supabase yet");
+  return null;
 };
 
-/* ─── Fountain Export ─── */
+/* ─── Fountain Export/Import (Unchanged) ─── */
 export const exportToFountain = (html: string, meta?: ScriptMeta, title?: string): string => {
   const div = document.createElement("div");
   div.innerHTML = html;
   const lines: string[] = [];
 
-  // Title page header block
   if (title) lines.push(`Title: ${title}`);
   if (meta?.author) lines.push(`Author: ${meta.author}`);
   if (meta?.contact) lines.push(`Contact: ${meta.contact.replace(/\n/g, " | ")}`);
@@ -185,7 +247,6 @@ export const exportToFountain = (html: string, meta?: ScriptMeta, title?: string
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 };
 
-/* ─── Fountain Import ─── */
 export const importFromFountain = (fountain: string): string => {
   const lines = fountain.split("\n");
   const html: string[] = [];
@@ -196,22 +257,17 @@ export const importFromFountain = (fountain: string): string => {
 
     if (!trimmed) continue;
 
-    // Scene heading
     if (/^(INT\.|EXT\.|INT\.\/EXT\.)\s/i.test(trimmed)) {
       html.push(`<p class="scene-heading">${trimmed}</p>`);
     }
-    // Transition (starts with > or ends with :)
     else if (trimmed.startsWith(">") || (trimmed === trimmed.toUpperCase() && trimmed.endsWith(":"))) {
       html.push(`<p class="transition">${trimmed.replace(/^>\s*/, "")}</p>`);
     }
-    // Parenthetical
     else if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
       html.push(`<p class="parenthetical">${trimmed}</p>`);
     }
-    // Character (all caps, not too long, followed by dialogue)
     else if (trimmed === trimmed.toUpperCase() && trimmed.length < 40 && /^[A-Z]/.test(trimmed)) {
       html.push(`<p class="character">${trimmed}</p>`);
-      // Next non-empty line is likely dialogue
       let j = i + 1;
       while (j < lines.length) {
         const next = lines[j].trim();
@@ -225,7 +281,6 @@ export const importFromFountain = (fountain: string): string => {
       }
       i = j;
     }
-    // Default: action
     else {
       html.push(`<p class="action">${trimmed}</p>`);
     }

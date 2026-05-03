@@ -34,20 +34,15 @@
 ### Exports
 | Format | Description |
 |---|---|
-| **Download PDF** | Direct download — no print dialog. WGA-standard layout with correct character, dialogue, and transition positioning. Preserves bold, italic, underline formatting. Includes title page, logline, synopsis, and contact info. |
+| **Download PDF** | **Client-side generation** — No backend required. Captures the exact WYSIWYG state of your editor (including Title Page and custom colors) and generates a high-resolution, WGA-standard PDF. |
 | **Fountain (.fountain)** | Standard Fountain plain-text format with title metadata header block |
 | **Plain Text (.txt)** | Human-readable export in Fountain syntax with metadata |
 
 ### Multi-Document Dashboard
 - Create, organize, and delete multiple scripts
+- Securely stored in the cloud via Supabase
 - Script history timeline per document
 - Pastel gradient card system with dark mode
-
-### Responsive Design
-- **Desktop**: renders as a physical 8.5×11 page with WGA-standard inch margins
-- **Tablet**: condensed padding while preserving the page feel
-- **Mobile**: flat-card layout, fluid percentage-based indents, bottom-docked formatting toolbar
-- Full **dark mode** support
 
 ---
 
@@ -57,17 +52,58 @@
 |---|---|
 | Framework | Next.js 16.2 (Turbopack) |
 | Editor Core | TipTap / ProseMirror |
-| Animations | Framer Motion + CSS keyframes |
-| PDF Generation | jsPDF (vector text, no rasterizing) |
+| Backend/DB | Supabase (PostgreSQL + RLS) |
+| Auth | Supabase Auth |
+| PDF Generation | jsPDF + html2canvas |
 | Styling | Tailwind CSS v4 + custom CSS |
-| Fonts | Courier Prime (editor/PDF), Poppins (UI) |
-| Storage | localStorage (client-side persistence) |
 | Deployment | Netlify |
 
 ---
 
 ## 🚀 Getting Started
 
+### 1. Supabase Setup
+Create a `scripts` table in your Supabase project with the following SQL:
+
+```sql
+create table public.scripts (
+  id uuid default gen_random_uuid() primary key,
+  title text not null default 'Untitled Script',
+  content text default '',
+  paper_color text default '',
+  font_family text default 'Courier Prime',
+  text_color text default '',
+  author text default '',
+  contact text default '',
+  logline text default '',
+  synopsis text default '',
+  written_by_prefix text default 'written by',
+  tags jsonb default '[]'::jsonb,
+  history jsonb default '[]'::jsonb,
+  versions jsonb default '[]'::jsonb,
+  updated_at timestamptz default now(),
+  created_at timestamptz default now(),
+  user_id uuid references auth.users(id) on delete cascade
+);
+
+-- Enable RLS
+alter table public.scripts enable row level security;
+
+-- Create policies (Users only see their own scripts)
+create policy "Users can view their own scripts" on public.scripts for select using (auth.uid() = user_id);
+create policy "Users can insert their own scripts" on public.scripts for insert with check (auth.uid() = user_id);
+create policy "Users can update their own scripts" on public.scripts for update using (auth.uid() = user_id);
+create policy "Users can delete their own scripts" on public.scripts for delete using (auth.uid() = user_id);
+```
+
+### 2. Local Environment
+Create a `.env.local` file:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 3. Install & Run
 ```bash
 # Install dependencies
 npm install
@@ -76,8 +112,6 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
 ---
 
 ## 📁 Project Structure
@@ -85,32 +119,28 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ```
 src/
 ├── app/
-│   ├── page.tsx              # Dashboard
-│   ├── layout.tsx            # Root layout + fonts
-│   ├── globals.css           # Global styles + screenplay CSS
-│   └── editor/[id]/page.tsx  # Editor page
+│   ├── page.tsx              # Dashboard (Supabase-backed)
+│   ├── login/                # Supabase Auth Login
+│   ├── signup/               # Supabase Auth Signup
+│   └── editor/[id]/page.tsx  # Editor page (Auto-syncs with DB)
 │
 ├── components/
 │   ├── editor/
-│   │   ├── ScriptEditor.tsx  # Main TipTap editor + toolbar
-│   │   ├── TitlePage.tsx     # Title page with logline/synopsis
-│   │   ├── VersionManager.tsx# Save, restore, compare drafts
-│   │   ├── CompareModal.tsx  # Side-by-side draft comparison
-│   │   ├── SceneNavigator.tsx# Left panel scene list
-│   │   ├── ScriptAnalytics.tsx# Word/scene/page stats
-│   │   └── nodes/            # TipTap custom screenplay node types
+│   │   ├── ScriptEditor.tsx  # Main editor + theme sync
+│   │   └── TitlePage.tsx     # Title page with metadata
 │   └── ui/
-│       ├── ThemeToggle.tsx
-│       └── ShortcutsPanel.tsx
+│       └── ThemeToggle.tsx   # Light/Dark mode switcher
 │
 └── lib/
-    ├── storage.ts            # localStorage CRUD + Fountain export/import
-    └── exportPdf.ts          # jsPDF-based PDF generation with full formatting
+    ├── storage.ts            # Supabase CRUD layer
+    ├── auth.ts               # Supabase Auth wrappers
+    └── supabase.ts           # Supabase client initialization
 ```
 
 ---
 
 ## ⌨️ Keyboard Shortcuts
+... (rest of shortcuts same as before) ...
 
 | Shortcut | Action |
 |---|---|
