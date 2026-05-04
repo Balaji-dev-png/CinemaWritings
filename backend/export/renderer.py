@@ -352,8 +352,8 @@ body {
     font-family: 'Courier Prime', 'Courier New', Courier, monospace;
     font-size: 10pt;
     line-height: 1.3;
-    color: #e2e8f0;
-    background-color: #121212;
+    color: #1e293b;
+    background-color: #f8f9fa;
     margin: 0;
     padding: 0;
 }
@@ -374,13 +374,13 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.3in;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid #cbd5e1;
     padding-bottom: 0.1in;
 }
 .page-header .project-title {
     font-weight: bold;
     font-size: 10pt;
-    color: #94a3b8;
+    color: #64748b;
     letter-spacing: 0.05em;
 }
 .page-header .page-label {
@@ -401,7 +401,8 @@ body {
 .card {
     width: 4.6in;
     min-height: 2.4in;
-    background-color: #1e1e2e;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
     overflow: hidden;
     display: flex;
@@ -413,7 +414,7 @@ body {
 .card-image {
     width: 1.6in;
     min-height: 2.4in;
-    background-color: #0f172a;
+    background-color: #f1f5f9;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -423,11 +424,11 @@ body {
 .card-image img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
 }
 .card-image-placeholder {
     text-align: center;
-    color: #475569;
+    color: #94a3b8;
 }
 .placeholder-icon {
     font-size: 28pt;
@@ -452,7 +453,7 @@ body {
 .card-title {
     font-size: 11pt;
     font-weight: bold;
-    color: #f1f5f9;
+    color: #0f172a;
     margin: 0 0 6px 0;
 }
 
@@ -470,12 +471,12 @@ body {
 }
 .meta-value {
     font-size: 9pt;
-    color: #cbd5e1;
+    color: #334155;
 }
 
 .card-notes {
     font-size: 8.5pt;
-    color: #94a3b8;
+    color: #475569;
     margin-top: 6px;
     line-height: 1.3;
 }
@@ -489,26 +490,58 @@ body {
     display: flex;
     justify-content: space-between;
     font-size: 7pt;
-    color: #475569;
-    border-top: 1px solid #1e293b;
+    color: #94a3b8;
+    border-top: 1px solid #e2e8f0;
     padding-top: 4px;
 }
 """
 
 # Shot type metadata map (mirrors frontend SHOT_TYPES)
 SHOT_TYPE_MAP = {
-    "wide":             {"label": "Wide Shot (WS)",            "icon": "🎬", "color": "#3b82f6"},
-    "medium":           {"label": "Medium Shot (MS)",           "icon": "🎥", "color": "#8b5cf6"},
-    "close-up":         {"label": "Close Up (CU)",              "icon": "👁", "color": "#ef4444"},
-    "extreme-close-up": {"label": "Extreme Close Up (ECU)",     "icon": "🔍", "color": "#f97316"},
-    "over-shoulder":    {"label": "Over-the-Shoulder (OTS)",    "icon": "🤝", "color": "#10b981"},
-    "pov":              {"label": "POV Shot",                   "icon": "👤", "color": "#06b6d4"},
+    # Distance
+    "ews":              {"label": "Extreme Wide Shot (EWS)",    "icon": "🌍", "color": "#64748b"},
+    "ws":               {"label": "Wide Shot (WS)",             "icon": "🏔", "color": "#64748b"},
+    "fs":               {"label": "Full Shot (FS)",             "icon": "🧍", "color": "#64748b"},
+    "mws":              {"label": "Medium Wide Shot (MWS)",     "icon": "🤠", "color": "#8b5cf6"},
+    "ms":               {"label": "Medium Shot (MS)",           "icon": "👤", "color": "#8b5cf6"},
+    "mcu":              {"label": "Medium Close-Up (MCU)",      "icon": "🗣", "color": "#8b5cf6"},
+    "cu":               {"label": "Close-Up (CU)",              "icon": "👁", "color": "#ef4444"},
+    "ecu":              {"label": "Extreme Close-Up (ECU)",     "icon": "🔍", "color": "#ef4444"},
     "insert":           {"label": "Insert Shot",                "icon": "📌", "color": "#f59e0b"},
-    "two-shot":         {"label": "Two Shot",                   "icon": "👥", "color": "#ec4899"},
-    "birds-eye":        {"label": "Bird's Eye View",            "icon": "🦅", "color": "#14b8a6"},
-    "low-angle":        {"label": "Low Angle",                  "icon": "⬆️", "color": "#6366f1"},
-    "high-angle":       {"label": "High Angle",                 "icon": "⬇️", "color": "#a855f7"},
-    "dutch-angle":      {"label": "Dutch Angle",                "icon": "↗️", "color": "#e11d48"},
+    # Angle
+    "eye-level":        {"label": "Eye Level",                  "icon": "👀", "color": "#10b981"},
+    "low-angle":        {"label": "Low Angle",                  "icon": "⬆️", "color": "#10b981"},
+    "high-angle":       {"label": "High Angle",                 "icon": "⬇️", "color": "#10b981"},
+    "birds-eye":        {"label": "Bird's Eye / Top Down",      "icon": "🦅", "color": "#14b8a6"},
+    "dutch-angle":      {"label": "Dutch Angle / Canted",       "icon": "↗️", "color": "#e11d48"},
+    "worms-eye":        {"label": "Worm's Eye",                 "icon": "🐛", "color": "#10b981"},
+    # Movement
+    "static":           {"label": "Static Shot",                "icon": "⏸️", "color": "#3b82f6"},
+    "pan":              {"label": "Pan",                        "icon": "↔️", "color": "#3b82f6"},
+    "tilt":             {"label": "Tilt",                       "icon": "↕️", "color": "#3b82f6"},
+    "dolly":            {"label": "Dolly / Tracking",           "icon": "🚂", "color": "#3b82f6"},
+    "dolly-zoom":       {"label": "Dolly Zoom (Vertigo)",       "icon": "😵‍💫", "color": "#8b5cf6"},
+    "zoom":             {"label": "Zoom",                       "icon": "🔎", "color": "#3b82f6"},
+    "handheld":         {"label": "Handheld",                   "icon": "🫨", "color": "#f59e0b"},
+    "steadicam":        {"label": "Steadicam",                  "icon": "🛹", "color": "#3b82f6"},
+    "crane":            {"label": "Crane / Jib",                "icon": "🏗", "color": "#8b5cf6"},
+    "aerial":           {"label": "Aerial Shot",                "icon": "🚁", "color": "#3b82f6"},
+    "arc":              {"label": "Arc Shot",                   "icon": "🔄", "color": "#3b82f6"},
+    "whip-pan":         {"label": "Whip Pan",                   "icon": "💨", "color": "#e11d48"},
+    # Relationship
+    "two-shot":         {"label": "Two Shot (2S)",              "icon": "👥", "color": "#ec4899"},
+    "three-shot":       {"label": "Three Shot",                 "icon": "👪", "color": "#ec4899"},
+    "ots":              {"label": "Over-the-Shoulder (OTS)",    "icon": "👤👤", "color": "#ec4899"},
+    "pov":              {"label": "Point of View (POV)",        "icon": "🎥", "color": "#ec4899"},
+    "reaction":         {"label": "Reaction Shot",              "icon": "😲", "color": "#ec4899"},
+    "cutaway":          {"label": "Cutaway",                    "icon": "✂️", "color": "#ec4899"},
+    # Special
+    "freeze-frame":     {"label": "Freeze Frame",               "icon": "🧊", "color": "#a855f7"},
+    "split-screen":     {"label": "Split Screen",               "icon": "🪟", "color": "#a855f7"},
+    "rack-focus":       {"label": "Rack Focus",                 "icon": "🔬", "color": "#a855f7"},
+    "deep-focus":       {"label": "Deep Focus",                 "icon": "🏞", "color": "#a855f7"},
+    "shallow-focus":    {"label": "Shallow Focus",              "icon": "🎯", "color": "#a855f7"},
+    "single":           {"label": "Single",                     "icon": "🧍‍♂️", "color": "#ec4899"},
 }
 
 IDEA_COLORS = {

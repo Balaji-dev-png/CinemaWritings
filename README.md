@@ -34,15 +34,23 @@
 ### Exports
 | Format | Description |
 |---|---|
-| **Download PDF** | **Client-side generation** — No backend required. Captures the exact WYSIWYG state of your editor (including Title Page and custom colors) and generates a high-resolution, WGA-standard PDF. |
+| **Screenplay PDF** | **Server-side generation (WeasyPrint)** — Generates a high-resolution, WGA-standard PDF adhering to exact Hollywood margins (1.5" left bind). Captures the exact WYSIWYG state of your editor. |
+| **Pitch Deck PDF** | **Server-side generation (WeasyPrint)** — Exports your Director's Suite canvas into a professional landscape 2x2 grid presentation format. |
 | **Fountain (.fountain)** | Standard Fountain plain-text format with title metadata header block |
 | **Plain Text (.txt)** | Human-readable export in Fountain syntax with metadata |
 
 ### Multi-Document Dashboard
 - Create, organize, and delete multiple scripts
-- Securely stored in the cloud via Supabase
+- Securely stored in the cloud via Django backend
 - Script history timeline per document
 - Pastel gradient card system with dark mode
+
+### Director's Suite (Pre-Production Canvas)
+- **Infinite Node-based Workspace** for moodboarding and shot listing
+- **Black & White Aesthetic** with grid snapping and fluid scroll-to-zoom
+- Add standard film shots, idea blocks, sticky notes, reference images, and web links
+- Group select, dragging, resizing, and connection edges
+- **Export to Pitch Deck PDF** for production-ready visual documents
 
 ---
 
@@ -52,58 +60,29 @@
 |---|---|
 | Framework | Next.js 16.2 (Turbopack) |
 | Editor Core | TipTap / ProseMirror |
-| Backend/DB | Supabase (PostgreSQL + RLS) |
-| Auth | Supabase Auth |
-| PDF Generation | jsPDF + html2canvas |
+| Backend Core | Django REST Framework (Python) |
+| DB / Storage | PostgreSQL (via Django ORM) |
+| PDF Generation | WeasyPrint (Server-side) / html2canvas (Client-side PNGs) |
 | Styling | Tailwind CSS v4 + custom CSS |
-| Deployment | Netlify |
+| Deployment | Netlify (Frontend) |
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Supabase Setup
-Create a `scripts` table in your Supabase project with the following SQL:
-
-```sql
-create table public.scripts (
-  id uuid default gen_random_uuid() primary key,
-  title text not null default 'Untitled Script',
-  content text default '',
-  paper_color text default '',
-  font_family text default 'Courier Prime',
-  text_color text default '',
-  author text default '',
-  contact text default '',
-  logline text default '',
-  synopsis text default '',
-  written_by_prefix text default 'written by',
-  tags jsonb default '[]'::jsonb,
-  history jsonb default '[]'::jsonb,
-  versions jsonb default '[]'::jsonb,
-  updated_at timestamptz default now(),
-  created_at timestamptz default now(),
-  user_id uuid references auth.users(id) on delete cascade
-);
-
--- Enable RLS
-alter table public.scripts enable row level security;
-
--- Create policies (Users only see their own scripts)
-create policy "Users can view their own scripts" on public.scripts for select using (auth.uid() = user_id);
-create policy "Users can insert their own scripts" on public.scripts for insert with check (auth.uid() = user_id);
-create policy "Users can update their own scripts" on public.scripts for update using (auth.uid() = user_id);
-create policy "Users can delete their own scripts" on public.scripts for delete using (auth.uid() = user_id);
-```
-
-### 2. Local Environment
-Create a `.env.local` file:
+### 1. Backend Setup (Django)
+Navigate to the `backend` directory, install requirements, and run migrations:
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
 ```
 
-### 3. Install & Run
+### 2. Frontend Setup (Next.js)
+Open a new terminal in the root directory:
 ```bash
 # Install dependencies
 npm install

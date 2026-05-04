@@ -82,12 +82,12 @@ export function CanvasImageCard({
       onMouseDown={handleMouseDown}
     >
       <div
-        className="w-full h-full rounded-3xl overflow-hidden bg-[#1e1e1e]/60 backdrop-blur-[12px]"
+        className="w-full h-full rounded-3xl overflow-hidden bg-white/90 backdrop-blur-[12px]"
         style={{
           border: isSelected
             ? "2px solid #3b82f6"
-            : "1px solid rgba(255, 255, 255, 0.1)",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+            : "1px solid rgba(0, 0, 0, 0.1)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
         }}
       >
         {element.src ? (
@@ -95,18 +95,18 @@ export function CanvasImageCard({
             src={element.src}
             alt={element.alt || "Canvas image"}
             className="w-full h-full"
-            style={{ objectFit: element.objectFit || "cover" }}
+            style={{ objectFit: element.objectFit || "contain" }}
             draggable={false}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-zinc-800/80 text-zinc-400">
+          <div className="w-full h-full flex items-center justify-center bg-zinc-100 text-zinc-400">
             <Upload className="w-6 h-6" />
           </div>
         )}
       </div>
       {isSelected && (
         <div
-          className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 px-1.5 py-1 bg-[#1a1a2e] rounded-lg shadow-xl border border-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 px-1.5 py-1 bg-white rounded-lg shadow-xl border border-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity"
           style={{ zIndex: element.zIndex + 2000 }}
         >
           <button
@@ -114,7 +114,7 @@ export function CanvasImageCard({
               e.stopPropagation();
               onBringToFront(element.id);
             }}
-            className="p-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            className="p-1 text-zinc-500 hover:text-zinc-900"
           >
             <ArrowUpToLine className="w-3 h-3" />
           </button>
@@ -123,17 +123,17 @@ export function CanvasImageCard({
               e.stopPropagation();
               onSendToBack(element.id);
             }}
-            className="p-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            className="p-1 text-zinc-500 hover:text-zinc-900"
           >
             <ArrowDownToLine className="w-3 h-3" />
           </button>
-          <div className="w-px h-3 bg-zinc-200 dark:bg-zinc-700" />
+          <div className="w-px h-3 bg-zinc-200" />
           <button
             onMouseDown={(e) => {
               e.stopPropagation();
               onRemove(element.id);
             }}
-            className="p-1 text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400"
+            className="p-1 text-zinc-500 hover:text-red-600"
           >
             <Trash2 className="w-3 h-3" />
           </button>
@@ -246,12 +246,12 @@ export function CanvasLinkCard({
       onMouseDown={handleMouseDown}
     >
       <div
-        className="w-full h-full rounded-[1.5rem] overflow-hidden bg-[#1e1e1e]/60 backdrop-blur-[12px] flex flex-col transition-all duration-300"
+        className="w-full h-full rounded-[1.5rem] overflow-hidden bg-white/90 backdrop-blur-[12px] flex flex-col transition-all duration-300"
         style={{
-          borderColor: isSelected ? "#3b82f6" : "rgba(255, 255, 255, 0.1)",
+          borderColor: isSelected ? "#3b82f6" : "rgba(0, 0, 0, 0.1)",
           boxShadow: isSelected
             ? "0 0 30px rgba(59, 130, 246, 0.2)"
-            : "0 8px 32px rgba(0,0,0,0.4)",
+            : "0 8px 32px rgba(0,0,0,0.05)",
         }}
       >
         {element.thumbnail && (
@@ -259,10 +259,10 @@ export function CanvasLinkCard({
             <img
               src={element.thumbnail}
               alt=""
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+              className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-110"
               draggable={false}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#1e1e1e]/80 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-white/80 to-transparent" />
           </div>
         )}
         <div className="p-4 flex-1 flex flex-col gap-2">
@@ -278,11 +278,11 @@ export function CanvasLinkCard({
               {new URL(element.url).hostname}
             </span>
           </div>
-          <h4 className="text-white font-bold text-sm leading-tight line-clamp-2">
+          <h4 className="text-zinc-900 font-bold text-sm leading-tight line-clamp-2">
             {element.title || element.url}
           </h4>
           {element.description && (
-            <p className="text-zinc-400 line-clamp-2 text-[10px] leading-relaxed">
+            <p className="text-zinc-500 line-clamp-2 text-[10px] leading-relaxed">
               {element.description}
             </p>
           )}
@@ -307,7 +307,7 @@ export function CanvasLinkCard({
 
       {isSelected && (
         <div
-          className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-[#1e1e1e] rounded-2xl border border-white/10 shadow-2xl scale-90 group-hover:scale-100 transition-transform"
+          className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-white rounded-2xl border border-zinc-200 shadow-2xl scale-90 group-hover:scale-100 transition-transform"
           style={{ zIndex: element.zIndex + 2000 }}
         >
           <button
@@ -315,7 +315,7 @@ export function CanvasLinkCard({
               e.stopPropagation();
               onBringToFront(element.id);
             }}
-            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 text-zinc-500 hover:text-zinc-900 transition-colors"
           >
             <ArrowUpToLine className="w-4 h-4" />
           </button>
@@ -324,17 +324,17 @@ export function CanvasLinkCard({
               e.stopPropagation();
               onSendToBack(element.id);
             }}
-            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 text-zinc-500 hover:text-zinc-900 transition-colors"
           >
             <ArrowDownToLine className="w-4 h-4" />
           </button>
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-4 bg-zinc-200 mx-1" />
           <button
             onMouseDown={(e) => {
               e.stopPropagation();
               onRemove(element.id);
             }}
-            className="p-2 text-zinc-400 hover:text-red-400 transition-colors"
+            className="p-2 text-zinc-500 hover:text-red-500 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>

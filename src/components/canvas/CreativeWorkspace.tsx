@@ -34,7 +34,7 @@ interface Props {
 
 export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
   const engine = useCanvasEngine(scriptId);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef<number>(0);
@@ -207,13 +207,15 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
       // Text placement
       if (tool === "text") {
         const id = uuidv4();
+        const w = 200;
+        const h = 40;
         engine.addElement({
           id,
           type: "text",
-          x: cx,
-          y: cy,
-          width: 200,
-          height: 40,
+          x: cx - w / 2,
+          y: cy - h / 2,
+          width: w,
+          height: h,
           rotation: 0,
           zIndex: engine.nextZIndex,
           opacity: 1,
@@ -222,8 +224,8 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
           fontSize: 16,
           fontWeight: "400",
           fontFamily: "Inter, sans-serif",
-          color: "#e2e8f0",
-          backgroundColor: "#1e1e2e",
+          color: "#18181b",
+          backgroundColor: "transparent",
         } as TextElement);
         engine.select(id);
         engine.setActiveTool("select");
@@ -233,13 +235,15 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
       // Sticky placement
       if (tool === "sticky") {
         const id = uuidv4();
+        const w = 200;
+        const h = 160;
         engine.addElement({
           id,
           type: "sticky",
-          x: cx,
-          y: cy,
-          width: 200,
-          height: 160,
+          x: cx - w / 2,
+          y: cy - h / 2,
+          width: w,
+          height: h,
           rotation: 0,
           zIndex: engine.nextZIndex,
           opacity: 1,
@@ -256,20 +260,22 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
       // Idea placement
       if (tool === "idea") {
         const id = uuidv4();
+        const w = 220;
+        const h = 180;
         engine.addElement({
           id,
           type: "idea",
-          x: cx,
-          y: cy,
-          width: 220,
-          height: 180,
+          x: cx - w / 2,
+          y: cy - h / 2,
+          width: w,
+          height: h,
           rotation: 0,
           zIndex: engine.nextZIndex,
           opacity: 1,
           locked: false,
           title: "",
           content: "",
-          color: "#8b5cf6",
+          color: "#18181b",
         } as IdeaElement);
         engine.select(id);
         engine.setActiveTool("select");
@@ -370,103 +376,124 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
     [engine, getCanvasPoint, getScreenPoint],
   );
 
+  const lastMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const updateLastMouse = useCallback((e: React.MouseEvent) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    lastMouseRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  }, []);
+
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      updateLastMouse(e);
-      const [cx, cy] = getCanvasPoint(e);
-      const [sx, sy] = getScreenPoint(e);
+      const clientX = e.clientX;
+      const clientY = e.clientY;
 
-      // Panning
-      if (panRef.current.active) {
-        engine.pan(
-          e.clientX -
-            panRef.current.startX -
-            engine.viewport.offsetX +
-            panRef.current.origOX,
-          e.clientY -
-            panRef.current.startY -
-            engine.viewport.offsetY +
-            panRef.current.origOY,
-        );
-        panRef.current.startX = e.clientX;
-        panRef.current.startY = e.clientY;
-        panRef.current.origOX = engine.viewport.offsetX;
-        panRef.current.origOY = engine.viewport.offsetY;
-        return;
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
       }
 
-      // Marquee
-      if (marqueeRef.current.active) {
-        const m = marqueeRef.current;
-        m.x = Math.min(m.startX, sx);
-        m.y = Math.min(m.startY, sy);
-        m.w = Math.abs(sx - m.startX);
-        m.h = Math.abs(sy - m.startY);
-        return;
-      }
+      animFrameRef.current = requestAnimationFrame(() => {
+        // We use a fake synthetic event just for the helper functions
+        const fakeEvent = { clientX, clientY } as React.MouseEvent;
+        updateLastMouse(fakeEvent);
+        const [cx, cy] = getCanvasPoint(fakeEvent);
+        const [sx, sy] = getScreenPoint(fakeEvent);
 
-      // Element resize
-      if (resizeRef.current.active) {
-        const r = resizeRef.current;
-        const dx = cx - r.startX;
-        const dy = cy - r.startY;
-        const minSize = 40;
-        let newX = r.origX,
-          newY = r.origY,
-          newW = r.origW,
-          newH = r.origH;
-
-        if (r.handle.includes("right")) {
-          newW = Math.max(minSize, r.origW + dx);
-        }
-        if (r.handle.includes("left")) {
-          newW = Math.max(minSize, r.origW - dx);
-          newX = r.origX + r.origW - newW;
-        }
-        if (r.handle.includes("bottom")) {
-          newH = Math.max(minSize, r.origH + dy);
-        }
-        if (r.handle.includes("top")) {
-          newH = Math.max(minSize, r.origH - dy);
-          newY = r.origY + r.origH - newH;
+        // Panning
+        if (panRef.current.active) {
+          engine.pan(
+            clientX -
+              panRef.current.startX -
+              engine.viewport.offsetX +
+              panRef.current.origOX,
+            clientY -
+              panRef.current.startY -
+              engine.viewport.offsetY +
+              panRef.current.origOY,
+          );
+          panRef.current.startX = clientX;
+          panRef.current.startY = clientY;
+          panRef.current.origOX = engine.viewport.offsetX;
+          panRef.current.origOY = engine.viewport.offsetY;
+          return;
         }
 
-        engine.updateElement(r.elementId, {
-          x: newX,
-          y: newY,
-          width: newW,
-          height: newH,
-        });
-        return;
-      }
+        // Marquee
+        if (marqueeRef.current.active) {
+          const m = marqueeRef.current;
+          m.x = Math.min(m.startX, sx);
+          m.y = Math.min(m.startY, sy);
+          m.w = Math.abs(sx - m.startX);
+          m.h = Math.abs(sy - m.startY);
+          return;
+        }
 
-      // Group element dragging
-      if (dragRef.current.active) {
-        const dx = cx - dragRef.current.startX;
-        const dy = cy - dragRef.current.startY;
+        // Element resize
+        if (resizeRef.current.active) {
+          const r = resizeRef.current;
+          const dx = cx - r.startX;
+          const dy = cy - r.startY;
+          const minSize = 40;
+          let newX = r.origX,
+            newY = r.origY,
+            newW = r.origW,
+            newH = r.origH;
 
-        // Move all selected elements (group move)
-        if (groupOriginsRef.current.size > 1) {
-          for (const [id, orig] of groupOriginsRef.current) {
-            engine.updateElement(id, { x: orig.x + dx, y: orig.y + dy });
+          if (r.handle.includes("right")) {
+            newW = Math.max(minSize, r.origW + dx);
           }
-        } else {
-          // Single element move
-          engine.updateElement(dragRef.current.elementId, {
-            x: dragRef.current.origX + dx,
-            y: dragRef.current.origY + dy,
-          });
-        }
-        return;
-      }
+          if (r.handle.includes("left")) {
+            newW = Math.max(minSize, r.origW - dx);
+            newX = r.origX + r.origW - newW;
+          }
+          if (r.handle.includes("bottom")) {
+            newH = Math.max(minSize, r.origH + dy);
+          }
+          if (r.handle.includes("top")) {
+            newH = Math.max(minSize, r.origH - dy);
+            newY = r.origY + r.origH - newH;
+          }
 
-      // Connection line preview (handled by SVG layer if source exists)
-      if (connectionRef.current.active) {
-        // Find element under mouse for target highlight
-        // (Optional UX: highlight target node on hover during connection)
-      }
+          engine.updateElement(r.elementId, {
+            x: newX,
+            y: newY,
+            width: newW,
+            height: newH,
+          });
+          return;
+        }
+
+        // Group element dragging
+        if (dragRef.current.active) {
+          const dx = cx - dragRef.current.startX;
+          const dy = cy - dragRef.current.startY;
+
+          // Move all selected elements (group move)
+          if (groupOriginsRef.current.size > 1) {
+            for (const [id, orig] of groupOriginsRef.current) {
+              engine.updateElement(id, { x: orig.x + dx, y: orig.y + dy });
+            }
+          } else {
+            // Single element move
+            engine.updateElement(dragRef.current.elementId, {
+              x: dragRef.current.origX + dx,
+              y: dragRef.current.origY + dy,
+            });
+          }
+          return;
+        }
+
+        // Connection line preview (handled by SVG layer if source exists)
+        if (connectionRef.current.active) {
+          // Highlight target node
+        }
+      });
     },
-    [engine, getCanvasPoint, getScreenPoint],
+    [engine, getCanvasPoint, getScreenPoint, updateLastMouse],
   );
 
   const handleMouseUp = useCallback(
@@ -557,7 +584,6 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
     [engine, getCanvasPoint],
   );
 
-  const lastMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // ── Wheel zoom ──
   const handleWheel = useCallback(
@@ -570,26 +596,13 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
       const mouseY = e.clientY - rect.top;
       lastMouseRef.current = { x: mouseX, y: mouseY };
 
-      const isZoom = e.ctrlKey || engine.activeTool !== "hand";
-
-      if (isZoom) {
-        const delta = e.deltaY > 0 ? 0.92 : 1.08;
-        engine.zoomTo(engine.viewport.zoom * delta, mouseX, mouseY);
-      } else {
-        engine.pan(-e.deltaX, -e.deltaY);
-      }
+      // Scroll wheel always zooms now
+      const delta = e.deltaY > 0 ? 0.92 : 1.08;
+      engine.zoomTo(engine.viewport.zoom * delta, mouseX, mouseY);
     },
     [engine],
   );
 
-  const updateLastMouse = useCallback((e: React.MouseEvent) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    lastMouseRef.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-  }, []);
 
   // ── Image upload ──
   const handleUploadImage = useCallback(() => {
@@ -602,11 +615,18 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
       const reader = new FileReader();
       reader.onload = () => {
         const id = uuidv4();
+        
+        // Spawn in center of viewport
+        const rect = canvasRef.current?.getBoundingClientRect();
+        const screenW = rect?.width || window.innerWidth;
+        const screenH = rect?.height || window.innerHeight;
+        const [cx, cy] = engine.screenToCanvas(screenW / 2, screenH / 2);
+        
         engine.addElement({
           id,
           type: "image",
-          x: 100,
-          y: 100,
+          x: cx - 150,
+          y: cy - 100,
           width: 300,
           height: 200,
           rotation: 0,
@@ -637,11 +657,17 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
     } catch {
       hostname = linkInput;
     }
+
+    const rect = canvasRef.current?.getBoundingClientRect();
+    const screenW = rect?.width || window.innerWidth;
+    const screenH = rect?.height || window.innerHeight;
+    const [cx, cy] = engine.screenToCanvas(screenW / 2, screenH / 2);
+
     engine.addElement({
       id,
       type: "link-card",
-      x: 100,
-      y: 100,
+      x: cx - 140,
+      y: cy - 80,
       width: 280,
       height: 160,
       rotation: 0,
@@ -668,12 +694,17 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
       const shotCount =
         engine.elements.filter((el) => el.type === "shot").length + 1;
 
+      const rect = canvasRef.current?.getBoundingClientRect();
+      const screenW = rect?.width || window.innerWidth;
+      const screenH = rect?.height || window.innerHeight;
+      const [cx, cy] = engine.screenToCanvas(screenW / 2, screenH / 2);
+
       engine.addElement({
         id,
         type: "shot",
         shotNumber: `#${shotCount}`,
-        x: 150 + Math.random() * 200,
-        y: 150 + Math.random() * 200,
+        x: cx - 140 + Math.random() * 40 - 20, // Add slight offset for stack feeling
+        y: cy - 160 + Math.random() * 40 - 20,
         width: 280,
         height: 320,
         rotation: 0,
@@ -790,24 +821,24 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[200] flex flex-col overflow-hidden canvas-workspace bg-[#0a0a0a]"
+      className="fixed inset-0 z-[200] flex flex-col overflow-hidden canvas-workspace bg-[#f8f9fa]"
     >
       {/* Top bar */}
-      <header className="flex items-center justify-between px-6 py-4 bg-[#1e1e1e]/60 backdrop-blur-xl border-b border-white/10 z-50 shrink-0">
+      <header className="flex items-center justify-between px-6 py-4 bg-white/90 backdrop-blur-xl border-b border-zinc-200 z-50 shrink-0 shadow-sm">
         <div className="flex items-center gap-6">
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/10"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs text-zinc-500 hover:text-zinc-900 bg-zinc-100/50 hover:bg-zinc-200/50 rounded-2xl transition-all border border-zinc-200"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Editor
           </button>
-          <div className="w-px h-6 bg-white/10" />
+          <div className="w-px h-6 bg-zinc-200" />
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-xl">
-              <Sparkles className="w-4 h-4 text-blue-400" />
+            <div className="p-2 bg-blue-50 rounded-xl">
+              <Sparkles className="w-4 h-4 text-blue-600" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-white uppercase tracking-[0.2em]">
+              <span className="text-xs font-bold text-zinc-900 uppercase tracking-[0.2em]">
                 Director's Suite
               </span>
               <span className="text-[10px] text-zinc-500 uppercase tracking-widest">
@@ -825,7 +856,7 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
             <span className="w-1 h-1 rounded-full bg-emerald-500" />
             <span>{engine.edges.length} connections</span>
           </div>
-          <span className="px-3 py-1 bg-white/5 text-zinc-400 rounded-full border border-white/10">
+          <span className="px-3 py-1 bg-white border border-zinc-200 text-zinc-600 rounded-full shadow-sm">
             {Math.round(engine.viewport.zoom * 100)}%
           </span>
         </div>
@@ -833,6 +864,7 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
 
       {/* Main workspace area */}
       <div
+        ref={canvasRef}
         className="flex-1 relative overflow-hidden"
         style={{
           cursor:
@@ -849,10 +881,10 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
         {/* CSS Background Grid */}
         {engine.gridVisible && (
           <div
-            className="absolute inset-0 pointer-events-none opacity-20"
+            className="absolute inset-0 pointer-events-none opacity-40"
             style={{
               backgroundSize: `${20 * engine.viewport.zoom}px ${20 * engine.viewport.zoom}px`,
-              backgroundImage: `radial-gradient(circle, #ffffff 1px, transparent 1px)`,
+              backgroundImage: `radial-gradient(circle, #cbd5e1 1px, transparent 1px)`,
               backgroundPosition: `${engine.viewport.offsetX}px ${engine.viewport.offsetY}px`,
             }}
           />
@@ -1018,6 +1050,20 @@ export function CreativeWorkspace({ scriptId, scriptTitle, onClose }: Props) {
                         element={el as MermaidElement}
                         {...commonProps}
                       />
+                    )}
+
+                    {/* Selection & Resize Overlay */}
+                    {isSelected && (
+                      <div className="absolute inset-0 border-2 border-blue-500 pointer-events-none z-50">
+                        <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+                        <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+                        <div className="absolute top-1/2 -translate-y-1/2 -left-1.5 w-3 h-3 bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+                        <div className="absolute top-1/2 -translate-y-1/2 -right-1.5 w-3 h-3 bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+                        <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+                        <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-blue-500 shadow-sm pointer-events-none" />
+                      </div>
                     )}
                   </div>
                 </motion.div>

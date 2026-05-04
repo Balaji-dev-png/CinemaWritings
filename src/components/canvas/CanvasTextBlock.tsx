@@ -136,27 +136,27 @@ export function CanvasTextBlock({
       {/* Mini action bar */}
       {isSelected && !isEditing && (
         <div
-          className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 px-1.5 py-1 bg-[#1a1a2e] rounded-lg shadow-xl backdrop-blur-sm border border-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 px-1.5 py-1 bg-white rounded-lg shadow-xl border border-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity"
           style={{ zIndex: element.zIndex + 2000 }}
         >
           <button
             onMouseDown={(e) => { e.stopPropagation(); onBringToFront(element.id); }}
-            className="p-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
+            className="p-1 text-zinc-500 hover:text-zinc-900 transition-colors"
             title="Bring to front"
           >
             <ArrowUpToLine className="w-3 h-3" />
           </button>
           <button
             onMouseDown={(e) => { e.stopPropagation(); onSendToBack(element.id); }}
-            className="p-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
+            className="p-1 text-zinc-500 hover:text-zinc-900 transition-colors"
             title="Send to back"
           >
             <ArrowDownToLine className="w-3 h-3" />
           </button>
-          <div className="w-px h-3 bg-zinc-200 dark:bg-zinc-700" />
+          <div className="w-px h-3 bg-zinc-200" />
           <button
             onMouseDown={(e) => { e.stopPropagation(); onRemove(element.id); }}
-            className="p-1 text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400 transition-colors"
+            className="p-1 text-zinc-500 hover:text-red-600 transition-colors"
             title="Delete"
           >
             <Trash2 className="w-3 h-3" />

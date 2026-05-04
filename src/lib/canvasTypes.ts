@@ -236,28 +236,50 @@ export const IDEA_COLORS = [
 // ─── Shot Types ──────────────────────────────────────────────────────────────
 
 export const SHOT_TYPES = [
-  { id: "wide", label: "Wide Shot (WS)", icon: "🎬", color: "#3b82f6" },
-  { id: "medium", label: "Medium Shot (MS)", icon: "🎥", color: "#8b5cf6" },
-  { id: "close-up", label: "Close Up (CU)", icon: "👁", color: "#ef4444" },
-  {
-    id: "extreme-close-up",
-    label: "Extreme Close Up (ECU)",
-    icon: "🔍",
-    color: "#f97316",
-  },
-  {
-    id: "over-shoulder",
-    label: "Over-the-Shoulder (OTS)",
-    icon: "🤝",
-    color: "#10b981",
-  },
-  { id: "pov", label: "POV Shot", icon: "👤", color: "#06b6d4" },
+  // Distance
+  { id: "ews", label: "Extreme Wide Shot (EWS)", icon: "🌍", color: "#64748b" },
+  { id: "ws", label: "Wide Shot (WS)", icon: "🏔", color: "#64748b" },
+  { id: "fs", label: "Full Shot (FS)", icon: "🧍", color: "#64748b" },
+  { id: "mws", label: "Medium Wide Shot (MWS)", icon: "🤠", color: "#8b5cf6" },
+  { id: "ms", label: "Medium Shot (MS)", icon: "👤", color: "#8b5cf6" },
+  { id: "mcu", label: "Medium Close-Up (MCU)", icon: "🗣", color: "#8b5cf6" },
+  { id: "cu", label: "Close-Up (CU)", icon: "👁", color: "#ef4444" },
+  { id: "ecu", label: "Extreme Close-Up (ECU)", icon: "🔍", color: "#ef4444" },
   { id: "insert", label: "Insert Shot", icon: "📌", color: "#f59e0b" },
-  { id: "two-shot", label: "Two Shot", icon: "👥", color: "#ec4899" },
-  { id: "birds-eye", label: "Bird's Eye View", icon: "🦅", color: "#14b8a6" },
-  { id: "low-angle", label: "Low Angle", icon: "⬆️", color: "#6366f1" },
-  { id: "high-angle", label: "High Angle", icon: "⬇️", color: "#a855f7" },
-  { id: "dutch-angle", label: "Dutch Angle", icon: "↗️", color: "#e11d48" },
+  // Angle
+  { id: "eye-level", label: "Eye Level", icon: "👀", color: "#10b981" },
+  { id: "low-angle", label: "Low Angle", icon: "⬆️", color: "#10b981" },
+  { id: "high-angle", label: "High Angle", icon: "⬇️", color: "#10b981" },
+  { id: "birds-eye", label: "Bird's Eye / Top Down", icon: "🦅", color: "#14b8a6" },
+  { id: "dutch-angle", label: "Dutch Angle / Canted", icon: "↗️", color: "#e11d48" },
+  { id: "worms-eye", label: "Worm's Eye", icon: "🐛", color: "#10b981" },
+  // Movement
+  { id: "static", label: "Static Shot", icon: "⏸️", color: "#3b82f6" },
+  { id: "pan", label: "Pan", icon: "↔️", color: "#3b82f6" },
+  { id: "tilt", label: "Tilt", icon: "↕️", color: "#3b82f6" },
+  { id: "dolly", label: "Dolly / Tracking", icon: "🚂", color: "#3b82f6" },
+  { id: "dolly-zoom", label: "Dolly Zoom (Vertigo)", icon: "😵‍💫", color: "#8b5cf6" },
+  { id: "zoom", label: "Zoom", icon: "🔎", color: "#3b82f6" },
+  { id: "handheld", label: "Handheld", icon: "🫨", color: "#f59e0b" },
+  { id: "steadicam", label: "Steadicam", icon: "🛹", color: "#3b82f6" },
+  { id: "crane", label: "Crane / Jib", icon: "🏗", color: "#8b5cf6" },
+  { id: "aerial", label: "Aerial Shot", icon: "🚁", color: "#3b82f6" },
+  { id: "arc", label: "Arc Shot", icon: "🔄", color: "#3b82f6" },
+  { id: "whip-pan", label: "Whip Pan", icon: "💨", color: "#e11d48" },
+  // Relationship
+  { id: "two-shot", label: "Two Shot (2S)", icon: "👥", color: "#ec4899" },
+  { id: "three-shot", label: "Three Shot", icon: "👪", color: "#ec4899" },
+  { id: "ots", label: "Over-the-Shoulder (OTS)", icon: "👤👤", color: "#ec4899" },
+  { id: "pov", label: "Point of View (POV)", icon: "🎥", color: "#ec4899" },
+  { id: "reaction", label: "Reaction Shot", icon: "😲", color: "#ec4899" },
+  { id: "cutaway", label: "Cutaway", icon: "✂️", color: "#ec4899" },
+  // Special
+  { id: "freeze-frame", label: "Freeze Frame", icon: "🧊", color: "#a855f7" },
+  { id: "split-screen", label: "Split Screen", icon: "🪟", color: "#a855f7" },
+  { id: "rack-focus", label: "Rack Focus", icon: "🔬", color: "#a855f7" },
+  { id: "deep-focus", label: "Deep Focus", icon: "🏞", color: "#a855f7" },
+  { id: "shallow-focus", label: "Shallow Focus", icon: "🎯", color: "#a855f7" },
+  { id: "single", label: "Single", icon: "🧍‍♂️", color: "#ec4899" },
 ] as const;
 
 // ─── History Action ──────────────────────────────────────────────────────────

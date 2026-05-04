@@ -50,21 +50,21 @@ export function CanvasStickyNote({ element, viewport, isSelected, onUpdate, onSe
         </div>
       </div>
       {isSelected && !isEditing && (
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 px-1.5 py-1 bg-[#1a1a2e] rounded-lg shadow-xl border border-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity" style={{ zIndex: element.zIndex + 2000 }}>
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex items-center gap-1 px-1.5 py-1 bg-white rounded-lg shadow-xl border border-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity" style={{ zIndex: element.zIndex + 2000 }}>
           <div className="relative">
-            <button onMouseDown={(e) => { e.stopPropagation(); setShowColors(!showColors); }} className="p-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors" title="Color"><Palette className="w-3 h-3" /></button>
+            <button onMouseDown={(e) => { e.stopPropagation(); setShowColors(!showColors); }} className="p-1 text-zinc-500 hover:text-zinc-900 transition-colors" title="Color"><Palette className="w-3 h-3" /></button>
             {showColors && (
-              <div className="absolute top-full left-0 mt-1 flex gap-1 p-1.5 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-xl z-50">
+              <div className="absolute top-full left-0 mt-1 flex gap-1 p-1.5 bg-white rounded-lg border border-zinc-200 shadow-xl z-50">
                 {(Object.keys(STICKY_COLORS) as Array<keyof typeof STICKY_COLORS>).map((c) => (
                   <button key={c} onMouseDown={(e) => { e.stopPropagation(); onUpdate(element.id, { color: c }); setShowColors(false); }} className="w-5 h-5 rounded-full border-2 hover:scale-125 transition-transform" style={{ backgroundColor: STICKY_COLORS[c].bg, borderColor: STICKY_COLORS[c].border }} />
                 ))}
               </div>
             )}
           </div>
-          <button onMouseDown={(e) => { e.stopPropagation(); onBringToFront(element.id); }} className="p-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"><ArrowUpToLine className="w-3 h-3" /></button>
-          <button onMouseDown={(e) => { e.stopPropagation(); onSendToBack(element.id); }} className="p-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"><ArrowDownToLine className="w-3 h-3" /></button>
-          <div className="w-px h-3 bg-zinc-200 dark:bg-zinc-700" />
-          <button onMouseDown={(e) => { e.stopPropagation(); onRemove(element.id); }} className="p-1 text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></button>
+          <button onMouseDown={(e) => { e.stopPropagation(); onBringToFront(element.id); }} className="p-1 text-zinc-500 hover:text-zinc-900 transition-colors"><ArrowUpToLine className="w-3 h-3" /></button>
+          <button onMouseDown={(e) => { e.stopPropagation(); onSendToBack(element.id); }} className="p-1 text-zinc-500 hover:text-zinc-900 transition-colors"><ArrowDownToLine className="w-3 h-3" /></button>
+          <div className="w-px h-3 bg-zinc-200" />
+          <button onMouseDown={(e) => { e.stopPropagation(); onRemove(element.id); }} className="p-1 text-zinc-500 hover:text-red-500 transition-colors"><Trash2 className="w-3 h-3" /></button>
         </div>
       )}
     </div>

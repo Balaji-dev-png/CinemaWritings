@@ -109,18 +109,18 @@ export function CanvasShotCard({
       }}
     >
       <div
-        className="w-full h-full rounded-[1.5rem] overflow-hidden bg-[#1e1e1e]/60 backdrop-blur-[12px] border border-white/10 flex flex-col transition-all duration-300"
+        className="w-full h-full rounded-[1.5rem] overflow-hidden bg-white/90 backdrop-blur-[12px] border border-zinc-200 flex flex-col transition-all duration-300"
         style={{
-          borderColor: isSelected ? "#3b82f6" : "rgba(255, 255, 255, 0.1)",
+          borderColor: isSelected ? "#3b82f6" : "rgba(0, 0, 0, 0.1)",
           boxShadow: isSelected
             ? "0 0 30px rgba(59, 130, 246, 0.2)"
-            : "0 8px 32px rgba(0,0,0,0.4)",
+            : "0 8px 32px rgba(0,0,0,0.05)",
         }}
       >
         {/* Header: Shot # and Tag */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-white/5">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 bg-zinc-50">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-tighter">
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">
               Shot
             </span>
             <input
@@ -128,7 +128,7 @@ export function CanvasShotCard({
               onChange={(e) =>
                 onUpdate(element.id, { shotNumber: e.target.value })
               }
-              className="bg-transparent text-white font-bold text-sm outline-none w-12"
+              className="bg-transparent text-zinc-900 font-bold text-sm outline-none w-12"
               placeholder="#1"
               readOnly={!isEditing}
               onClick={(e) => e.stopPropagation()}
@@ -141,7 +141,7 @@ export function CanvasShotCard({
 
         {/* Image / Storyboard Area */}
         <div
-          className="relative flex-1 bg-black/40 flex items-center justify-center overflow-hidden cursor-pointer group/img"
+          className="relative flex-1 bg-zinc-100/50 flex items-center justify-center overflow-hidden cursor-pointer group/img"
           onClick={(e) => {
             e.stopPropagation();
             if (isEditing) handleImageUpload();
@@ -151,11 +151,11 @@ export function CanvasShotCard({
             <img
               src={element.imageUrl}
               alt=""
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               draggable={false}
             />
           ) : (
-            <div className="flex flex-col items-center gap-2 text-zinc-600 group-hover/img:text-zinc-400 transition-colors">
+            <div className="flex flex-col items-center gap-2 text-zinc-400 group-hover/img:text-zinc-500 transition-colors">
               <span className="text-2xl opacity-50">
                 {shotInfo?.icon || "📷"}
               </span>
@@ -167,14 +167,14 @@ export function CanvasShotCard({
         </div>
 
         {/* Concise Description Area */}
-        <div className="px-4 py-3 bg-white/5 border-t border-white/5">
+        <div className="px-4 py-3 bg-zinc-50 border-t border-zinc-200">
           <textarea
             value={element.description}
             onChange={(e) =>
               onUpdate(element.id, { description: e.target.value })
             }
             placeholder="Describe the shot action..."
-            className="w-full bg-transparent text-zinc-300 outline-none resize-none no-scrollbar text-[11px] leading-relaxed h-12"
+            className="w-full bg-transparent text-zinc-700 outline-none resize-none no-scrollbar text-[11px] leading-relaxed h-12"
             readOnly={!isEditing}
             onClick={(e) => e.stopPropagation()}
           />
@@ -188,13 +188,13 @@ export function CanvasShotCard({
       <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-all z-10 shadow-[0_0_8px_#3b82f6]" />
 
       {isSelected && !isEditing && (
-        <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-[#1e1e1e] rounded-2xl border border-white/10 shadow-2xl scale-90 group-hover:scale-100 transition-transform">
+        <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-white rounded-2xl border border-zinc-200 shadow-2xl scale-90 group-hover:scale-100 transition-transform">
           <button
             onMouseDown={(e) => {
               e.stopPropagation();
               onBringToFront(element.id);
             }}
-            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 text-zinc-500 hover:text-zinc-900 transition-colors"
           >
             <ArrowUpToLine className="w-4 h-4" />
           </button>
@@ -203,17 +203,17 @@ export function CanvasShotCard({
               e.stopPropagation();
               onSendToBack(element.id);
             }}
-            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 text-zinc-500 hover:text-zinc-900 transition-colors"
           >
             <ArrowDownToLine className="w-4 h-4" />
           </button>
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-4 bg-zinc-200 mx-1" />
           <button
             onMouseDown={(e) => {
               e.stopPropagation();
               onRemove(element.id);
             }}
-            className="p-2 text-zinc-400 hover:text-red-400 transition-colors"
+            className="p-2 text-zinc-500 hover:text-red-500 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>

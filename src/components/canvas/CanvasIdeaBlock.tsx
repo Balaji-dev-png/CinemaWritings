@@ -87,12 +87,12 @@ export function CanvasIdeaBlock({
       }}
     >
       <div
-        className="w-full h-full rounded-[1.5rem] overflow-hidden bg-[#1e1e1e]/60 backdrop-blur-[12px] border border-white/10 flex flex-col transition-all duration-500 ease-in-out"
+        className="w-full h-full rounded-[1.5rem] overflow-hidden bg-white/90 backdrop-blur-[12px] border border-zinc-200 flex flex-col transition-all duration-500 ease-in-out"
         style={{
-          borderColor: isSelected ? "#3b82f6" : "rgba(255, 255, 255, 0.1)",
+          borderColor: isSelected ? "#3b82f6" : "rgba(0, 0, 0, 0.1)",
           boxShadow: isSelected
             ? "0 0 40px rgba(59, 130, 246, 0.15)"
-            : "0 8px 32px rgba(0,0,0,0.4)",
+            : "0 8px 32px rgba(0,0,0,0.05)",
         }}
       >
         {/* Header - Simple Accent Line */}
@@ -106,7 +106,7 @@ export function CanvasIdeaBlock({
             value={element.title}
             onChange={(e) => onUpdate(element.id, { title: e.target.value })}
             placeholder="Untitled Idea"
-            className="bg-transparent text-white font-bold text-base outline-none border-none placeholder:text-white/20"
+            className="bg-transparent text-zinc-900 font-bold text-base outline-none border-none placeholder:text-zinc-400"
             readOnly={!isEditing}
             onClick={(e) => e.stopPropagation()}
           />
@@ -114,7 +114,7 @@ export function CanvasIdeaBlock({
             value={element.content}
             onChange={(e) => onUpdate(element.id, { content: e.target.value })}
             placeholder="Start writing..."
-            className="flex-1 bg-transparent text-zinc-400 outline-none resize-none no-scrollbar leading-relaxed text-[13px] placeholder:text-zinc-600"
+            className="flex-1 bg-transparent text-zinc-700 outline-none resize-none no-scrollbar leading-relaxed text-[13px] placeholder:text-zinc-400"
             readOnly={!isEditing}
             onClick={(e) => e.stopPropagation()}
           />
@@ -130,7 +130,7 @@ export function CanvasIdeaBlock({
       {/* Toolbar */}
       {isSelected && !isEditing && (
         <div
-          className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-[#1e1e1e] rounded-2xl border border-white/10 shadow-2xl scale-90 group-hover:scale-100 transition-transform"
+          className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 bg-white rounded-2xl border border-zinc-200 shadow-2xl scale-90 group-hover:scale-100 transition-transform"
           style={{ zIndex: element.zIndex + 2000 }}
         >
           <button
@@ -138,17 +138,17 @@ export function CanvasIdeaBlock({
               e.stopPropagation();
               setShowColors(!showColors);
             }}
-            className={`p-2 rounded-xl transition-colors ${showColors ? "text-blue-400 bg-blue-500/10" : "text-zinc-400 hover:text-white hover:bg-white/5"}`}
+            className={`p-2 rounded-xl transition-colors ${showColors ? "text-blue-600 bg-blue-50" : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100"}`}
           >
             <Palette className="w-4 h-4" />
           </button>
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-4 bg-zinc-200 mx-1" />
           <button
             onMouseDown={(e) => {
               e.stopPropagation();
               onBringToFront(element.id);
             }}
-            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 text-zinc-500 hover:text-zinc-900 transition-colors"
           >
             <ArrowUpToLine className="w-4 h-4" />
           </button>
@@ -157,23 +157,23 @@ export function CanvasIdeaBlock({
               e.stopPropagation();
               onSendToBack(element.id);
             }}
-            className="p-2 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 text-zinc-500 hover:text-zinc-900 transition-colors"
           >
             <ArrowDownToLine className="w-4 h-4" />
           </button>
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-4 bg-zinc-200 mx-1" />
           <button
             onMouseDown={(e) => {
               e.stopPropagation();
               onRemove(element.id);
             }}
-            className="p-2 text-zinc-400 hover:text-red-400 transition-colors"
+            className="p-2 text-zinc-500 hover:text-red-500 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>
 
           {showColors && (
-            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-[#1e1e1e] border border-white/10 rounded-2xl p-2 flex gap-2 shadow-2xl animate-in fade-in slide-in-from-bottom-2">
+            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-white border border-zinc-200 rounded-2xl p-2 flex gap-2 shadow-2xl animate-in fade-in slide-in-from-bottom-2">
               {IDEA_COLORS.map((c) => (
                 <button
                   key={c.id}
@@ -181,7 +181,7 @@ export function CanvasIdeaBlock({
                     onUpdate(element.id, { color: c.value });
                     setShowColors(false);
                   }}
-                  className="w-6 h-6 rounded-full border border-white/10 hover:scale-125 transition-transform shadow-lg"
+                  className="w-6 h-6 rounded-full border border-black/10 hover:scale-125 transition-transform shadow-sm"
                   style={{ backgroundColor: c.value }}
                 />
               ))}
