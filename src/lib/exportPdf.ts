@@ -51,22 +51,65 @@ function collectSegments(node: Node, bold: boolean, italic: boolean, underline: 
 }
 
 type ParsedEl = { type: string; segs: Seg[]; plainText: string };
+type ParsedPage = ParsedEl[];
 
-function parseScriptHTML(html: string): ParsedEl[] {
+/**
+ * Parse TipTap HTML into pages of elements.
+ * Detects <div data-type="pageNode"> wrappers for pagination.
+ * If no wrappers found, returns all elements as a single page.
+ */
+function parseScriptHTML(html: string): ParsedPage[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
   const KNOWN = new Set(Object.keys(LAYOUT));
-  const out: ParsedEl[] = [];
 
+  const extractElements = (container: Element): ParsedEl[] => {
+    const out: ParsedEl[] = [];
+    container.querySelectorAll(":scope > p, p").forEach((p) => {
+      // Skip paragraphs inside nested pageNode divs if we're at root level
+      if (container.querySelector('[data-type="pageNode"]') && p.closest('[data-type="pageNode"]') !== container) {
+        return;
+      }
+      const type = p.className.split(/\s+/).find((c) => KNOWN.has(c)) ?? "action";
+      const plainText = p.textContent?.trim() ?? "";
+      if (!plainText) return;
+      const segs: Seg[] = [];
+      collectSegments(p, false, false, false, segs);
+      out.push({ type, segs, plainText });
+    });
+    return out;
+  };
+
+  // Check for pageNode wrappers
+  const pageNodes = doc.querySelectorAll('[data-type="pageNode"]');
+  if (pageNodes.length > 0) {
+    const pages: ParsedPage[] = [];
+    pageNodes.forEach((pageDiv) => {
+      const elements: ParsedEl[] = [];
+      pageDiv.querySelectorAll("p").forEach((p) => {
+        const type = p.className.split(/\s+/).find((c) => KNOWN.has(c)) ?? "action";
+        const plainText = p.textContent?.trim() ?? "";
+        if (!plainText) return;
+        const segs: Seg[] = [];
+        collectSegments(p, false, false, false, segs);
+        elements.push({ type, segs, plainText });
+      });
+      if (elements.length > 0) pages.push(elements);
+    });
+    return pages.length > 0 ? pages : [[]];
+  }
+
+  // Fallback: no pageNode wrappers, treat everything as one page
+  const all: ParsedEl[] = [];
   doc.querySelectorAll("p").forEach((p) => {
     const type = p.className.split(/\s+/).find((c) => KNOWN.has(c)) ?? "action";
     const plainText = p.textContent?.trim() ?? "";
     if (!plainText) return;
     const segs: Seg[] = [];
     collectSegments(p, false, false, false, segs);
-    out.push({ type, segs, plainText });
+    all.push({ type, segs, plainText });
   });
-  return out;
+  return [all];
 }
 
 // ─── jsPDF helpers ────────────────────────────────────────────────────────
@@ -207,35 +250,38 @@ export function exportToPdf(html: string, meta: TitlePageMeta) {
   }
 
   // ── Script Pages ──────────────────────────────────────────────────────
-  doc.addPage();
-  y = MT;
+  const pages = parseScriptHTML(html);
 
-  const elements = parseScriptHTML(html);
-  let prevType = "";
+  for (let pageIdx = 0; pageIdx < pages.length; pageIdx++) {
+    doc.addPage();
+    y = MT;
+    let prevType = "";
 
-  for (const el of elements) {
-    const layout = LAYOUT[el.type] ?? LAYOUT["action"];
-    const isUpper = ["scene-heading", "character", "transition", "shot"].includes(el.type);
+    const elements = pages[pageIdx];
+    for (const el of elements) {
+      const layout = LAYOUT[el.type] ?? LAYOUT["action"];
+      const isUpper = ["scene-heading", "character", "transition", "shot"].includes(el.type);
 
-    const wrappedLines = wrapSegments(doc, el.segs, layout.w, isUpper);
+      const wrappedLines = wrapSegments(doc, el.segs, layout.w, isUpper);
 
-    // Spacing before
-    const blankBefore = prevType === "" ? 0 : (BLANK_BEFORE[el.type] ?? 1);
-    y += blankBefore * LINE_H;
-    y = checkPage(doc, y);
-
-    // Pre-flight page break
-    if (y + wrappedLines.length * LINE_H > PH - MB) {
-      doc.addPage();
-      y = MT;
-    }
-
-    for (const lineSegs of wrappedLines) {
-      y = renderMixedLine(doc, lineSegs, layout.x, y, layout.align ?? "left", PW - MR);
+      // Spacing before
+      const blankBefore = prevType === "" ? 0 : (BLANK_BEFORE[el.type] ?? 1);
+      y += blankBefore * LINE_H;
       y = checkPage(doc, y);
-    }
 
-    prevType = el.type;
+      // Pre-flight page break within a logical page
+      if (y + wrappedLines.length * LINE_H > PH - MB) {
+        doc.addPage();
+        y = MT;
+      }
+
+      for (const lineSegs of wrappedLines) {
+        y = renderMixedLine(doc, lineSegs, layout.x, y, layout.align ?? "left", PW - MR);
+        y = checkPage(doc, y);
+      }
+
+      prevType = el.type;
+    }
   }
 
   const filename = (meta.title || "screenplay").replace(/[^a-zA-Z0-9 ]/g, "").trim();

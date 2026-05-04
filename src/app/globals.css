@@ -41,12 +41,14 @@ body {
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SCRIPT PAGE — Desktop: renders as a physical 8.5×11 sheet in the browser
+   At 96 DPI: 8.5in = 816px, 11in = 1056px
    ═══════════════════════════════════════════════════════════════════════════ */
 .script-page {
-  font-family: var(--font-courier);
   width: 100%;
   max-width: 8.5in;
-  min-height: 11in;
+  height: 1056px;           /* 11in × 96dpi — fixed physical page */
+  overflow: hidden;          /* Content beyond the page is clipped */
+  position: relative;        /* For page number label positioning */
   /* WGA standard: 1.5in left, 1in everywhere else */
   padding: 1in 1in 1in 1.5in;
   background-color: var(--paper-bg);
@@ -54,10 +56,33 @@ body {
   box-shadow: 0 2px 20px -4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
   border-radius: 2px;
   box-sizing: border-box;
+  margin-bottom: 0;          /* Gap handled by page-break-indicator */
 }
 
 [data-theme='dark'] .script-page {
   box-shadow: 0 0 0 1px #2a2a2a, 0 4px 20px -4px rgba(0,0,0,0.4);
+}
+
+/* ─── Page Number Label ─── */
+.page-number-label {
+  position: absolute;
+  bottom: 0.5in;
+  right: 0.75in;
+  font-family: var(--font-courier);
+  font-size: 10pt;
+  color: #999;
+  pointer-events: none;
+  user-select: none;
+}
+[data-theme='dark'] .page-number-label {
+  color: #555;
+}
+
+/* ─── Page Break Indicator (between pages) ─── */
+.page-break-indicator {
+  user-select: none;
+  pointer-events: none;
+  padding: 12px 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -265,11 +290,16 @@ body {
   .script-page {
     box-shadow: none !important; border: none !important; border-radius: 0 !important;
     margin: 0 !important; width: 8.5in !important; max-width: 8.5in !important;
-    min-height: 0 !important; padding: 1.0in 1.0in 1.0in 1.5in !important;
-    font-family: var(--font-courier), "Courier Prime", Courier, monospace !important;
+    height: 11in !important; overflow: hidden !important;
+    padding: 1.0in 1.0in 1.0in 1.5in !important;
     font-size: 12pt !important; line-height: 1 !important;
     background-color: transparent !important;
+    page-break-after: always !important;
+    break-after: page !important;
   }
+  /* Hide page controls and visual indicators in print */
+  .page-break-indicator { display: none !important; }
+  .page-number-label { display: block !important; }
   .ProseMirror { padding: 0 !important; margin: 0 !important; }
   .ProseMirror p { margin: 0 !important; line-height: 1 !important; opacity: 1 !important; }
   .ProseMirror p.scene-heading, .ProseMirror p.action {
@@ -326,20 +356,28 @@ body {
    MOBILE  ≤ 768px — flat card layout, no horizontal overflow, fluid indents
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-  /* Global overflow guard */
-  html, body { overflow-x: hidden !important; max-width: 100vw; }
+  :root {
+    --mobile-font-size: 16px; /* Prevents auto-zoom on iOS */
+  }
 
-  /* Script page becomes a full-width flat card */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* 1. Fluid Page Container — relax fixed height for mobile */
   .script-page {
     width: 100% !important;
-    max-width: 100% !important;
-    min-height: auto !important;
-    /* extra bottom padding keeps content above the docked toolbar */
-    padding: 1rem 1rem 5rem 1rem !important;
-    font-size: 11pt !important;
-    border-radius: 0 !important;
+    max-width: 100vw !important;
+    height: auto !important;        /* Override fixed 1056px for mobile */
+    min-height: 100dvh !important;  /* Dynamic viewport height */
+    overflow: visible !important;   /* Allow content to flow on mobile */
+    margin: 0 !important;
+    padding: 1.5rem 1rem 8rem 1rem !important; /* Extra bottom padding for toolbar */
     box-shadow: none !important;
   }
+
+  .page-break-indicator { display: none !important; }
+  .page-number-label { display: none !important; }
 
   /* Reset all ProseMirror inch-based margins */
   .ProseMirror p { margin-left: 0 !important; margin-right: 0 !important; }
@@ -371,6 +409,37 @@ body {
   .ProseMirror p.extension {
     margin-left: 28% !important; max-width: 72% !important;
   }
+
+  /* 2. Mobile Slash Menu (Bottom Sheet Style) */
+  .slash-menu-mobile {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-height: 45vh !important;
+    background: white !important;
+    border-top-left-radius: 1.5rem !important;
+    border-top-right-radius: 1.5rem !important;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.15) !important;
+    padding: 0 !important;
+    z-index: 10000 !important;
+    animation: slide-up-sheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateZ(0); /* Hardware acceleration */
+    overflow: hidden;
+  }
+
+  .dark .slash-menu-mobile {
+    background: #1a1a1a !important;
+    border-top: 1px solid #333 !important;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.4) !important;
+  }
+
+  @keyframes slide-up-sheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -387,4 +456,91 @@ body {
 }
 .tippy-arrow {
   display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CREATIVE WORKSPACE — Infinite Canvas Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Light mode canvas background */
+.canvas-workspace {
+  background: #f4f5f7;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+}
+
+/* Dark mode canvas background */
+[data-theme='dark'] .canvas-workspace {
+  background: #0c0c14;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+}
+
+/* Canvas sticky note hover lift */
+.canvas-sticky:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 4px 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* Canvas element selection glow */
+.canvas-element-selected {
+  box-shadow:
+    0 0 0 2px #60a5fa,
+    0 0 20px rgba(96, 165, 250, 0.15);
+}
+
+/* Tool switch micro-animation */
+@keyframes tool-activate {
+  0% { transform: scale(0.85); opacity: 0.5; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.tool-active {
+  animation: tool-activate 0.2s ease-out;
+}
+
+/* Canvas toolbar glass effect */
+.canvas-toolbar {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='dark'] .canvas-toolbar {
+  background: rgba(12, 12, 20, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Mermaid graph container dark theme override */
+.mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-container .label {
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Canvas smooth cursor transitions */
+.canvas-crosshair { cursor: crosshair; }
+.canvas-grab { cursor: grab; }
+.canvas-grabbing { cursor: grabbing; }
+.canvas-move { cursor: move; }
+
+/* Mobile canvas adjustments */
+@media (max-width: 768px) {
+  .canvas-toolbar-mobile {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    flex-direction: row !important;
+    border-radius: 1.5rem 1.5rem 0 0 !important;
+    padding: 0.5rem !important;
+    overflow-x: auto;
+  }
 }

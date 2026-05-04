@@ -77,13 +77,13 @@ export interface ApiHistoryEvent {
 
 async function apiFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T> {
   const url = `${API_BASE}${path}`;
-  const token = getAccessToken();
+  const token = await getAccessToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...options.headers as Record<string, string>,
+    ...(options.headers as Record<string, string>),
   };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
@@ -115,9 +115,9 @@ async function apiFetch<T>(
 // ─── Script CRUD ──────────────────────────────────────────────────────────
 
 export async function apiGetScripts(): Promise<ApiScriptListItem[]> {
-  const data = await apiFetch<{ results: ApiScriptListItem[] } | ApiScriptListItem[]>(
-    "/scripts/"
-  );
+  const data = await apiFetch<
+    { results: ApiScriptListItem[] } | ApiScriptListItem[]
+  >("/scripts/");
   return Array.isArray(data) ? data : data.results;
 }
 
@@ -155,7 +155,7 @@ export async function apiUpdateScript(
     content: string;
     color: string;
     tags: string[];
-  }>
+  }>,
 ): Promise<ApiScript> {
   return apiFetch<ApiScript>(`/scripts/${id}/`, {
     method: "PATCH",
@@ -172,14 +172,14 @@ export async function apiDeleteScript(id: string): Promise<void> {
 // ─── Versions ─────────────────────────────────────────────────────────────
 
 export async function apiGetVersions(
-  scriptId: string
+  scriptId: string,
 ): Promise<ApiScriptVersion[]> {
   return apiFetch<ApiScriptVersion[]>(`/scripts/${scriptId}/versions/`);
 }
 
 export async function apiSaveVersion(
   scriptId: string,
-  name: string
+  name: string,
 ): Promise<ApiScriptVersion> {
   return apiFetch<ApiScriptVersion>(`/scripts/${scriptId}/save_version/`, {
     method: "POST",
@@ -189,18 +189,18 @@ export async function apiSaveVersion(
 
 export async function apiRestoreVersion(
   scriptId: string,
-  versionId: string
+  versionId: string,
 ): Promise<ApiScript> {
   return apiFetch<ApiScript>(
     `/scripts/${scriptId}/versions/${versionId}/restore/`,
-    { method: "POST" }
+    { method: "POST" },
   );
 }
 
 // ─── History ──────────────────────────────────────────────────────────────
 
 export async function apiGetHistory(
-  scriptId: string
+  scriptId: string,
 ): Promise<ApiHistoryEvent[]> {
   return apiFetch<ApiHistoryEvent[]>(`/scripts/${scriptId}/history/`);
 }
@@ -208,10 +208,10 @@ export async function apiGetHistory(
 // ─── Search ───────────────────────────────────────────────────────────────
 
 export async function apiSearchScripts(
-  query: string
+  query: string,
 ): Promise<ApiScriptListItem[]> {
   const data = await apiFetch<{ results: ApiScriptListItem[] }>(
-    `/scripts/search/?q=${encodeURIComponent(query)}`
+    `/scripts/search/?q=${encodeURIComponent(query)}`,
   );
   return data.results;
 }

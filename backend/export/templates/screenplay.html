@@ -6,9 +6,7 @@
 </head>
 <body>
 
-    <!-- ═══════════════════════════════════════════════════════════════
-         TITLE PAGE
-         ═══════════════════════════════════════════════════════════════ -->
+    <!-- ─── TITLE PAGE ─── -->
     <div class="title-page">
         <div class="title-block">
             <div class="title">{{ title|upper }}</div>
@@ -16,35 +14,25 @@
             <div class="author">{{ author }}</div>
         </div>
 
-        {% if logline %}
-        <div class="logline-block">
-            <div class="logline-label">LOGLINE</div>
-            <div class="logline-text">{{ logline }}</div>
-        </div>
-        {% endif %}
-
-        {% if synopsis %}
-        <div class="synopsis-block">
-            <div class="synopsis-label">SYNOPSIS</div>
-            <div class="synopsis-text">{{ synopsis }}</div>
-        </div>
-        {% endif %}
-
-        {% if contact %}
         <div class="contact-block">
-            {% for line in contact.splitlines %}
-                {{ line }}<br>
-            {% endfor %}
+            {% if contact %}
+                {% for line in contact.splitlines %}
+                    {{ line }}<br>
+                {% endfor %}
+            {% endif %}
+            <!-- Hardcoded to fix "remerveil" and "remstved" typos -->
+            <div class="rights-line">All Rights Reserved.</div>
         </div>
-        {% endif %}
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════
-         SCRIPT BODY
-         ═══════════════════════════════════════════════════════════════ -->
+    <!-- ─── SCRIPT BODY ─── -->
     <div class="script-body">
-        {% for elem_type, elem_content in elements %}
-            <p class="{{ elem_type }}">{{ elem_content|safe }}</p>
+        {% for page_elements in pages %}
+        <div class="script-page">
+            {% for elem_type, elem_content in page_elements %}
+                <p class="{{ elem_type }}">{{ elem_content|safe }}</p>
+            {% endfor %}
+        </div>
         {% endfor %}
     </div>
 

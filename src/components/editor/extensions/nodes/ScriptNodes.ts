@@ -6,13 +6,17 @@ function createScriptNode(name: string, defaultClass: string) {
     name,
     group: "block",
     content: "inline*",
+    defining: true, // Crucial: prevents node from being converted when empty
 
     parseHTML() {
-      return [{ tag: `p.${defaultClass}` }];
+      return [
+        { tag: `p.${defaultClass}`, priority: 100 },
+        { tag: `p[data-type="${name}"]`, priority: 100 },
+      ];
     },
 
     renderHTML({ HTMLAttributes }) {
-      return ["p", mergeAttributes({ class: defaultClass }, HTMLAttributes), 0];
+      return ["p", mergeAttributes({ class: defaultClass, "data-type": name }, HTMLAttributes), 0];
     },
   });
 }
@@ -27,11 +31,12 @@ export const Action = Node.create({
   parseHTML() {
     return [
       { tag: "p.action", priority: 60 },
+      { tag: 'p[data-type="action"]', priority: 60 },
       { tag: "p", priority: 30 }, // Fallback: any unmatched <p> becomes Action
     ];
   },
   renderHTML({ HTMLAttributes }) {
-    return ["p", mergeAttributes({ class: "action" }, HTMLAttributes), 0];
+    return ["p", mergeAttributes({ class: "action", "data-type": "action" }, HTMLAttributes), 0];
   },
 });
 

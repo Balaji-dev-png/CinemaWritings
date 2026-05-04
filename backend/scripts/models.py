@@ -32,6 +32,7 @@ class Script(models.Model):
     text_color = models.CharField(max_length=20, blank=True, default="")
     
     tags = models.JSONField(default=list, blank=True)
+    workspace_edges = models.JSONField(default=list, blank=True, help_text="Node connections for the Director's Suite")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -77,9 +78,12 @@ class Element(models.Model):
     # Rich text HTML (inline formatting: bold, italic, underline)
     content_html = models.TextField(blank=True, default="")
     order = models.PositiveIntegerField(default=0)
+    # Pagination fields — tracks which page this element belongs to
+    page_number = models.PositiveIntegerField(default=1)
+    order_within_page = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ["order"]
+        ordering = ["page_number", "order_within_page", "order"]
 
     def __str__(self):
         return f"[{self.element_type}] {self.content[:60]}"
@@ -120,3 +124,57 @@ class HistoryEvent(models.Model):
 
     def __str__(self):
         return f"{self.action} — {self.timestamp:%Y-%m-%d %H:%M}"
+
+
+class CanvasState(models.Model):
+    """Stores the Creative Workspace (infinite canvas) state for a script."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    script = models.OneToOneField(Script, on_delete=models.CASCADE, related_name="canvas")
+    state = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Canvas State"
+        verbose_name_plural = "Canvas States"
+
+    def __str__(self):
+        return f"Canvas for {self.script.title}"
+
+
+class WorkspaceAsset(models.Model):
+    """Individual asset in the Director's Suite workspace.
+
+    Stores position, scale, and a flexible JSON payload for each element.
+    Used for server-side Pitch Deck PDF rendering.
+    """
+    ASSET_TYPES = [
+        ("image", "Image"),
+        ("link", "Link Card"),
+        ("shot", "Shot Card"),
+        ("idea", "Idea Block"),
+        ("text", "Text Block"),
+        ("sticky", "Sticky Note"),
+        ("mermaid", "Mermaid Graph"),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    script = models.ForeignKey(Script, on_delete=models.CASCADE, related_name="workspace_assets")
+    asset_id = models.CharField(max_length=128, blank=True, default="", help_text="Frontend element UUID for cross-referencing")
+    asset_type = models.CharField(max_length=20, choices=ASSET_TYPES)
+    x = models.FloatField(default=0)
+    y = models.FloatField(default=0)
+    width = models.FloatField(default=280)
+    height = models.FloatField(default=200)
+    scale = models.FloatField(default=1.0)
+    z_index = models.IntegerField(default=0)
+    content = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["z_index"]
+        verbose_name = "Workspace Asset"
+        verbose_name_plural = "Workspace Assets"
+
+    def __str__(self):
+        return f"[{self.asset_type}] {self.content.get('title', self.id)}"

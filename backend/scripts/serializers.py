@@ -5,13 +5,24 @@ Nested hierarchy: Script → Scene → Element
 Script also includes versions and history in detail view.
 """
 from rest_framework import serializers
-from .models import Script, Scene, Element, ScriptVersion, HistoryEvent
+from .models import Script, Scene, Element, ScriptVersion, HistoryEvent, WorkspaceAsset
+
+
+class WorkspaceAssetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkspaceAsset
+        fields = [
+            "id", "asset_id", "asset_type",
+            "x", "y", "width", "height", "scale", "z_index",
+            "content", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 class ElementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Element
-        fields = ["id", "element_type", "content", "content_html", "order"]
+        fields = ["id", "element_type", "content", "content_html", "order", "page_number", "order_within_page"]
         read_only_fields = ["id"]
 
 

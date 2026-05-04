@@ -207,7 +207,9 @@ export const restoreVersion = async (id: string, versionIdOrIndex: string | numb
 /* ─── Fountain Export/Import (Unchanged) ─── */
 export const exportToFountain = (html: string, meta?: ScriptMeta, title?: string): string => {
   const div = document.createElement("div");
-  div.innerHTML = html;
+  // Strip pageNode wrappers before processing — Fountain format doesn't have pages
+  const strippedHtml = html.replace(/<div[^>]*data-type="pageNode"[^>]*>/gi, '').replace(/<\/div>/gi, '');
+  div.innerHTML = strippedHtml;
   const lines: string[] = [];
 
   if (title) lines.push(`Title: ${title}`);
@@ -286,5 +288,5 @@ export const importFromFountain = (fountain: string): string => {
     }
   }
 
-  return html.join("");
+  return `<div data-type="pageNode">${html.join("")}</div>`;
 };

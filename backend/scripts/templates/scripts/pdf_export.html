@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* ═══════════════════════════════════════════════════════════════════════════
+           HOLLYWOOD SCREENPLAY PDF TEMPLATE
+           Rendered via WeasyPrint
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        @font-face {
+            font-family: 'Courier Prime';
+            src: url('https://fonts.gstatic.com/s/courierprime/v9/u-4n0qW6p57vka8V2WnLpNeVfE8.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        @page {
+            size: letter;
+            margin: 1.0in 1.0in 1.0in 1.5in; /* Standard Hollywood Binding Margin */
+            @top-right {
+                content: counter(page) ".";
+                font-family: 'Courier Prime', Courier, monospace;
+                font-size: 12pt;
+                vertical-align: bottom;
+                padding-bottom: 0.5in;
+            }
+        }
+
+        @page :first {
+            @top-right {
+                content: none;
+            }
+        }
+
+        body {
+            font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+            font-size: 12pt;
+            line-height: 1.2;
+            margin: 0;
+            padding: 0;
+            color: black;
+            background: white;
+        }
+
+        /* ─── Title Page ─── */
+        .title-page {
+            position: relative;
+            height: 9.0in; /* Fill printable area */
+            text-align: center;
+            page-break-after: always;
+        }
+
+        .title-block {
+            position: absolute;
+            top: 3.5in;
+            width: 100%;
+            text-transform: uppercase;
+        }
+
+        .script-title {
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 0.2in;
+            display: block;
+        }
+
+        .author-block {
+            position: absolute;
+            top: 4.5in;
+            width: 100%;
+        }
+
+        .contact-info {
+            position: absolute;
+            bottom: 0.5in;
+            left: 0;
+            text-align: left;
+            font-size: 11pt;
+            line-height: 1.4;
+        }
+
+        /* ─── Script Body ─── */
+        .script-body {
+            width: 100%;
+        }
+
+        .element {
+            margin-bottom: 0;
+            padding: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Standard Indents relative to 1.5" binding margin */
+        .scene_heading {
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-top: 1.4em;
+            margin-bottom: 0.4em;
+        }
+
+        .action {
+            margin-top: 1em;
+            margin-bottom: 0;
+        }
+
+        .character {
+            text-transform: uppercase;
+            margin-top: 1.2em;
+            margin-left: 2.2in; /* Resulting screen pos: 1.5 + 2.2 = 3.7in */
+            width: 3in;
+        }
+
+        .parenthetical {
+            margin-left: 1.6in; /* Resulting screen pos: 1.5 + 1.6 = 3.1in */
+            width: 2.5in;
+            font-size: 11.5pt;
+        }
+
+        .dialogue {
+            margin-left: 1.0in; /* Resulting screen pos: 1.5 + 1.0 = 2.5in */
+            width: 3.5in;
+            margin-bottom: 0.4em;
+        }
+
+        .transition {
+            text-transform: uppercase;
+            margin-top: 1em;
+            margin-left: 4.5in; /* Standard right-ish alignment */
+            text-align: left;
+        }
+
+        .shot {
+            text-transform: uppercase;
+            margin-top: 1em;
+            margin-bottom: 1em;
+        }
+
+        .extension {
+            display: inline;
+            text-transform: uppercase;
+        }
+
+        /* Page breaks */
+        .page-break {
+            page-break-before: always;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- ─── Title Page ─── -->
+    <div class="title-page">
+        <div class="title-block">
+            <span class="script-title">{{ script.title }}</span>
+        </div>
+        
+        <div class="author-block">
+            <p>{{ script.written_by_prefix|default:"written by" }}</p>
+            <p>{{ script.author }}</p>
+        </div>
+
+        <div class="contact-info">
+            {{ script.contact|linebreaksbr }}
+            <p style="margin-top: 1.2em;">All Rights Reserved</p>
+        </div>
+    </div>
+
+    <!-- ─── Script Content ─── -->
+    <div class="script-body">
+        {% for element in elements %}
+            <div class="element {{ element.element_type }}">
+                {% if element.element_type == "character" %}
+                    {{ element.content|upper }}
+                {% elif element.element_type == "scene_heading" %}
+                    {{ element.content|upper }}
+                {% elif element.element_type == "transition" %}
+                    {{ element.content|upper }}
+                {% elif element.element_type == "shot" %}
+                    {{ element.content|upper }}
+                {% else %}
+                    {{ element.content }}
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+</body>
+</html>

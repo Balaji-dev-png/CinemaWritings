@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{{ title }} — Pitch Deck</title>
+</head>
+<body>
+
+    {% for page_cards in card_pages %}
+    <div class="deck-page">
+        <div class="page-header">
+            <span class="project-title">{{ title|upper }}</span>
+            <span class="page-label">DIRECTOR'S DECK</span>
+        </div>
+
+        <div class="card-grid">
+            {% for card in page_cards %}
+            <div class="card" style="border-left: 4px solid {{ card.color|default:'#3b82f6' }};">
+                <!-- Image area -->
+                <div class="card-image">
+                    {% if card.image_url %}
+                        <img src="{{ card.image_url }}" alt="{{ card.title }}" />
+                    {% else %}
+                        <div class="card-image-placeholder">
+                            <span class="placeholder-icon">{{ card.icon|default:'🎬' }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Metadata -->
+                <div class="card-body">
+                    <div class="card-type-badge" style="background-color: {{ card.color|default:'#3b82f6' }}20; color: {{ card.color|default:'#3b82f6' }};">
+                        {{ card.type_label|upper }}
+                    </div>
+
+                    {% if card.title %}
+                        <h3 class="card-title">{{ card.title }}</h3>
+                    {% endif %}
+
+                    {% if card.scene_ref %}
+                        <div class="card-meta-row">
+                            <span class="meta-label">SCENE</span>
+                            <span class="meta-value">{{ card.scene_ref }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% if card.lens %}
+                        <div class="card-meta-row">
+                            <span class="meta-label">LENS</span>
+                            <span class="meta-value">{{ card.lens }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% if card.movement %}
+                        <div class="card-meta-row">
+                            <span class="meta-label">MOVEMENT</span>
+                            <span class="meta-value">{{ card.movement }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% if card.duration %}
+                        <div class="card-meta-row">
+                            <span class="meta-label">DURATION</span>
+                            <span class="meta-value">{{ card.duration }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% if card.description %}
+                        <p class="card-notes">{{ card.description }}</p>
+                    {% endif %}
+
+                    {% if card.notes %}
+                        <p class="card-notes">{{ card.notes }}</p>
+                    {% endif %}
+
+                    {% if card.content %}
+                        <p class="card-notes">{{ card.content }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="page-footer">
+            <span>{{ title }}</span>
+            <span>All Rights Reserved.</span>
+        </div>
+    </div>
+    {% endfor %}
+
+</body>
+</html>

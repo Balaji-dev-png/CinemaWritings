@@ -8,7 +8,7 @@ from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 import reversion
 
-from .models import Script, Scene, Element, ScriptVersion, HistoryEvent
+from .models import Script, Scene, Element, ScriptVersion, HistoryEvent, WorkspaceAsset
 from .serializers import (
     ScriptListSerializer,
     ScriptDetailSerializer,
@@ -18,6 +18,7 @@ from .serializers import (
     ScriptVersionSerializer,
     HistoryEventSerializer,
     BulkElementSerializer,
+    WorkspaceAssetSerializer,
 )
 
 
@@ -175,7 +176,146 @@ class ScriptViewSet(viewsets.ModelViewSet):
         response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
         return response
 
+    @action(detail=True, methods=["get"], url_path="workspace")
+    def workspace(self, request, pk=None):
+        """GET /api/scripts/{id}/workspace/ — List all assets for the workspace."""
+        script = self.get_object()
+        assets = script.workspace_assets.all()
+        serializer = WorkspaceAssetSerializer(assets, many=True)
+        return Response(serializer.data)
 
+    @action(detail=True, methods=["post"], url_path="workspace/sync")
+    def workspace_sync(self, request, pk=None):
+        """
+        POST /api/scripts/{id}/workspace/sync/
+        Batch sync workspace assets.
+        Body: { "assets": [...], "edges": [...], "viewport": {...} }
+        """
+        script = self.get_object()
+        assets_data = request.data.get("assets", [])
+        
+        asset_ids_in_payload = set()
+        
+        for asset_data in assets_data:
+            asset_id = asset_data.get("asset_id", asset_data.get("id", ""))
+            if not asset_id:
+                continue
+            asset_ids_in_payload.add(asset_id)
+            
+            # Map frontend 'type' field to Django 'asset_type'
+            asset_type = asset_data.get("asset_type", asset_data.get("type", "shot"))
+            # Normalize link-card -> link
+            if asset_type == "link-card":
+                asset_type = "link"
+            
+            WorkspaceAsset.objects.update_or_create(
+                script=script,
+                asset_id=asset_id,
+                defaults={
+                    "asset_type": asset_type,
+                    "x": asset_data.get("x", 0),
+                    "y": asset_data.get("y", 0),
+                    "width": asset_data.get("width", 280),
+                    "height": asset_data.get("height", 200),
+                    "scale": asset_data.get("scale", 1.0),
+                    "z_index": asset_data.get("zIndex", asset_data.get("z_index", 0)),
+                    "content": asset_data,
+                }
+            )
+        
+        # Remove assets that are no longer in the payload
+        if asset_ids_in_payload:
+            script.workspace_assets.exclude(asset_id__in=asset_ids_in_payload).delete()
+            
+        # Save edges to Script model
+        edges_data = request.data.get("edges")
+        if edges_data is not None:
+            script.workspace_edges = edges_data
+            script.save(update_fields=["workspace_edges", "updated_at"])
+        
+        return Response({"status": "synced", "count": len(asset_ids_in_payload)}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get", "post"], url_path="export/pitchdeck")
+    def export_pitchdeck(self, request, pk=None):
+        """
+        GET/POST /api/scripts/{id}/export/pitchdeck/
+        Generate and download a Director's Suite Pitch Deck PDF.
+
+        POST body (optional): { "workspace_state": { "elements": [...] } }
+        If no body, falls back to WorkspaceAsset model rows.
+        """
+        script = self.get_object()
+        from export.renderer import render_pitchdeck_pdf
+
+        workspace_state = None
+        if request.method == "POST" and request.data:
+            workspace_state = request.data.get("workspace_state")
+
+        pdf_bytes = render_pitchdeck_pdf(script, workspace_state=workspace_state)
+        filename = (script.title or "pitchdeck").replace(" ", "_")
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}_pitchdeck.pdf"'
+        return response
+
+    @action(detail=True, methods=["get"], url_path="export/workspace-pdf")
+    def export_workspace_pdf(self, request, pk=None):
+        """
+        GET /api/scripts/{id}/export/workspace-pdf/
+        Generate a Director's Suite PDF using Puppeteer (headless Chromium).
+        Falls back to WeasyPrint pitchdeck if Puppeteer is unavailable.
+        """
+        import subprocess
+        import tempfile
+        import shutil
+
+        script = self.get_object()
+        filename = (script.title or "workspace").replace(" ", "_")
+
+        # Try Puppeteer first
+        node_bin = shutil.which("node")
+        if node_bin:
+            import os
+            script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            export_script = os.path.join(script_dir, "scripts", "export-workspace.js")
+
+            if os.path.exists(export_script):
+                try:
+                    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                        tmp_path = tmp.name
+
+                    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+                    result = subprocess.run(
+                        [node_bin, export_script, str(pk), tmp_path],
+                        capture_output=True,
+                        timeout=60,
+                        env={**os.environ, "FRONTEND_URL": frontend_url},
+                    )
+
+                    if result.returncode == 0 and os.path.exists(tmp_path):
+                        with open(tmp_path, "rb") as f:
+                            pdf_bytes = f.read()
+                        os.unlink(tmp_path)
+
+                        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+                        response["Content-Disposition"] = f'attachment; filename="{filename}_workspace.pdf"'
+                        return response
+                    else:
+                        # Log and fall through to WeasyPrint
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Puppeteer export failed: {result.stderr.decode()[:500]}")
+                        if os.path.exists(tmp_path):
+                            os.unlink(tmp_path)
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning(f"Puppeteer export error: {e}")
+
+        # Fallback: WeasyPrint pitchdeck
+        from export.renderer import render_pitchdeck_pdf
+        pdf_bytes = render_pitchdeck_pdf(script)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}_workspace.pdf"'
+        return response
 class SceneViewSet(viewsets.ModelViewSet):
     """CRUD for scenes within a script."""
     serializer_class = SceneSerializer

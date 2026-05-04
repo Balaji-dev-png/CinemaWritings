@@ -12,14 +12,19 @@ export const ScriptKeymap = Extension.create({
         const currentNodeType = $head.parent.type.name;
         const textContent = $head.parent.textContent;
 
-        // Empty block? Pressing Enter should escape to SceneHeading
-        if (textContent.length === 0 && currentNodeType !== "sceneHeading") {
-          editor.commands.setNode("sceneHeading");
+        // Allow Enter to naturally create nodes so they can be processed by PageNode's automatic overflow detection
+
+        // Empty block? Pressing Enter should stay as the current node type to maintain consistency 
+        // unless the user manually changes it via Tab or the menu.
+        if (textContent.length === 0) {
+          const pos = $head.after();
+          editor.chain().insertContentAt(pos, { type: currentNodeType }).focus(pos + 1).run();
           return true;
         }
 
         // If cursor is NOT at end of line, let default split happen
-        if ($head.parentOffset < $head.parent.nodeSize - 2) {
+        // (default split might lift if empty, but we handled most empty cases above)
+        if (textContent.length > 0 && $head.parentOffset < $head.parent.nodeSize - 2) {
           return false;
         }
 
@@ -54,7 +59,9 @@ export const ScriptKeymap = Extension.create({
             break;
         }
 
-        editor.chain().splitBlock().setNode(nextNodeType).run();
+        // Explicitly insert a new node after the current one, avoiding splitBlock's lifting behavior
+        const pos = $head.after();
+        editor.chain().insertContentAt(pos, { type: nextNodeType }).focus(pos + 1).run();
         return true;
       },
 

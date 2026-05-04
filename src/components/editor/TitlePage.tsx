@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getFontVar } from "@/lib/fonts";
 
 interface TitlePageProps {
   scriptId: string;
@@ -37,7 +38,7 @@ export function TitlePage({
         className="script-page flex flex-col justify-between transition-all duration-300 relative border border-transparent dark:border-[#333] print:border-none"
         style={{
           ...(docBgColor ? { backgroundColor: docBgColor } : {}),
-          ...(docFont ? { fontFamily: docFont } : {}),
+          ...(docFont ? { fontFamily: getFontVar(docFont) } : {}),
           ...(docTextColor ? { color: docTextColor } : {}),
           zIndex: 10
         }}
@@ -49,22 +50,22 @@ export function TitlePage({
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
             placeholder="SCRIPT TITLE"
-            className="w-full text-center text-xl md:text-2xl uppercase tracking-widest font-bold bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 underline decoration-1 underline-offset-4 title-input"
+            className="title-input w-full text-center text-xl md:text-2xl uppercase tracking-widest font-bold bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 underline decoration-1 underline-offset-4"
           />
-          <div className="flex flex-col items-center space-y-2 w-full text-center title-author-block">
+          <div className="title-author-block flex flex-col items-center space-y-2 w-full text-center">
             <input
               type="text"
               value={metadata.writtenByPrefix}
               onChange={(e) => onMetaChange({ writtenByPrefix: e.target.value })}
               placeholder="written by"
-              className="w-full text-center text-sm bg-transparent border-none focus:outline-none focus:ring-0 text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors title-written-by"
+              className="title-written-by w-full text-center text-sm bg-transparent border-none focus:outline-none focus:ring-0 text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
             />
             <input
               type="text"
               value={metadata.author}
               onChange={(e) => onMetaChange({ author: e.target.value })}
               placeholder="Author Name"
-              className="w-full text-center bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 title-author"
+              className="title-author w-full text-center bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
             />
           </div>
 
@@ -111,7 +112,7 @@ export function TitlePage({
         </div>
 
         {/* Page Break Indicator */}
-        <div className="absolute -bottom-8 left-0 right-0 border-t border-dashed border-zinc-300 dark:border-zinc-700 print:hidden flex justify-center">
+        <div className="absolute -bottom-8 left-0 right-0 border-t border-dashed border-zinc-300 dark:border-zinc-700 print:hidden flex justify-center page-break-indicator">
           <span className="text-[10px] text-zinc-400 dark:text-zinc-600 bg-[#f4f5f7] dark:bg-[#0a0a0a] px-2 -mt-[7px]">PAGE BREAK</span>
         </div>
       </div>
