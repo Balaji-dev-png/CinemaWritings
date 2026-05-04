@@ -11,7 +11,6 @@ import { ScriptAnalytics } from "@/components/editor/ScriptAnalytics";
 import { VersionManager } from "@/components/editor/VersionManager";
 import { ShortcutsPanel } from "@/components/ui/ShortcutsPanel";
 import { Corkboard } from "@/components/editor/Corkboard";
-import { CreativeWorkspace } from "@/components/canvas/CreativeWorkspace";
 import {
   getScriptById,
   updateScript,
@@ -66,7 +65,6 @@ export default function EditorPage() {
   const [focusMode, setFocusMode] = useState(false);
   const [showCorkboard, setShowCorkboard] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showCanvas, setShowCanvas] = useState(false);
 
   // Style states
   const [docBgColor, setDocBgColor] = useState("");
@@ -406,7 +404,7 @@ export default function EditorPage() {
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => setShowCanvas(true)}
+                  onClick={() => router.push(`/directors-suite/${params.id}`)}
                   className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
                   title="Director's Suite"
                 >
@@ -735,13 +733,6 @@ export default function EditorPage() {
         <Corkboard
           editor={editorInstance}
           onClose={() => setShowCorkboard(false)}
-        />
-      )}
-      {showCanvas && (
-        <CreativeWorkspace
-          scriptId={script.id}
-          scriptTitle={title}
-          onClose={() => setShowCanvas(false)}
         />
       )}
     </div>

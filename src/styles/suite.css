@@ -1,0 +1,83 @@
+.director-suite-board {
+  background-color: #0d0d0d;
+  background-image: radial-gradient(circle, #2a2a2a 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: white;
+  font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+}
+
+.director-suite-card {
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  color: white;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+}
+
+.director-suite-card-header {
+  border-bottom: 1px solid #333;
+}
+
+.gold-accent {
+  color: #c9a84c;
+}
+
+.gold-bg {
+  background-color: #c9a84c;
+  color: #0d0d0d;
+}
+
+.gold-border {
+  border-color: #c9a84c;
+}
+
+.gold-focus:focus {
+  outline: none;
+  border-color: #c9a84c;
+  box-shadow: 0 0 0 1px #c9a84c;
+}
+
+/* Custom scrollbar for textareas in the suite */
+.suite-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.suite-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.suite-scrollbar::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+.suite-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #c9a84c;
+}
+
+/* Base resets for suite inputs */
+.suite-input {
+  background: transparent;
+  color: white;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 8px;
+  outline: none;
+  transition: all 0.2s;
+}
+.suite-input:focus {
+  border-color: #c9a84c;
+}
+.suite-input::placeholder {
+  color: #555;
+}
+
+/* Select styling */
+.suite-select {
+  background-color: #111;
+  color: white;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 8px;
+  outline: none;
+  appearance: none;
+}
+.suite-select:focus {
+  border-color: #c9a84c;
+}

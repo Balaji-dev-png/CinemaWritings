@@ -375,3 +375,114 @@ def search_scripts(request):
 
     serializer = ScriptListSerializer(scripts, many=True)
     return Response({"results": serializer.data})
+
+
+@api_view(["POST", "OPTIONS"])
+@permission_classes([permissions.AllowAny])
+def export_workspace_pdf(request):
+    """
+    POST /api/export/workspace-pdf/
+    Accept a base64 workspace image and generate a landscape PDF with a title page.
+
+    Body: { "image_base64": "data:image/png;base64,...", "title": "...", "script_id": "..." }
+    Returns: application/pdf binary
+    """
+    if request.method == "OPTIONS":
+        response = HttpResponse()
+        response["Access-Control-Allow-Origin"] = "*"
+        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type"
+        return response
+
+    import base64
+    import io
+    from weasyprint import HTML, CSS
+    from weasyprint.text.fonts import FontConfiguration
+
+    image_base64 = request.data.get("image_base64", "")
+    title = request.data.get("title", "Director's Suite")
+
+    if not image_base64:
+        return Response({"error": "image_base64 is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Build HTML document
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+  <div class="title-page">
+    <div class="title">{title}</div>
+    <div class="subtitle">Director's Suite — Workspace Export</div>
+    <div class="date">{__import__('datetime').date.today().strftime('%B %d, %Y')}</div>
+  </div>
+  <div class="workspace-page">
+    <img src="{image_base64}" alt="Workspace" />
+  </div>
+</body>
+</html>"""
+
+    css_content = """
+@page {
+    size: A4 landscape;
+    margin: 0.4in;
+    background-color: #0d0d0d;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #0d0d0d;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.title-page {
+    page-break-after: always;
+    height: 7.27in;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.title-page .title {
+    font-size: 32pt;
+    font-weight: bold;
+    color: #c9a84c;
+    margin-bottom: 0.3in;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.title-page .subtitle {
+    font-size: 12pt;
+    color: #777;
+    margin-bottom: 0.2in;
+}
+
+.title-page .date {
+    font-size: 10pt;
+    color: #555;
+}
+
+.workspace-page {
+    text-align: center;
+}
+
+.workspace-page img {
+    max-width: 100%;
+    max-height: 7.27in;
+    object-fit: contain;
+}
+"""
+
+    font_config = FontConfiguration()
+    html = HTML(string=html_content)
+    css = CSS(string=css_content, font_config=font_config)
+    pdf_bytes = html.write_pdf(stylesheets=[css], font_config=font_config)
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="workspace.pdf"'
+    response["Access-Control-Allow-Origin"] = "*"
+    return response

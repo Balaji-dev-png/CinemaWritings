@@ -38,4 +38,6 @@ urlpatterns = [
         views.ElementViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}),
         name="element-detail",
     ),
+    # Workspace PDF export
+    path("export/workspace-pdf/", views.export_workspace_pdf, name="export-workspace-pdf"),
 ]

@@ -47,9 +47,9 @@
 
 ### Director's Suite (Pre-Production Canvas)
 - **Infinite Node-based Workspace** for moodboarding and shot listing
-- **Black & White Aesthetic** with grid snapping and fluid scroll-to-zoom
+- **Milanote-style Zoom & Pan** with perfect trackpad/scrollwheel precision
 - Add standard film shots, idea blocks, sticky notes, reference images, and web links
-- Group select, dragging, resizing, and connection edges
+- Group select, dragging, resizing, and connection edges with glow highlights
 - **Export to Pitch Deck PDF** for production-ready visual documents
 
 ---
