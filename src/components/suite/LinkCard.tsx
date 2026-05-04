@@ -1,5 +1,5 @@
 "use client";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { SuiteElement } from "@/hooks/useSuiteState";
 import { useDraggable } from "@/hooks/useDraggable";
 
