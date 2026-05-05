@@ -11,6 +11,9 @@ import { ScriptAnalytics } from "@/components/editor/ScriptAnalytics";
 import { VersionManager } from "@/components/editor/VersionManager";
 import { ShortcutsPanel } from "@/components/ui/ShortcutsPanel";
 import { Corkboard } from "@/components/editor/Corkboard";
+import { FontSizeControl } from "@/components/ui/FontSizeControl";
+import { useLoadingState } from "@/hooks/useLoadingState";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import {
   getScriptById,
   updateScript,
@@ -45,6 +48,9 @@ import {
   Sparkles,
   ZoomIn,
   ZoomOut,
+  Minus,
+  Plus,
+  Eraser,
 } from "lucide-react";
 
 export default function EditorPage() {
@@ -55,6 +61,28 @@ export default function EditorPage() {
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+
+  const { isLoading, message, startLoading, stopLoading } = useLoadingState();
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    startLoading([
+      "Opening your script...",
+      "Loading scenes...",
+      "Preparing the editor...",
+    ], 800);
+    setProgress(85);
+  }, [startLoading]);
+
+  useEffect(() => {
+    if (script && editorInstance) {
+      setProgress(100);
+      const timer = setTimeout(() => {
+        stopLoading();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [script, editorInstance, stopLoading]);
 
   // Panel states
   const [showNav, setShowNav] = useState(true);
@@ -70,8 +98,12 @@ export default function EditorPage() {
   const [docBgColor, setDocBgColor] = useState("");
   const [docFont, setDocFont] = useState("Courier Prime");
   const [docTextColor, setDocTextColor] = useState("");
+  const [docFontSize, setDocFontSize] = useState(12);
+  const [localFontSize, setLocalFontSize] = useState<string>("");
   const [isExporting, setIsExporting] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [showPgPopover, setShowPgPopover] = useState(false);
+  const pgPopoverRef = useRef<HTMLDivElement>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -111,6 +143,7 @@ export default function EditorPage() {
             if (found.paperColor) setDocBgColor(found.paperColor);
             if (found.fontFamily) setDocFont(found.fontFamily);
             if (found.textColor) setDocTextColor(found.textColor);
+            if (found.fontSize) setDocFontSize(found.fontSize);
           }
         })
         .catch((err) => {
@@ -166,6 +199,87 @@ export default function EditorPage() {
     window.addEventListener("wheel", handleWheel, { passive: false });
     return () => window.removeEventListener("wheel", handleWheel);
   }, []);
+
+  useEffect(() => {
+    if (!editorInstance) return;
+    const handleSelectionUpdate = () => {
+      const { from, to } = editorInstance.state.selection;
+      const attrs = editorInstance.getAttributes("textStyle");
+      if (from !== to && !attrs.fontSize) {
+        setLocalFontSize("-");
+      } else {
+        setLocalFontSize(attrs.fontSize || "");
+      }
+    };
+    editorInstance.on("selectionUpdate", handleSelectionUpdate);
+    return () => {
+      editorInstance.off("selectionUpdate", handleSelectionUpdate);
+    };
+  }, [editorInstance]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        pgPopoverRef.current &&
+        !pgPopoverRef.current.contains(event.target as Node)
+      ) {
+        setShowPgPopover(false);
+      }
+    };
+    if (showPgPopover) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showPgPopover]);
+
+  const applyFontSize = useCallback((size: number) => {
+    if (!editorInstance) return;
+    const { from, to } = editorInstance.state.selection;
+    const clampedSize = Math.max(6, Math.min(72, size));
+
+    if (from === to) {
+      const { $from } = editorInstance.state.selection;
+      const start = $from.start();
+      const end = $from.end();
+      editorInstance
+        .chain()
+        .focus()
+        .setTextSelection({ from: start, to: end })
+        .setFontSize(`${clampedSize}`)
+        .run();
+    } else {
+      editorInstance.chain().focus().setFontSize(`${clampedSize}`).run();
+    }
+  }, [editorInstance]);
+
+  const applyGlobalFontSize = useCallback((size: number) => {
+    if (!editorInstance) return;
+    const clampedSize = Math.max(6, Math.min(72, size));
+    editorInstance.chain().focus().selectAll().setFontSize(`${clampedSize}`).run();
+    setDocFontSize(clampedSize);
+    if (script) updateScript(script.id, { fontSize: clampedSize });
+    setShowPgPopover(false);
+  }, [editorInstance, script]);
+
+  const handleUppercase = useCallback(() => {
+    if (!editorInstance) return;
+    const { from, to, empty } = editorInstance.state.selection;
+    
+    if (empty) {
+      const { $from } = editorInstance.state.selection;
+      const start = $from.start();
+      const end = $from.end();
+      const text = editorInstance.state.doc.textBetween(start, end);
+      editorInstance.chain().focus().insertContentAt({ from: start, to: end }, text.toUpperCase()).run();
+    } else {
+      const text = editorInstance.state.doc.textBetween(from, to);
+      editorInstance
+        .chain()
+        .focus()
+        .insertContentAt({ from, to }, text.toUpperCase())
+        .run();
+    }
+  }, [editorInstance]);
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
@@ -362,260 +476,335 @@ export default function EditorPage() {
     input.click();
   };
 
-  if (!script) return null;
+  if (!script) {
+    return (
+      <LoadingOverlay 
+        isVisible={isLoading} 
+        message={message} 
+        showProgressBar 
+        progressPercent={progress} 
+      />
+    );
+  }
 
   return (
     <div
       className={`h-screen flex flex-col bg-[#f4f5f7] dark:bg-[#0a0a0a] font-sans transition-colors duration-300 overflow-hidden ${focusMode ? "focus-mode" : ""}`}
     >
+      <LoadingOverlay 
+        isVisible={isLoading} 
+        message={message} 
+        showProgressBar 
+        progressPercent={progress} 
+      />
       {/* ─── Top Bar (Sticky) ─── */}
       {!focusMode && (
         <header className="anim-slide-1 sticky top-0 flex items-center justify-start gap-8 px-4 py-3 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-200/60 dark:border-zinc-800 z-50 shrink-0 overflow-visible no-scrollbar">
-              {/* 1. Dashboard Link */}
+          {/* 1. Dashboard Link */}
+          <button
+            onClick={() => router.push("/")}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all shrink-0"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span className="font-medium">Dashboard</span>
+          </button>
+
+          {/* 2. View Switchers */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowNav((v) => !v)}
+              className={`p-1.5 rounded-lg transition-all ${showNav ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
+              title="Scene Navigator"
+            >
+              <PanelLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setShowAnalytics((v) => !v)}
+              className={`p-1.5 rounded-lg transition-all ${showAnalytics ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
+              title="Analytics"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setShowCorkboard(true)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+              title="Corkboard"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => router.push(`/directors-suite/${params.id}`)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
+              title="Director's Suite"
+            >
+              <Sparkles className="w-3.5 h-3.5 group-hover:text-blue-400 transition-colors" />
+            </button>
+          </div>
+
+          {/* 3. Project Title */}
+          <div className="flex items-center shrink-0 min-w-[150px]">
+            <input
+              type="text"
+              value={title}
+              onChange={handleTitleChange}
+              onBlur={handleTitleBlur}
+              onKeyDown={handleTitleKeyDown}
+              className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-widest bg-transparent border-none outline-none hover:bg-zinc-100 dark:hover:bg-zinc-800/50 focus:bg-zinc-100 dark:focus:bg-zinc-800/50 px-2 py-1 rounded transition-colors w-full truncate placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+              placeholder="UNTITLED SCRIPT"
+            />
+          </div>
+
+          {/* Right actions (Export, Users, etc) pinned to far right */}
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-auto">
+            {/* Font Size Group */}
+            <div className="hidden md:flex items-center gap-1 bg-zinc-100/50 dark:bg-zinc-800/50 rounded-xl px-1 mr-2 relative">
+              <FontSizeControl editor={editorInstance} defaultSize={docFontSize} />
+
+              <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-0.5" />
+
               <button
-                onClick={() => router.push("/")}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all shrink-0"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleUppercase();
+                }}
+                className="p-1.5 rounded-lg font-bold text-[10px] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+                title="Uppercase"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span className="font-medium">Dashboard</span>
+                AB
               </button>
 
-              {/* 2. View Switchers */}
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => setShowNav((v) => !v)}
-                  className={`p-1.5 rounded-lg transition-all ${showNav ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
-                  title="Scene Navigator"
-                >
-                  <PanelLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setShowAnalytics((v) => !v)}
-                  className={`p-1.5 rounded-lg transition-all ${showAnalytics ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
-                  title="Analytics"
-                >
-                  <BarChart3 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setShowCorkboard(true)}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-                  title="Corkboard"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => router.push(`/directors-suite/${params.id}`)}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
-                  title="Director's Suite"
-                >
-                  <Sparkles className="w-3.5 h-3.5 group-hover:text-blue-400 transition-colors" />
-                </button>
-              </div>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  editorInstance?.chain().focus().unsetAllMarks().unsetFontSize().run();
+                }}
+                className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+                title="Clear Formatting"
+              >
+                <Eraser className="w-3.5 h-3.5" />
+              </button>
 
-              {/* 3. Project Title */}
-              <div className="flex items-center shrink-0 min-w-[150px]">
-                <input
-                  type="text"
-                  value={title}
-                  onChange={handleTitleChange}
-                  onBlur={handleTitleBlur}
-                  onKeyDown={handleTitleKeyDown}
-                  className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-widest bg-transparent border-none outline-none hover:bg-zinc-100 dark:hover:bg-zinc-800/50 focus:bg-zinc-100 dark:focus:bg-zinc-800/50 px-2 py-1 rounded transition-colors w-full truncate placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
-                  placeholder="UNTITLED SCRIPT"
-                />
-              </div>
 
-              {/* Right actions (Export, Users, etc) pinned to far right */}
-              <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-auto">
-                {/* Zoom Controls */}
-                <div className="hidden md:flex items-center gap-1 bg-zinc-100/50 dark:bg-zinc-800/50 rounded-xl px-1 mr-2">
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setZoom((z) => Math.max(0.3, z - 0.1));
-                    }}
-                    className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
-                    title="Zoom Out (Ctrl + Scroll)"
-                  >
-                    <ZoomOut className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 min-w-[3ch] text-center select-none">
-                    {Math.round(zoom * 100)}%
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setZoom((z) => Math.min(3, z + 0.1));
-                    }}
-                    className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
-                    title="Zoom In (Ctrl + Scroll)"
-                  >
-                    <ZoomIn className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+            </div>
+            {/* Zoom Controls */}
+            <div className="hidden md:flex items-center gap-1 bg-zinc-100/50 dark:bg-zinc-800/50 rounded-xl px-1 mr-2">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setZoom((z) => Math.max(0.3, z - 0.1));
+                }}
+                className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+                title="Zoom Out (Ctrl + Scroll)"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 min-w-[3ch] text-center select-none">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setZoom((z) => Math.min(3, z + 0.1));
+                }}
+                className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+                title="Zoom In (Ctrl + Scroll)"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
-                <button
-                  onClick={() => setFocusMode(true)}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-                  title="Focus Mode"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setShowVersions(true)}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-                  title="Versions"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                </button>
-                <div className="relative">
-                  <button
-                    onClick={() => setShowExportMenu(!showExportMenu)}
-                    className={`p-1.5 rounded-lg transition-all ${showExportMenu ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
-                    title="Download Options"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <button
-                  onClick={handleImportFountain}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-                  title="Import Fountain"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                </button>
-                <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-1" />
-                <button
-                  onClick={() => setShowSettings(!showSettings)}
-                  className={`p-1.5 rounded-lg transition-all ${showSettings ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
-                  title="Style Settings"
-                >
-                  <Settings2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setShowShortcuts(true)}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-                  title="Shortcuts"
-                >
-                  <Keyboard className="w-3.5 h-3.5" />
-                </button>
-                {mounted && (
-                  <button
-                    onClick={() =>
-                      setTheme(theme === "dark" ? "light" : "dark")
-                    }
-                    className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-                    title={theme === "dark" ? "Light Mode" : "Dark Mode"}
-                  >
-                    {theme === "dark" ? (
-                      <Sun className="w-3.5 h-3.5" />
-                    ) : (
-                      <Moon className="w-3.5 h-3.5" />
-                    )}
-                  </button>
+            <button
+              onClick={() => setFocusMode(true)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+              title="Focus Mode"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setShowVersions(true)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+              title="Versions"
+            >
+              <Save className="w-3.5 h-3.5" />
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className={`p-1.5 rounded-lg transition-all ${showExportMenu ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
+                title="Download Options"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <button
+              onClick={handleImportFountain}
+              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+              title="Import Fountain"
+            >
+              <Upload className="w-3.5 h-3.5" />
+            </button>
+            <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-1" />
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className={`p-1.5 rounded-lg transition-all ${showSettings ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
+              title="Style Settings"
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setShowShortcuts(true)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+              title="Shortcuts"
+            >
+              <Keyboard className="w-3.5 h-3.5" />
+            </button>
+            {mounted && (
+              <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+                title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+              >
+                {theme === "dark" ? (
+                  <Sun className="w-3.5 h-3.5" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5" />
                 )}
+              </button>
+            )}
+          </div>
+
+          {/* Export Dropdown (Moved inside) */}
+          {showExportMenu && (
+            <div className="absolute top-12 right-12 z-50 bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-52 flex flex-col gap-1">
+              <button
+                onClick={handleExportPdf}
+                className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <span className="text-base">📄</span>{" "}
+                {isExporting ? "Exporting..." : "Download PDF"}
+              </button>
+              <button
+                onClick={handleExportFountain}
+                className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all flex items-center gap-2"
+              >
+                <span className="text-base">🖋</span> Fountain (.fountain)
+              </button>
+              <button
+                onClick={handleExportText}
+                className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all flex items-center gap-2"
+              >
+                <span className="text-base">📝</span> Plain Text (.txt)
+              </button>
+            </div>
+          )}
+
+          {/* Settings Dropdown (Moved inside) */}
+          {showSettings && (
+            <div className="absolute top-12 right-4 z-50 bg-white dark:bg-[#1a1a1a] p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-64 space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                    Font
+                  </label>
+                  <button
+                    onClick={() => {
+                      setDocFont("Courier Prime");
+                      updateScript(script.id, {
+                        fontFamily: "Courier Prime",
+                      });
+                    }}
+                    className="text-[10px] text-zinc-400 hover:text-black dark:hover:text-white"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <select
+                  value={docFont}
+                  onChange={(e) => {
+                    setDocFont(e.target.value);
+                    updateScript(script.id, { fontFamily: e.target.value });
+                  }}
+                  className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black text-black dark:text-white px-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                >
+                  <option value="Courier Prime">Courier Prime (Default)</option>
+                  <option value="Poppins">Poppins</option>
+                  <option value="Inter">Inter</option>
+                  <option value="Roboto">Roboto</option>
+                  <option value="Open Sans">Open Sans</option>
+                  <option value="Lato">Lato</option>
+                  <option value="Montserrat">Montserrat</option>
+                  <option value="Playfair Display">Playfair Display</option>
+                  <option value="Lora">Lora</option>
+                  <option value="Comic Neue">Comic Neue</option>
+                </select>
               </div>
 
-              {/* Export Dropdown (Moved inside) */}
-              {showExportMenu && (
-                <div className="absolute top-12 right-12 z-50 bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-52 flex flex-col gap-1">
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                    Font Size
+                  </label>
                   <button
-                    onClick={handleExportPdf}
-                    className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2"
+                    onClick={() => {
+                      setDocFontSize(12);
+                      updateScript(script.id, { fontSize: 12 });
+                    }}
+                    className="text-[10px] text-zinc-400 hover:text-black dark:hover:text-white"
                   >
-                    <span className="text-base">📄</span>{" "}
-                    {isExporting ? "Exporting..." : "Download PDF"}
-                  </button>
-                  <button
-                    onClick={handleExportFountain}
-                    className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all flex items-center gap-2"
-                  >
-                    <span className="text-base">🖋</span> Fountain (.fountain)
-                  </button>
-                  <button
-                    onClick={handleExportText}
-                    className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all flex items-center gap-2"
-                  >
-                    <span className="text-base">📝</span> Plain Text (.txt)
+                    Reset
                   </button>
                 </div>
-              )}
-
-              {/* Settings Dropdown (Moved inside) */}
-              {showSettings && (
-                <div className="absolute top-12 right-4 z-50 bg-white dark:bg-[#1a1a1a] p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-64 space-y-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                        Font
-                      </label>
-                      <button
-                        onClick={() => {
-                          setDocFont("Courier Prime");
-                          updateScript(script.id, {
-                            fontFamily: "Courier Prime",
-                          });
-                        }}
-                        className="text-[10px] text-zinc-400 hover:text-black dark:hover:text-white"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                    <select
-                      value={docFont}
-                      onChange={(e) => {
-                        setDocFont(e.target.value);
-                        updateScript(script.id, { fontFamily: e.target.value });
-                      }}
-                      className="w-full h-8 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black text-black dark:text-white px-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                    >
-                      <option value="Courier Prime">
-                        Courier Prime (Default)
-                      </option>
-                      <option value="Poppins">Poppins</option>
-                      <option value="Inter">Inter</option>
-                      <option value="Roboto">Roboto</option>
-                      <option value="Open Sans">Open Sans</option>
-                      <option value="Lato">Lato</option>
-                      <option value="Montserrat">Montserrat</option>
-                      <option value="Playfair Display">Playfair Display</option>
-                      <option value="Lora">Lora</option>
-                      <option value="Comic Neue">Comic Neue</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                        Page Color
-                      </label>
-                      <button
-                        onClick={() => {
-                          setDocBgColor("");
-                          updateScript(script.id, { paperColor: "" });
-                        }}
-                        className="text-[10px] text-zinc-400 hover:text-black dark:hover:text-white"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={docBgColor || "#ffffff"}
-                        onChange={(e) => {
-                          setDocBgColor(e.target.value);
-                          updateScript(script.id, {
-                            paperColor: e.target.value,
-                          });
-                        }}
-                        className="w-full h-8 rounded-lg cursor-pointer bg-transparent border-0 p-0 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                      />
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min="8"
+                    max="24"
+                    value={docFontSize}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setDocFontSize(val);
+                      updateScript(script.id, { fontSize: val });
+                    }}
+                    className="flex-1 h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-zinc-900 dark:accent-white"
+                  />
+                  <span className="text-xs font-mono text-zinc-600 dark:text-zinc-400 min-w-[3ch]">
+                    {docFontSize}pt
+                  </span>
                 </div>
-              )}
-            </header>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                    Page Color
+                  </label>{" "}
+                  <button
+                    onClick={() => {
+                      setDocBgColor("");
+                      updateScript(script.id, { paperColor: "" });
+                    }}
+                    className="text-[10px] text-zinc-400 hover:text-black dark:hover:text-white"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={docBgColor || "#ffffff"}
+                    onChange={(e) => {
+                      setDocBgColor(e.target.value);
+                      updateScript(script.id, {
+                        paperColor: e.target.value,
+                      });
+                    }}
+                    className="w-full h-8 rounded-lg cursor-pointer bg-transparent border-0 p-0 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </header>
       )}
 
       {/* ─── Main Area ─── */}
@@ -656,6 +845,11 @@ export default function EditorPage() {
                 docBgColor={docBgColor}
                 docFont={docFont}
                 docTextColor={docTextColor}
+                docFontSize={docFontSize}
+                onFontSizeChange={(newSize) => {
+                  setDocFontSize(newSize);
+                  updateScript(script.id, { fontSize: newSize });
+                }}
                 onStatsUpdate={setStats}
                 onEditorReady={setEditorInstance}
               />

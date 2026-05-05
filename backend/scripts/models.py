@@ -7,16 +7,21 @@ Relational hierarchy:
 Each Script also has ScriptVersions for draft snapshots,
 and a HistoryEvent log for audit trail.
 """
+
 import uuid
-from django.db import models
-from django.contrib.postgres.search import SearchVectorField
+
 from django.contrib.auth.models import User
+from django.contrib.postgres.search import SearchVectorField
+from django.db import models
 
 
 class Script(models.Model):
     """Top-level screenplay document with metadata."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name="scripts")
+    owner = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.CASCADE, related_name="scripts"
+    )
     title = models.CharField(max_length=255, default="Untitled Script")
     author = models.CharField(max_length=255, blank=True, default="")
     contact = models.TextField(blank=True, default="")
@@ -25,14 +30,17 @@ class Script(models.Model):
     written_by_prefix = models.CharField(max_length=100, default="written by")
     # Full HTML content of the script (TipTap output) — kept for fast retrieval
     content = models.TextField(blank=True, default="")
-    
+
     # Styling
     paper_color = models.CharField(max_length=20, blank=True, default="")
     font_family = models.CharField(max_length=100, blank=True, default="Courier Prime")
     text_color = models.CharField(max_length=20, blank=True, default="")
-    
+    font_size = models.PositiveIntegerField(default=12)
+
     tags = models.JSONField(default=list, blank=True)
-    workspace_edges = models.JSONField(default=list, blank=True, help_text="Node connections for the Director's Suite")
+    workspace_edges = models.JSONField(
+        default=list, blank=True, help_text="Node connections for the Director's Suite"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -45,6 +53,7 @@ class Script(models.Model):
 
 class Scene(models.Model):
     """Container for ordering elements and tracking sluglines."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     script = models.ForeignKey(Script, on_delete=models.CASCADE, related_name="scenes")
     slugline = models.CharField(max_length=255, blank=True, default="")
@@ -61,6 +70,7 @@ class Scene(models.Model):
 
 class Element(models.Model):
     """Atomic screenplay unit — a single paragraph/block in the script."""
+
     ELEMENT_TYPES = [
         ("scene_heading", "Scene Heading"),
         ("action", "Action"),
@@ -73,7 +83,9 @@ class Element(models.Model):
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     scene = models.ForeignKey(Scene, on_delete=models.CASCADE, related_name="elements")
-    element_type = models.CharField(max_length=20, choices=ELEMENT_TYPES, default="action")
+    element_type = models.CharField(
+        max_length=20, choices=ELEMENT_TYPES, default="action"
+    )
     content = models.TextField(blank=True, default="")
     # Rich text HTML (inline formatting: bold, italic, underline)
     content_html = models.TextField(blank=True, default="")
@@ -91,8 +103,11 @@ class Element(models.Model):
 
 class ScriptVersion(models.Model):
     """Named draft snapshot for version history."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    script = models.ForeignKey(Script, on_delete=models.CASCADE, related_name="versions")
+    script = models.ForeignKey(
+        Script, on_delete=models.CASCADE, related_name="versions"
+    )
     name = models.CharField(max_length=255)
     content_snapshot = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -106,6 +121,7 @@ class ScriptVersion(models.Model):
 
 class HistoryEvent(models.Model):
     """Audit log entry for a script."""
+
     ACTION_CHOICES = [
         ("CREATED", "Created"),
         ("TITLE_CHANGED", "Title Changed"),
@@ -128,8 +144,11 @@ class HistoryEvent(models.Model):
 
 class CanvasState(models.Model):
     """Stores the Creative Workspace (infinite canvas) state for a script."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    script = models.OneToOneField(Script, on_delete=models.CASCADE, related_name="canvas")
+    script = models.OneToOneField(
+        Script, on_delete=models.CASCADE, related_name="canvas"
+    )
     state = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -148,6 +167,7 @@ class WorkspaceAsset(models.Model):
     Stores position, scale, and a flexible JSON payload for each element.
     Used for server-side Pitch Deck PDF rendering.
     """
+
     ASSET_TYPES = [
         ("image", "Image"),
         ("link", "Link Card"),
@@ -158,8 +178,15 @@ class WorkspaceAsset(models.Model):
         ("mermaid", "Mermaid Graph"),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    script = models.ForeignKey(Script, on_delete=models.CASCADE, related_name="workspace_assets")
-    asset_id = models.CharField(max_length=128, blank=True, default="", help_text="Frontend element UUID for cross-referencing")
+    script = models.ForeignKey(
+        Script, on_delete=models.CASCADE, related_name="workspace_assets"
+    )
+    asset_id = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Frontend element UUID for cross-referencing",
+    )
     asset_type = models.CharField(max_length=20, choices=ASSET_TYPES)
     x = models.FloatField(default=0)
     y = models.FloatField(default=0)

@@ -7,6 +7,8 @@ import { SuiteToolbar } from "@/components/suite/SuiteToolbar";
 import { Board } from "@/components/suite/Board";
 import { ExportButton } from "@/components/suite/ExportButton";
 import { getScriptById } from "@/lib/storage";
+import { useLoadingState } from "@/hooks/useLoadingState";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import "@/styles/suite.css";
 
 function uid() {
@@ -32,12 +34,39 @@ export default function DirectorsSuitePage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Load script title
+  const [scriptLoaded, setScriptLoaded] = useState(false);
   useEffect(() => {
     if (!scriptId) return;
     getScriptById(scriptId).then((s) => {
       if (s) setScriptTitle(s.title || "Untitled");
-    }).catch(() => {});
+      setScriptLoaded(true);
+    }).catch(() => {
+      setScriptLoaded(true);
+    });
   }, [scriptId]);
+
+  const { isLoading, message, startLoading, stopLoading } = useLoadingState();
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    startLoading([
+      "Opening Director's Suite...",
+      "Loading your board...",
+      "Preparing workspace...",
+      "Almost there..."
+    ], 800);
+    setProgress(85);
+  }, [startLoading]);
+
+  useEffect(() => {
+    if (scriptLoaded) {
+      setProgress(100);
+      const timer = setTimeout(() => {
+        stopLoading();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [scriptLoaded, stopLoading]);
 
   // Drawing hook
   const drawing = useDrawing({
@@ -125,6 +154,12 @@ export default function DirectorsSuitePage() {
 
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: "#0d0d0d" }}>
+      <LoadingOverlay 
+        isVisible={isLoading} 
+        message={message} 
+        showProgressBar 
+        progressPercent={progress} 
+      />
       {/* Top bar */}
       <header
         className="flex items-center justify-between px-5 py-3 shrink-0"

@@ -7,6 +7,9 @@ import { getScripts, createScript, deleteScript, Script, HistoryEvent } from "@/
 import { isAuthenticated, logout } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { AccountMenu } from "@/components/ui/AccountMenu";
+import { useLoadingState } from "@/hooks/useLoadingState";
+import { Loader2 } from "lucide-react";
 
 // Pastel gradient arrays matching the image's vibrant but soft card styles
 const PASTEL_GRADIENTS = [
@@ -25,18 +28,13 @@ export default function Dashboard() {
   const [authenticated, setAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
+  const { isLoading: isCreating, message: createMsg, startLoading: startCreating, stopLoading: stopCreating } = useLoadingState();
+
   // Floating theme toggle — only on dashboard
   const themeToggle = (
-    <div className="fixed top-8 right-8 z-50 flex items-center gap-4">
-      {authenticated && (
-        <button 
-          onClick={logout}
-          className="text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white transition-colors"
-        >
-          Logout
-        </button>
-      )}
+    <div className="fixed top-8 right-8 z-[100] flex items-center gap-4">
       <ThemeToggle />
+      {authenticated && <AccountMenu />}
     </div>
   );
 
@@ -61,11 +59,21 @@ export default function Dashboard() {
   const handleCreate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const title = newScriptTitle.trim() || "Untitled Script";
+    
+    startCreating([
+      "Setting the scene...",
+      "Preparing your script...",
+      "Lights, camera...",
+      "Almost ready..."
+    ]);
+
     try {
       const newScript = await createScript(title);
       router.push(`/editor/${newScript.id}`);
+      // Don't stop loading here; let it transition to the new page
     } catch (err) {
       console.error("Failed to create script:", err);
+      stopCreating();
       alert("Failed to create script. Please check your connection and try again.");
     }
   };
@@ -299,10 +307,20 @@ export default function Dashboard() {
                     </div>
                     <button 
                       type="submit"
-                      className="w-full flex items-center justify-center gap-2 bg-black dark:bg-white text-white dark:text-black py-3 rounded-xl font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                      disabled={isCreating}
+                      className="w-full flex items-center justify-center gap-2 bg-black dark:bg-white text-white dark:text-black py-3 rounded-xl font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Plus className="w-4 h-4" />
-                      Create Script
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          {createMsg || "Creating script..."}
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4" />
+                          Create Script
+                        </>
+                      )}
                     </button>
                   </form>
                </motion.div>

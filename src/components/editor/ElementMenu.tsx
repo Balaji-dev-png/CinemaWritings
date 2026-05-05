@@ -48,7 +48,7 @@ export const ElementMenu = ({
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
-    placement: "bottom-start",
+    placement: isVertical ? "right-start" : "bottom-start",
     whileElementsMounted: autoUpdate,
     middleware: [
       offset(8),
@@ -79,11 +79,16 @@ export const ElementMenu = ({
             e.preventDefault();
           },
         })}
-        className={`px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors uppercase text-center select-none cursor-pointer flex items-center gap-1 justify-center ${isVertical ? '[writing-mode:vertical-lr] rotate-180 border-b min-h-[90px] w-full px-1.5 py-3 border-zinc-200 dark:border-zinc-700' : 'border-r min-w-[90px] border-zinc-200 dark:border-zinc-700'}`}
+        className={`px-3 py-1.5 text-[10px] font-bold tracking-widest text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors uppercase text-center select-none cursor-pointer flex items-center justify-center toolbar-item ${isVertical ? 'flex-col gap-2 w-full py-4' : 'gap-1 min-w-[90px]'}`}
         title="Change Element Type"
       >
-        {activeElement.label}
-        <span className={`text-[8px] opacity-50 ${isVertical ? '-rotate-90' : ''}`}>▼</span>
+        <span
+          style={isVertical ? { writingMode: "vertical-rl", transform: "rotate(180deg)" } : {}}
+          className="whitespace-nowrap"
+        >
+          {activeElement.label}
+        </span>
+        <span className={`text-[8px] opacity-50 ${isVertical ? 'mt-1' : ''}`}>▼</span>
       </button>
 
       <FloatingPortal>

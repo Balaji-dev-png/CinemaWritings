@@ -1,7 +1,12 @@
 import { supabase } from "./supabase";
 
 export interface HistoryEvent {
-  action: "CREATED" | "TITLE_CHANGED" | "CONTENT_UPDATED" | "VERSION_SAVED" | "VERSION_RESTORED";
+  action:
+    | "CREATED"
+    | "TITLE_CHANGED"
+    | "CONTENT_UPDATED"
+    | "VERSION_SAVED"
+    | "VERSION_RESTORED";
   timestamp: number;
   details?: string;
 }
@@ -32,6 +37,7 @@ export interface Script {
   paperColor?: string;
   fontFamily?: string;
   textColor?: string;
+  fontSize?: number;
 }
 
 /* ─── Data Access ─── */
@@ -39,9 +45,9 @@ export interface Script {
 export const getScripts = async (): Promise<Script[]> => {
   try {
     const { data, error } = await supabase
-      .from('scripts')
-      .select('*')
-      .order('updated_at', { ascending: false });
+      .from("scripts")
+      .select("*")
+      .order("updated_at", { ascending: false });
 
     if (error) throw error;
 
@@ -55,19 +61,25 @@ export const getScripts = async (): Promise<Script[]> => {
       paperColor: s.paper_color,
       fontFamily: s.font_family,
       textColor: s.text_color,
+      fontSize: s.font_size,
     }));
   } catch (e: any) {
-    console.error("Supabase getScripts failed:", e.message || JSON.stringify(e) || e);
+    console.error(
+      "Supabase getScripts failed:",
+      e.message || JSON.stringify(e) || e,
+    );
     return [];
   }
 };
 
-export const getScriptById = async (id: string): Promise<Script | undefined> => {
+export const getScriptById = async (
+  id: string,
+): Promise<Script | undefined> => {
   try {
     const { data: s, error } = await supabase
-      .from('scripts')
-      .select('*')
-      .eq('id', id)
+      .from("scripts")
+      .select("*")
+      .eq("id", id)
       .single();
 
     if (error) throw error;
@@ -98,30 +110,39 @@ export const getScriptById = async (id: string): Promise<Script | undefined> => 
       paperColor: s.paper_color,
       fontFamily: s.font_family,
       textColor: s.text_color,
+      fontSize: s.font_size,
     };
   } catch (e: any) {
-    console.error("Supabase getScriptById failed:", e.message || JSON.stringify(e) || e);
+    console.error(
+      "Supabase getScriptById failed:",
+      e.message || JSON.stringify(e) || e,
+    );
     return undefined;
   }
 };
 
-export const createScript = async (title: string = "Untitled Script"): Promise<Script> => {
-  const { data: { user } } = await supabase.auth.getUser();
+export const createScript = async (
+  title: string = "Untitled Script",
+): Promise<Script> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) throw new Error("User not authenticated");
 
   const content = `<p class="scene-heading">INT. NEW SCENE - DAY</p><p class="action"></p>`;
-  
+
   const { data: s, error } = await supabase
-    .from('scripts')
+    .from("scripts")
     .insert([
-      { 
-        title, 
+      {
+        title,
         content,
         user_id: user.id,
         paper_color: "",
         font_family: "Courier Prime",
-        text_color: ""
-      }
+        text_color: "",
+        font_size: 12,
+      },
     ])
     .select()
     .single();
@@ -146,40 +167,62 @@ export const updateScript = async (id: string, updates: Partial<Script>) => {
   if (updates.content !== undefined) payload.content = updates.content;
   if (updates.meta) {
     if (updates.meta.author !== undefined) payload.author = updates.meta.author;
-    if (updates.meta.contact !== undefined) payload.contact = updates.meta.contact;
-    if (updates.meta.logline !== undefined) payload.logline = updates.meta.logline;
-    if (updates.meta.synopsis !== undefined) payload.synopsis = updates.meta.synopsis;
-    if (updates.meta.writtenByPrefix !== undefined) payload.written_by_prefix = updates.meta.writtenByPrefix;
+    if (updates.meta.contact !== undefined)
+      payload.contact = updates.meta.contact;
+    if (updates.meta.logline !== undefined)
+      payload.logline = updates.meta.logline;
+    if (updates.meta.synopsis !== undefined)
+      payload.synopsis = updates.meta.synopsis;
+    if (updates.meta.writtenByPrefix !== undefined)
+      payload.written_by_prefix = updates.meta.writtenByPrefix;
   }
   if (updates.tags !== undefined) payload.tags = updates.tags;
-  if (updates.paperColor !== undefined) payload.paper_color = updates.paperColor;
-  if (updates.fontFamily !== undefined) payload.font_family = updates.fontFamily;
+  if (updates.paperColor !== undefined)
+    payload.paper_color = updates.paperColor;
+  if (updates.fontFamily !== undefined)
+    payload.font_family = updates.fontFamily;
   if (updates.textColor !== undefined) payload.text_color = updates.textColor;
-  
+  if (updates.fontSize !== undefined) payload.font_size = updates.fontSize;
+
   if (Object.keys(payload).length === 0) return;
 
   if (updateTimeout) clearTimeout(updateTimeout);
   updateTimeout = setTimeout(async () => {
     try {
+      // Pre-check session to avoid library trying to refresh a non-existent token
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn("No active session found. Update aborted.");
+        return;
+      }
+
       const { error } = await supabase
-        .from('scripts')
+        .from("scripts")
         .update(payload)
-        .eq('id', id);
-      
-      if (error) throw error;
+        .eq("id", id);
+
+      if (error) {
+        console.error("Supabase updateScript error details:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+          status: (error as any).status,
+        });
+        throw error;
+      }
     } catch (e) {
-      console.error("Supabase updateScript failed", e);
+      console.error("Supabase updateScript failed catch:", e);
     }
   }, 1000);
 };
 
 export const deleteScript = async (id: string) => {
   try {
-    const { error } = await supabase
-      .from('scripts')
-      .delete()
-      .eq('id', id);
-    
+    const { error } = await supabase.from("scripts").delete().eq("id", id);
+
     if (error) throw error;
   } catch (e) {
     console.error("Supabase deleteScript failed", e);
@@ -187,7 +230,10 @@ export const deleteScript = async (id: string) => {
 };
 
 /* ─── Version Management ─── */
-export const saveVersion = async (id: string, name: string): Promise<boolean> => {
+export const saveVersion = async (
+  id: string,
+  name: string,
+): Promise<boolean> => {
   try {
     // For simplicity, we could store versions in a separate table or a jsonb column
     // Here we'll just log failure as it requires more schema work
@@ -199,24 +245,35 @@ export const saveVersion = async (id: string, name: string): Promise<boolean> =>
   }
 };
 
-export const restoreVersion = async (id: string, versionIdOrIndex: string | number): Promise<string | null> => {
+export const restoreVersion = async (
+  id: string,
+  versionIdOrIndex: string | number,
+): Promise<string | null> => {
   console.warn("restoreVersion not fully implemented for Supabase yet");
   return null;
 };
 
 /* ─── Fountain Export/Import (Unchanged) ─── */
-export const exportToFountain = (html: string, meta?: ScriptMeta, title?: string): string => {
+export const exportToFountain = (
+  html: string,
+  meta?: ScriptMeta,
+  title?: string,
+): string => {
   const div = document.createElement("div");
   // Strip pageNode wrappers before processing — Fountain format doesn't have pages
-  const strippedHtml = html.replace(/<div[^>]*data-type="pageNode"[^>]*>/gi, '').replace(/<\/div>/gi, '');
+  const strippedHtml = html
+    .replace(/<div[^>]*data-type="pageNode"[^>]*>/gi, "")
+    .replace(/<\/div>/gi, "");
   div.innerHTML = strippedHtml;
   const lines: string[] = [];
 
   if (title) lines.push(`Title: ${title}`);
   if (meta?.author) lines.push(`Author: ${meta.author}`);
-  if (meta?.contact) lines.push(`Contact: ${meta.contact.replace(/\n/g, " | ")}`);
+  if (meta?.contact)
+    lines.push(`Contact: ${meta.contact.replace(/\n/g, " | ")}`);
   if (meta?.logline) lines.push(`Logline: ${meta.logline}`);
-  if (meta?.synopsis) lines.push(`Synopsis: ${meta.synopsis.replace(/\n/g, " ")}`);
+  if (meta?.synopsis)
+    lines.push(`Synopsis: ${meta.synopsis.replace(/\n/g, " ")}`);
 
   lines.push("");
   lines.push("=".repeat(60));
@@ -224,7 +281,10 @@ export const exportToFountain = (html: string, meta?: ScriptMeta, title?: string
 
   div.querySelectorAll("p").forEach((p) => {
     const text = p.textContent?.trim() || "";
-    if (!text && !p.className) { lines.push(""); return; }
+    if (!text && !p.className) {
+      lines.push("");
+      return;
+    }
 
     const cls = p.className;
     if (cls.includes("scene-heading")) {
@@ -246,7 +306,10 @@ export const exportToFountain = (html: string, meta?: ScriptMeta, title?: string
     }
   });
 
-  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return lines
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 };
 
 export const importFromFountain = (fountain: string): string => {
@@ -261,14 +324,18 @@ export const importFromFountain = (fountain: string): string => {
 
     if (/^(INT\.|EXT\.|INT\.\/EXT\.)\s/i.test(trimmed)) {
       html.push(`<p class="scene-heading">${trimmed}</p>`);
-    }
-    else if (trimmed.startsWith(">") || (trimmed === trimmed.toUpperCase() && trimmed.endsWith(":"))) {
+    } else if (
+      trimmed.startsWith(">") ||
+      (trimmed === trimmed.toUpperCase() && trimmed.endsWith(":"))
+    ) {
       html.push(`<p class="transition">${trimmed.replace(/^>\s*/, "")}</p>`);
-    }
-    else if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
+    } else if (trimmed.startsWith("(") && trimmed.endsWith(")")) {
       html.push(`<p class="parenthetical">${trimmed}</p>`);
-    }
-    else if (trimmed === trimmed.toUpperCase() && trimmed.length < 40 && /^[A-Z]/.test(trimmed)) {
+    } else if (
+      trimmed === trimmed.toUpperCase() &&
+      trimmed.length < 40 &&
+      /^[A-Z]/.test(trimmed)
+    ) {
       html.push(`<p class="character">${trimmed}</p>`);
       let j = i + 1;
       while (j < lines.length) {
@@ -282,8 +349,7 @@ export const importFromFountain = (fountain: string): string => {
         j++;
       }
       i = j;
-    }
-    else {
+    } else {
       html.push(`<p class="action">${trimmed}</p>`);
     }
   }

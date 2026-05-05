@@ -21,7 +21,10 @@ export interface ApiScript {
   synopsis: string;
   written_by_prefix: string;
   content: string;
-  color: string;
+  paper_color: string;
+  font_family: string;
+  text_color: string;
+  font_size: number;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -34,7 +37,10 @@ export interface ApiScriptListItem {
   id: string;
   title: string;
   author: string;
-  color: string;
+  paper_color: string;
+  font_family: string;
+  text_color: string;
+  font_size: number;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -134,7 +140,10 @@ export async function apiCreateScript(data: {
   logline?: string;
   synopsis?: string;
   written_by_prefix?: string;
-  color?: string;
+  paper_color?: string;
+  font_family?: string;
+  text_color?: string;
+  font_size?: number;
   tags?: string[];
 }): Promise<ApiScript> {
   return apiFetch<ApiScript>("/scripts/", {
@@ -153,7 +162,10 @@ export async function apiUpdateScript(
     synopsis: string;
     written_by_prefix: string;
     content: string;
-    color: string;
+    paper_color: string;
+    font_family: string;
+    text_color: string;
+    font_size: number;
     tags: string[];
   }>,
 ): Promise<ApiScript> {

@@ -39,6 +39,21 @@
 | **Fountain (.fountain)** | Standard Fountain plain-text format with title metadata header block |
 | **Plain Text (.txt)** | Human-readable export in Fountain syntax with metadata |
 
+### Account & Security
+- **Cinematic Profile Dropdown** — Access your scripts and account settings via a sleek, dark-mode avatar menu.
+- **Live Script List** — Quickly jump into your 5 most recent scripts directly from the profile menu.
+- **Secure Password Updates** — In-app modal for updating account credentials via Supabase Auth.
+
+### UX & Interface
+- **Figma-style Font Size Control** — A highly interactive scrubber input for precise font sizing:
+  - **Drag to Scrub** — Click and drag horizontally to sweep through values.
+  - **Scroll Wheel** — Adjust size with the mouse wheel while focused.
+  - **Precision Modifiers** — `Shift` for 10pt jumps, `Alt` for 0.1pt decimal precision.
+  - **Mixed Selection Handling** — Displays `-` when multiple font sizes are selected.
+- **Cinematic Loading System** — Seamless transitions with animated clapperboards, progress bars, and cycling film-themed loading messages.
+- **`Ctrl+Space`** — opens the element selector menu at the cursor
+- **Focus Mode** — a cinematic, distraction-free writing environment with a film-grain overlay
+
 ### Multi-Document Dashboard
 - Create, organize, and delete multiple scripts
 - Securely stored in the cloud via Django backend
