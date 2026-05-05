@@ -80,8 +80,7 @@ body {{
 }}
 
 /* Rich Text Formatting — preserve inline font sizes from TipTap spans */
-span {{ font-size: inherit; }}
-span[style*="font-size"] {{ font-size: attr(style); }}
+span {{ font-size: inherit; border: none; outline: none; }}
 * {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
 
 /* ─── Title Page ───
