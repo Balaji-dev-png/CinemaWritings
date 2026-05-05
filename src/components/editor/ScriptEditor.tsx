@@ -316,15 +316,76 @@ export const ScriptEditor = ({
   >("horizontal");
   const [toolbarPos, setToolbarPos] = useState({ x: -1, y: -1 });
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const editorCanvasRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (toolbarPos.x === -1 && typeof window !== "undefined") {
-      setToolbarPos({
-        x: window.innerWidth - 260 - 32, // default horizontal right alignment
-        y: window.innerHeight * 0.15,
-      });
+  // Position calculation logic
+  const calculateDefaultPosition = useCallback(() => {
+    if (typeof window === "undefined") return;
+    
+    const pageWidth = 816; // WGA Standard Width
+    const canvasWidth = window.innerWidth;
+    const pageRightEdge = (canvasWidth / 2) + (pageWidth / 2);
+    
+    const toolbarWidth = toolbarOrientation === "horizontal" ? 300 : 60;
+    
+    // Default: 24px gap from page edge
+    let x = pageRightEdge + 24;
+    const y = 80;
+
+    // Boundary check: if it goes off-screen, pin to right edge
+    if (x + toolbarWidth > canvasWidth - 16) {
+      x = canvasWidth - toolbarWidth - 16;
     }
-  }, [toolbarPos.x]);
+
+    return { x, y };
+  }, [toolbarOrientation]);
+
+  // Initial Position Sync & Restore
+  useEffect(() => {
+    if (!mounted) return;
+
+    const savedPos = localStorage.getItem("toolbar_position");
+    if (savedPos) {
+      try {
+        const pos = JSON.parse(savedPos);
+        setToolbarPos(pos);
+      } catch (e) {
+        const def = calculateDefaultPosition();
+        if (def) setToolbarPos(def);
+      }
+    } else {
+      const def = calculateDefaultPosition();
+      if (def) setToolbarPos(def);
+    }
+  }, [mounted, calculateDefaultPosition]);
+
+  // Persistence
+  useEffect(() => {
+    if (toolbarPos.x !== -1 && mounted) {
+      localStorage.setItem("toolbar_position", JSON.stringify(toolbarPos));
+    }
+  }, [toolbarPos, mounted]);
+
+  // Resize Handling
+  useEffect(() => {
+    if (!editorCanvasRef.current || !mounted) return;
+
+    const observer = new ResizeObserver(() => {
+      // If user hasn't manually moved it yet (or we want to keep it relative), 
+      // we could re-calculate. But per requirements, only set default if not moved.
+      // However, if the window shrinks, we should keep it on-screen.
+      setToolbarPos(current => {
+        const toolbarWidth = toolbarOrientation === "horizontal" ? 300 : 60;
+        if (current.x + toolbarWidth > window.innerWidth - 16) {
+          return { ...current, x: Math.max(16, window.innerWidth - toolbarWidth - 16) };
+        }
+        return current;
+      });
+    });
+
+    observer.observe(editorCanvasRef.current);
+    return () => observer.disconnect();
+  }, [mounted, toolbarOrientation]);
 
   useEffect(() => {
     setMounted(true);
@@ -770,6 +831,18 @@ export const ScriptEditor = ({
           width: calc(18px * var(--toolbar-scale, 1));
           height: calc(18px * var(--toolbar-scale, 1));
         }
+
+        /* Remove any border/outline from TipTap textStyle spans */
+        .tiptap span,
+        .tiptap span[style],
+        .ProseMirror span,
+        .ProseMirror span[style] {
+          border: none !important;
+          outline: none !important;
+          box-shadow: none !important;
+          background: transparent !important;
+          text-decoration-color: inherit;
+        }
       `}</style>
 
       {/* ─── Formatting Toolbar (Draggable) ─── */}
@@ -782,7 +855,7 @@ export const ScriptEditor = ({
               position: "fixed",
               left: 0,
               top: 0,
-              transform: toolbarPos.x === -1 ? `translate(calc(100vw - 3.5rem - ${toolbarOrientation === "horizontal" ? "260px" : "60px"}), 15%)` : `translate(${toolbarPos.x}px, ${toolbarPos.y}px)`,
+              transform: `translate(${toolbarPos.x}px, ${toolbarPos.y}px)`,
               willChange: "transform",
               zIndex: 100,
               display: "flex",
@@ -955,7 +1028,10 @@ export const ScriptEditor = ({
         )}
 
       {/* ─── Paper Container ─── */}
-      <div className="w-full flex flex-col items-center relative">
+      <div 
+        ref={editorCanvasRef}
+        className="w-full flex flex-col items-center relative"
+      >
         <EditorContent
           editor={editor}
           className="w-full flex flex-col items-center"

@@ -80,7 +80,13 @@ body {{
 }}
 
 /* Rich Text Formatting — preserve inline font sizes from TipTap spans */
-span {{ font-size: inherit; border: none !important; outline: none !important; text-decoration: none !important; }}
+span {{ 
+    font-size: inherit; 
+    border: none !important; 
+    outline: none !important; 
+    box-shadow: none !important;
+    background: transparent !important;
+}}
 .script-body * {{ border: none !important; outline: none !important; }}
 * {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
 
