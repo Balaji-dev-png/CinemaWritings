@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Key, CheckCircle, AlertCircle } from "lucide-react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
@@ -22,6 +22,15 @@ export const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProp
 
   const modalRef = useRef<HTMLDivElement>(null);
 
+  const handleClose = useCallback(() => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setError({});
+    setSuccess(false);
+    onClose();
+  }, [onClose]);
+
   // Close on outside click
   useOutsideClick(modalRef, () => {
     if (!isLoading) handleClose();
@@ -36,16 +45,7 @@ export const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProp
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, isLoading]);
-
-  const handleClose = () => {
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setError({});
-    setSuccess(false);
-    onClose();
-  };
+  }, [isOpen, isLoading, handleClose]);
 
   const validate = () => {
     const newErrors: typeof error = {};

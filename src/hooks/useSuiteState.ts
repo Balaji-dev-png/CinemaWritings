@@ -53,7 +53,7 @@ export function useSuiteState(scriptId: string) {
       const raw = localStorage.getItem(storageKey(scriptId));
       if (raw) {
         const parsed = JSON.parse(raw) as SuiteState;
-        setState(parsed);
+        setTimeout(() => setState(parsed), 0);
       }
     } catch {
       // ignore parse errors

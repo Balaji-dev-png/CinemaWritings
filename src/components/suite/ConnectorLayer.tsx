@@ -4,8 +4,8 @@ import { SuiteElement, Connector } from "@/hooks/useSuiteState";
 interface Props {
   elements: SuiteElement[];
   connectors: Connector[];
-  boardWidth: number;
-  boardHeight: number;
+  zoom: number;
+  pan: { x: number; y: number };
   onRemoveConnector: (id: string) => void;
 }
 
@@ -17,14 +17,19 @@ function getCenter(el: SuiteElement): { x: number; y: number } {
 }
 
 export function ConnectorLayer({
-  elements, connectors, boardWidth, boardHeight, onRemoveConnector,
+  elements, connectors, zoom, pan, onRemoveConnector,
 }: Props) {
+  const toViewport = (canvasX: number, canvasY: number) => ({
+    x: canvasX * zoom + pan.x,
+    y: canvasY * zoom + pan.y,
+  });
+
   return (
     <svg
       className="absolute top-0 left-0"
       style={{
-        width: boardWidth,
-        height: boardHeight,
+        width: "100%",
+        height: "100%",
         zIndex: 5,
         pointerEvents: "none",
       }}
@@ -47,8 +52,11 @@ export function ConnectorLayer({
         const toEl = elements.find((e) => e.id === conn.toId);
         if (!fromEl || !toEl) return null;
 
-        const from = getCenter(fromEl);
-        const to = getCenter(toEl);
+        const fromCanvas = getCenter(fromEl);
+        const toCanvas = getCenter(toEl);
+
+        const from = toViewport(fromCanvas.x, fromCanvas.y);
+        const to = toViewport(toCanvas.x, toCanvas.y);
 
         // Cubic bezier curve
         const dx = to.x - from.x;

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { setTokens } from "@/lib/auth";
 import { PenTool, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -104,7 +103,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <button onClick={() => router.push("/signup")} className="text-[#1c1d20] dark:text-white font-medium hover:underline">
             Create an account
           </button>

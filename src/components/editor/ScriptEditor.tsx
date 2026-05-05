@@ -309,7 +309,7 @@ export const ScriptEditor = ({
     autocompleteRef.current = autocomplete;
   }, [autocomplete]);
 
-  const [activeNodeType, setActiveNodeType] = useState("action");
+  const [activeNodeType, setActiveNodeType] = useState("sceneHeading");
   const [mounted, setMounted] = useState(false);
   const [toolbarOrientation, setToolbarOrientation] = useState<
     "horizontal" | "vertical"
@@ -348,14 +348,14 @@ export const ScriptEditor = ({
     if (savedPos) {
       try {
         const pos = JSON.parse(savedPos);
-        setToolbarPos(pos);
+        setTimeout(() => setToolbarPos(pos), 0);
       } catch (e) {
         const def = calculateDefaultPosition();
-        if (def) setToolbarPos(def);
+        if (def) setTimeout(() => setToolbarPos(def), 0);
       }
     } else {
       const def = calculateDefaultPosition();
-      if (def) setToolbarPos(def);
+      if (def) setTimeout(() => setToolbarPos(def), 0);
     }
   }, [mounted, calculateDefaultPosition]);
 
@@ -388,7 +388,7 @@ export const ScriptEditor = ({
   }, [mounted, toolbarOrientation]);
 
   useEffect(() => {
-    setMounted(true);
+    setTimeout(() => setMounted(true), 0);
     // Restore orientation
     const savedOrientation = localStorage.getItem("toolbar_orientation") as
       | "horizontal"
@@ -407,15 +407,17 @@ export const ScriptEditor = ({
 
     const { from, to } = editorRef.current.state.selection;
     const $pos = editorRef.current.state.doc.resolve(from);
-    const text = $pos.parent.textContent;
+    // Use textBefore to ensure we only measure text strictly behind the cursor
+    const textBefore = $pos.parent.textContent.slice(0, $pos.parentOffset);
 
     if (item.type === "command") {
       // If triggered by slash, delete the slash
-      if (text.trim() === "/") {
+      if (textBefore.trim() === "/") {
+        const start = from - textBefore.length;
         editorRef.current
           .chain()
           .focus()
-          .deleteRange({ from: from - 1, to: from })
+          .deleteRange({ from: start, to: from })
           .setNode(item.id)
           .run();
       } else {
@@ -428,9 +430,9 @@ export const ScriptEditor = ({
         /^(INT\.|EXT\.|INT\.\/EXT\.)\s/i.test(item.id)
       ) {
         // Find where the trigger starts and replace it
-        const match = text.match(/^(INT\.\s*|EXT\.\s*|INT\.\/EXT\.\s*)/i);
+        const match = textBefore.match(/^(INT\.\s*|EXT\.\s*|INT\.\/EXT\.\s*)/i);
         if (match && /^(INT\.|EXT\.|INT\.\/EXT\.)\s/i.test(item.id)) {
-          const start = from - text.length; // replace the whole line if it's a scene heading
+          const start = from - textBefore.length; // replace from the start of the block
           editorRef.current
             .chain()
             .setTextSelection({ from: start, to })
@@ -440,7 +442,7 @@ export const ScriptEditor = ({
             .setNode("sceneHeading")
             .run();
         } else {
-          const startMatch = text.match(/[\w']+$/);
+          const startMatch = textBefore.match(/[\w']+$/);
           if (startMatch) {
             const start = from - startMatch[0].length;
             editorRef.current
@@ -459,7 +461,7 @@ export const ScriptEditor = ({
         }
       } else {
         // Standard vocabulary insertion
-        const match = text.match(/[\w']+$/);
+        const match = textBefore.match(/[\w']+$/);
         if (match) {
           const start = from - match[0].length;
           editorRef.current
@@ -540,11 +542,16 @@ export const ScriptEditor = ({
       initialContent.includes("script-page") ||
       initialContent.includes("pageNode")
         ? initialContent
-        : `<div data-type="pageNode">${initialContent}</div>`,
+        : `<div data-type="pageNode"><p class="scene-heading" data-type="sceneHeading"></p></div>`,
 
     onUpdate: ({ editor: ed }) => {
       editorRef.current = ed;
       updateScript(scriptId, { content: ed.getHTML() });
+
+      // Sync active node type (catches changes like setNode that don't move the cursor)
+      const { $head } = ed.state.selection;
+      const typeName = $head.parent.type.name;
+      setActiveNodeType(typeName === "paragraph" ? "action" : typeName);
 
       // ── Autocomplete tick ──
       try {
@@ -736,22 +743,14 @@ export const ScriptEditor = ({
     const pageNode = $head.node(depth);
     const pageNodePos = $head.before(depth);
 
-    // check if there's only one page
+    // check if there's only one page — never delete the last page
     let pageCount = 0;
     state.doc.descendants((node) => {
       if (node.type.name === "pageNode") pageCount++;
     });
     if (pageCount <= 1) return;
 
-    if (pageNode.textContent.trim().length > 0) {
-      if (
-        !window.confirm(
-          "This page contains text. Deleting it will permanently remove all content on this page. This action cannot be undone.",
-        )
-      )
-        return;
-    }
-
+    // Delete immediately — user can Ctrl+Z to undo
     const tr = state.tr.delete(pageNodePos, pageNodePos + pageNode.nodeSize);
     view.dispatch(tr);
     editor.commands.focus();

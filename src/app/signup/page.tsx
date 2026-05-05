@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { setTokens } from "@/lib/auth";
 import { PenTool, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -18,8 +17,15 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
+
+    // Client-side validation
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const { data, error: authError } = await supabase.auth.signUp({
@@ -28,7 +34,14 @@ export default function SignupPage() {
       });
 
       if (authError) throw authError;
-      
+
+      // Supabase returns a user with identities=[] if email already exists
+      if (data.user && data.user.identities?.length === 0) {
+        setError("An account with this email already exists. Please sign in.");
+        setLoading(false);
+        return;
+      }
+
       // Successfully signed up
       router.push("/");
     } catch (err: any) {

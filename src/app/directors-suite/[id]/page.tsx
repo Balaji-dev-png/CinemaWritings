@@ -241,6 +241,7 @@ export default function DirectorsSuitePage() {
           onRemoveElement={suite.removeElement}
           onRemoveConnector={suite.removeConnector}
           onConnectClick={handleConnectClick}
+          scriptId={scriptId}
         />
       </div>
     </div>

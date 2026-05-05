@@ -10,7 +10,6 @@ const BG_COLORS = [
 
 interface Props {
   element: SuiteElement;
-  boardRef: React.RefObject<HTMLDivElement | null>;
   onMove: (id: string, x: number, y: number) => void;
   onResize: (id: string, w: number, h: number) => void;
   onUpdate: (id: string, data: Record<string, unknown>) => void;
@@ -18,20 +17,21 @@ interface Props {
   onConnectClick?: (id: string) => void;
   connectMode?: boolean;
   isConnectSource?: boolean;
-  getZoom?: () => number;
+  getZoom: () => number;
+  getPan: () => { x: number; y: number };
 }
 
 export function IdeaCard({
-  element, boardRef, onMove, onResize, onUpdate, onRemove,
-  onConnectClick, connectMode, isConnectSource, getZoom,
+  element, onMove, onResize, onUpdate, onRemove,
+  onConnectClick, connectMode, isConnectSource, getZoom, getPan,
 }: Props) {
   const resizeRef = useRef({ startX: 0, startY: 0, startW: 0, startH: 0 });
   const bg = (element.data.bgColor as string) || BG_COLORS[0];
 
   const { handleMouseDown } = useDraggable({
-    boardRef,
     onMove: useCallback((x: number, y: number) => onMove(element.id, x, y), [onMove, element.id]),
     getZoom,
+    getPan,
   });
 
   const startResize = useCallback(

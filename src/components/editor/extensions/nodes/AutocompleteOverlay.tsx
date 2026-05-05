@@ -34,7 +34,7 @@ export const AutocompleteOverlay: React.FC<AutocompleteOverlayProps> = ({
   });
 
   useEffect(() => {
-    setMounted(true);
+    setTimeout(() => setMounted(true), 0);
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener("resize", checkMobile);

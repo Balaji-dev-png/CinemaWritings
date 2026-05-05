@@ -58,19 +58,20 @@ interface Props {
   onConnectClick?: (id: string) => void;
   connectMode?: boolean;
   isConnectSource?: boolean;
-  getZoom?: () => number;
+  getZoom: () => number;
+  getPan: () => { x: number; y: number };
 }
 
 export function ShotCard({
-  element, boardRef, onMove, onResize, onUpdate, onRemove,
-  onConnectClick, connectMode, isConnectSource, getZoom,
+  element, onMove, onResize, onUpdate, onRemove,
+  onConnectClick, connectMode, isConnectSource, getZoom, getPan,
 }: Props) {
   const resizeRef = useRef({ startX: 0, startY: 0, startW: 0, startH: 0 });
 
   const { handleMouseDown } = useDraggable({
-    boardRef,
     onMove: useCallback((x: number, y: number) => onMove(element.id, x, y), [onMove, element.id]),
     getZoom,
+    getPan,
   });
 
   const startResize = useCallback(

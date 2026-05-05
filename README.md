@@ -61,11 +61,12 @@
 - Pastel gradient card system with dark mode
 
 ### Director's Suite (Pre-Production Canvas)
-- **Infinite Node-based Workspace** for moodboarding and shot listing
-- **Milanote-style Zoom & Pan** with perfect trackpad/scrollwheel precision
-- Add standard film shots, idea blocks, sticky notes, reference images, and web links
-- Group select, dragging, resizing, and connection edges with glow highlights
-- **Export to Pitch Deck PDF** for production-ready visual documents
+- **Milanote-style Infinite Canvas** — A professional workspace with high-fidelity zoom and panning logic.
+- **Scroll Wheel Zoom** — Anchored perfectly to your cursor for precise navigation.
+- **Multi-Method Panning** — Middle mouse button, Spacebar+Drag, and Trackpad two-finger scroll support.
+- **Viewport-Space Connectors** — SVG connection lines rendered in screen space for maximum sharpness.
+- **Add Screenplay Nodes** — Standard film shots, idea blocks, sticky notes, reference images, and web links.
+- **Export to Pitch Deck PDF** — Transforms your canvas into a professional landscape presentation document.
 
 ---
 

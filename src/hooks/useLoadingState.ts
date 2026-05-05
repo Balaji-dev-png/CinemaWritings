@@ -17,6 +17,12 @@ export function useLoadingState() {
         }, intervalTime);
       }
     }
+
+    // Safety timeout: auto-stop after 10 seconds to prevent hanging UI
+    setTimeout(() => {
+      setIsLoading(false);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }, 10000);
   }, []);
 
   const stopLoading = useCallback(() => {

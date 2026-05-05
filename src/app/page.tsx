@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [newScriptTitle, setNewScriptTitle] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   const { isLoading: isCreating, message: createMsg, startLoading: startCreating, stopLoading: stopCreating } = useLoadingState();
 
@@ -59,7 +60,8 @@ export default function Dashboard() {
   const handleCreate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const title = newScriptTitle.trim() || "Untitled Script";
-    
+    setCreateError("");
+
     startCreating([
       "Setting the scene...",
       "Preparing your script...",
@@ -74,7 +76,7 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Failed to create script:", err);
       stopCreating();
-      alert("Failed to create script. Please check your connection and try again.");
+      setCreateError("Failed to create script. Please check your connection and try again.");
     }
   };
 
@@ -163,7 +165,18 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Scripts Grid Matrix (Pastel Cards) */}
-        {authenticated && (
+        {authenticated && scripts.length === 0 && authChecked && (
+          <div className="flex flex-col items-center justify-center flex-1 relative z-10 py-16 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mb-6 shadow-sm">
+              <PenTool className="w-7 h-7 text-zinc-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-zinc-800 dark:text-zinc-200 mb-2">No scripts yet</h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs">
+              Click <span className="font-semibold text-zinc-700 dark:text-zinc-300">New Script</span> above to start writing your first screenplay.
+            </p>
+          </div>
+        )}
+        {authenticated && scripts.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 relative z-10 w-full max-w-5xl mx-auto flex-1">
             {scripts.map((script, index) => {
               const gradient = PASTEL_GRADIENTS[index % PASTEL_GRADIENTS.length];
@@ -289,10 +302,15 @@ export default function Dashboard() {
                >
                   <div className="flex justify-between items-center mb-6">
                      <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">Create New Script</h2>
-                     <button onClick={() => setShowNewScriptModal(false)} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white">
+                     <button onClick={() => { setShowNewScriptModal(false); setCreateError(""); }} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white">
                        <X className="w-4 h-4" />
                      </button>
                   </div>
+                  {createError && (
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-xl text-red-600 dark:text-red-400 text-sm font-medium">
+                      {createError}
+                    </div>
+                  )}
                   <form onSubmit={handleCreate}>
                     <div className="mb-6">
                       <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2">Script Name</label>

@@ -51,18 +51,22 @@ export const getScripts = async (): Promise<Script[]> => {
 
     if (error) throw error;
 
-    return (data || []).map((s: any) => ({
-      id: s.id,
-      title: s.title,
-      content: "",
-      updatedAt: new Date(s.updated_at).getTime(),
-      historyList: [],
-      tags: s.tags || [],
-      paperColor: s.paper_color,
-      fontFamily: s.font_family,
-      textColor: s.text_color,
-      fontSize: s.font_size,
-    }));
+    return (data || []).map((s: any) => {
+      const settingsRaw = typeof window !== 'undefined' ? localStorage.getItem(`script_settings_${s.id}`) : null;
+      const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
+      return {
+        id: s.id,
+        title: s.title,
+        content: "",
+        updatedAt: new Date(s.updated_at).getTime(),
+        historyList: [],
+        tags: s.tags || [],
+        paperColor: settings.paperColor || "",
+        fontFamily: settings.fontFamily || "Courier Prime",
+        textColor: settings.textColor || "",
+        fontSize: settings.fontSize || 12,
+      };
+    });
   } catch (e: any) {
     console.error(
       "Supabase getScripts failed:",
@@ -84,7 +88,7 @@ export const getScriptById = async (
 
     if (error) throw error;
 
-    return {
+    const script: Script = {
       id: s.id,
       title: s.title,
       content: s.content,
@@ -107,11 +111,28 @@ export const getScriptById = async (
         timestamp: new Date(v.created_at).getTime(),
       })),
       tags: s.tags || [],
-      paperColor: s.paper_color,
-      fontFamily: s.font_family,
-      textColor: s.text_color,
-      fontSize: s.font_size,
     };
+    
+    if (typeof window !== 'undefined') {
+      const settingsRaw = localStorage.getItem(`script_settings_${s.id}`);
+      if (settingsRaw) {
+        const settings = JSON.parse(settingsRaw);
+        script.paperColor = settings.paperColor || "";
+        script.fontFamily = settings.fontFamily || "Courier Prime";
+        script.textColor = settings.textColor || "";
+        script.fontSize = settings.fontSize || 12;
+      }
+      
+      const versionsRaw = localStorage.getItem(`script_versions_${s.id}`);
+      if (versionsRaw) {
+        try {
+          const localVersions = JSON.parse(versionsRaw);
+          script.versions = [...(script.versions || []), ...localVersions];
+        } catch (e) {}
+      }
+    }
+    
+    return script;
   } catch (e: any) {
     console.error(
       "Supabase getScriptById failed:",
@@ -138,10 +159,6 @@ export const createScript = async (
         title,
         content,
         user_id: user.id,
-        paper_color: "",
-        font_family: "Courier Prime",
-        text_color: "",
-        font_size: 12,
       },
     ])
     .select()
@@ -177,12 +194,29 @@ export const updateScript = async (id: string, updates: Partial<Script>) => {
       payload.written_by_prefix = updates.meta.writtenByPrefix;
   }
   if (updates.tags !== undefined) payload.tags = updates.tags;
-  if (updates.paperColor !== undefined)
-    payload.paper_color = updates.paperColor;
-  if (updates.fontFamily !== undefined)
-    payload.font_family = updates.fontFamily;
-  if (updates.textColor !== undefined) payload.text_color = updates.textColor;
-  if (updates.fontSize !== undefined) payload.font_size = updates.fontSize;
+
+  // Handle local storage for styling settings since schema doesn't support them
+  if (
+    updates.paperColor !== undefined ||
+    updates.fontFamily !== undefined ||
+    updates.textColor !== undefined ||
+    updates.fontSize !== undefined
+  ) {
+    if (typeof window !== "undefined") {
+      const existingRaw = localStorage.getItem(`script_settings_${id}`);
+      const existing = existingRaw ? JSON.parse(existingRaw) : {};
+      
+      const newSettings = {
+        ...existing,
+        ...(updates.paperColor !== undefined && { paperColor: updates.paperColor }),
+        ...(updates.fontFamily !== undefined && { fontFamily: updates.fontFamily }),
+        ...(updates.textColor !== undefined && { textColor: updates.textColor }),
+        ...(updates.fontSize !== undefined && { fontSize: updates.fontSize }),
+      };
+      
+      localStorage.setItem(`script_settings_${id}`, JSON.stringify(newSettings));
+    }
+  }
 
   if (Object.keys(payload).length === 0) return;
 
@@ -235,12 +269,26 @@ export const saveVersion = async (
   name: string,
 ): Promise<boolean> => {
   try {
-    // For simplicity, we could store versions in a separate table or a jsonb column
-    // Here we'll just log failure as it requires more schema work
-    console.warn("saveVersion not fully implemented for Supabase yet");
+    const script = await getScriptById(id);
+    if (!script) throw new Error("Script not found");
+
+    if (typeof window !== "undefined") {
+      const existingRaw = localStorage.getItem(`script_versions_${id}`);
+      const existing = existingRaw ? JSON.parse(existingRaw) : [];
+      
+      const newVersion = {
+        name,
+        content: script.content,
+        timestamp: Date.now(),
+      };
+      
+      existing.push(newVersion);
+      localStorage.setItem(`script_versions_${id}`, JSON.stringify(existing));
+      return true;
+    }
     return false;
   } catch (e) {
-    console.error("Supabase saveVersion failed", e);
+    console.error("Local saveVersion failed", e);
     return false;
   }
 };
@@ -249,8 +297,32 @@ export const restoreVersion = async (
   id: string,
   versionIdOrIndex: string | number,
 ): Promise<string | null> => {
-  console.warn("restoreVersion not fully implemented for Supabase yet");
-  return null;
+  try {
+    if (typeof window !== "undefined") {
+      const existingRaw = localStorage.getItem(`script_versions_${id}`);
+      if (!existingRaw) return null;
+      
+      const versions = JSON.parse(existingRaw);
+      
+      // If versionIdOrIndex is a number, we treat it as an index. Otherwise, find by name.
+      let targetVersion;
+      if (typeof versionIdOrIndex === "number") {
+        targetVersion = versions[versionIdOrIndex];
+      } else {
+        targetVersion = versions.find((v: any) => v.name === versionIdOrIndex || v.timestamp.toString() === versionIdOrIndex);
+      }
+      
+      if (targetVersion) {
+        // Save restored content to backend
+        await updateScript(id, { content: targetVersion.content });
+        return targetVersion.content;
+      }
+    }
+    return null;
+  } catch (e) {
+    console.error("Local restoreVersion failed", e);
+    return null;
+  }
 };
 
 /* ─── Fountain Export/Import (Unchanged) ─── */

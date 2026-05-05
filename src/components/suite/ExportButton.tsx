@@ -14,26 +14,22 @@ export function ExportButton({
   boardRef, drawingCanvasRef, elements, scriptTitle, scriptId,
 }: Props) {
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   const handleExport = useCallback(async () => {
     const board = boardRef.current;
     if (!board) return;
     setExporting(true);
+    setExportError("");
 
-    // Save current scroll
-    const savedScrollLeft = board.scrollLeft;
-    const savedScrollTop = board.scrollTop;
-    board.scrollLeft = 0;
-    board.scrollTop = 0;
-
-    let innerDiv: HTMLDivElement | null = null;
+    // We no longer use scrollLeft/scrollTop in the new architecture
+    let innerDiv: HTMLDivElement | null = board.querySelector(".director-suite-canvas");
     let originalTransform = "";
     let originalWidth = "";
     let originalHeight = "";
 
     try {
-      // Temporarily remove scale transform from the inner board so html2canvas captures full 4000x3000 at 1:1
-      innerDiv = board.firstElementChild as HTMLDivElement;
+      // Temporarily remove scale transform from the inner board so capture is 1:1
       if (innerDiv) {
         originalTransform = innerDiv.style.transform;
         originalWidth = innerDiv.style.width;
@@ -43,34 +39,29 @@ export function ExportButton({
         innerDiv.style.height = "3000px";
       }
 
-      // Dynamic import html2canvas (client-only)
-      const html2canvas = (await import("html2canvas")).default;
+      // Dynamic import dom-to-image-more
+      const domToImage = (await import("dom-to-image-more")).default;
 
-      // Temporarily suppress html2canvas lab color parse errors
-      const origError = console.error;
-      console.error = (...args) => {
-        if (typeof args[0] === "string" && args[0].includes("Attempting to parse an unsupported color function")) {
-          return;
-        }
-        origError(...args);
-      };
-
-      let boardCanvas;
+      let boardDataUrl;
       try {
-        boardCanvas = await html2canvas(innerDiv || board, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: false,
-          backgroundColor: "#0d0d0d",
-          logging: false,
+        boardDataUrl = await domToImage.toPng(innerDiv || board, {
+          bgcolor: "#0d0d0d",
           width: 4000,
           height: 3000,
-          windowWidth: 4000,
-          windowHeight: 3000,
+          style: {
+            transform: "scale(2)",
+            transformOrigin: "top left"
+          }
         });
-      } finally {
-        console.error = origError;
+      } catch (err) {
+        throw new Error(`domToImage failed: ${err}`);
       }
+
+      const boardCanvas = document.createElement("img");
+      await new Promise((resolve) => {
+        boardCanvas.onload = resolve;
+        boardCanvas.src = boardDataUrl;
+      });
 
       // Composite drawing canvas on top
       const compositeCanvas = document.createElement("canvas");
@@ -181,7 +172,7 @@ export function ExportButton({
       }
     } catch (err) {
       console.error("Export error:", err);
-      alert("Export failed. Please try again.");
+      setExportError("Export failed. Please try again.");
     } finally {
       if (innerDiv) {
         innerDiv.style.transform = originalTransform;
@@ -208,6 +199,21 @@ export function ExportButton({
       >
         {exporting ? "Exporting..." : "📤 Export PDF"}
       </button>
+
+      {exportError && (
+        <div
+          className="text-xs font-medium rounded px-3 py-1.5 max-w-[200px] text-center"
+          style={{ backgroundColor: "#3b0000", color: "#ff6b6b", border: "1px solid #5a0000" }}
+        >
+          {exportError}
+          <button
+            onClick={() => setExportError("")}
+            className="ml-2 underline opacity-70 hover:opacity-100"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Full-screen loading overlay */}
       {exporting && (

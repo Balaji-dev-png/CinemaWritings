@@ -71,13 +71,14 @@ export default function EditorPage() {
       "Loading scenes...",
       "Preparing the editor...",
     ], 800);
-    setProgress(85);
+    // Set progress asynchronously to avoid cascading renders
+    setTimeout(() => setProgress(85), 0);
   }, [startLoading]);
 
   useEffect(() => {
     if (script && editorInstance) {
-      setProgress(100);
       const timer = setTimeout(() => {
+        setProgress(100);
         stopLoading();
       }, 300);
       return () => clearTimeout(timer);
@@ -101,11 +102,20 @@ export default function EditorPage() {
   const [docFontSize, setDocFontSize] = useState(12);
   const [localFontSize, setLocalFontSize] = useState<string>("");
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
   const [zoom, setZoom] = useState(1);
   const [showPgPopover, setShowPgPopover] = useState(false);
   const pgPopoverRef = useRef<HTMLDivElement>(null);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Zoom to cursor on scale change
+  useEffect(() => {
+    if (editorInstance && editorInstance.isFocused) {
+      editorInstance.commands.scrollIntoView();
+    }
+  }, [zoom, editorInstance]);
 
   // Metadata state for sync
   const [metadata, setMetadata] = useState({
@@ -144,15 +154,19 @@ export default function EditorPage() {
             if (found.fontFamily) setDocFont(found.fontFamily);
             if (found.textColor) setDocTextColor(found.textColor);
             if (found.fontSize) setDocFontSize(found.fontSize);
+          } else {
+            // Script not found
+            stopLoading();
+            router.push("/");
           }
         })
         .catch((err) => {
           console.error("Failed to fetch script:", err);
-          // Optionally redirect or show error UI. For now, fallback to home.
+          stopLoading();
           router.push("/");
         });
     }
-  }, [params.id, router]);
+  }, [params.id, router, stopLoading]);
 
   useEffect(() => {
     setMounted(true);
@@ -231,6 +245,21 @@ export default function EditorPage() {
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showPgPopover]);
+
+  // Close export dropdown on outside click
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showExportMenu]);
 
   const applyFontSize = useCallback((size: number) => {
     if (!editorInstance) return;
@@ -376,6 +405,7 @@ export default function EditorPage() {
   const handleExportPdf = async () => {
     if (!script || !printRef.current) return;
     setIsExporting(true);
+    setExportError("");
     setShowExportMenu(false);
 
     try {
@@ -462,9 +492,7 @@ export default function EditorPage() {
       pdf.save(`${title || "script"}.pdf`);
     } catch (err: any) {
       console.error("PDF export failed:", err);
-      alert(
-        `Failed to export PDF: ${err.message || "Unknown error"}. Please check console for details.`,
-      );
+      setExportError(`Export failed: ${err.message || "Unknown error"}`);
     } finally {
       setIsExporting(false);
     }
@@ -629,9 +657,13 @@ export default function EditorPage() {
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
-              <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 min-w-[3ch] text-center select-none">
+              <button
+                onClick={() => setZoom(1)}
+                className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 min-w-[3ch] text-center select-none hover:text-zinc-900 dark:hover:text-white transition-colors px-1 rounded"
+                title="Reset zoom to 100%"
+              >
                 {Math.round(zoom * 100)}%
-              </span>
+              </button>
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -658,14 +690,29 @@ export default function EditorPage() {
             >
               <Save className="w-3.5 h-3.5" />
             </button>
-            <div className="relative">
+            <div className="relative" ref={exportDropdownRef}>
               <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
                 className={`p-1.5 rounded-lg transition-all ${showExportMenu ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
                 title="Download Options"
               >
-                <Download className="w-3.5 h-3.5" />
+                {isExporting ? (
+                  <Minus className="w-3.5 h-3.5 animate-pulse" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
               </button>
+              {exportError && (
+                <div className="absolute top-10 right-0 z-50 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-xs rounded-xl p-3 w-56 shadow-lg">
+                  {exportError}
+                  <button
+                    onClick={() => setExportError("")}
+                    className="block mt-1 text-[10px] underline opacity-70 hover:opacity-100"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
             </div>
             <button
               onClick={handleImportFountain}
@@ -709,7 +756,8 @@ export default function EditorPage() {
             <div className="absolute top-12 right-12 z-50 bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-52 flex flex-col gap-1">
               <button
                 onClick={handleExportPdf}
-                className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2"
+                disabled={isExporting}
+                className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 <span className="text-base">📄</span>{" "}
                 {isExporting ? "Exporting..." : "Download PDF"}

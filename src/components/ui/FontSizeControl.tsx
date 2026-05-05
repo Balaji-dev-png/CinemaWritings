@@ -41,7 +41,7 @@ export const FontSizeControl = ({ editor, defaultSize = 12 }: FontSizeControlPro
     
     editor.on("selectionUpdate", handleSelectionUpdate);
     // Initial sync
-    handleSelectionUpdate();
+    setTimeout(() => handleSelectionUpdate(), 0);
     
     return () => {
       editor.off("selectionUpdate", handleSelectionUpdate);

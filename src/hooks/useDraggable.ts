@@ -2,13 +2,13 @@
 import { useRef, useCallback } from "react";
 
 interface DragOptions {
-  boardRef: React.RefObject<HTMLDivElement | null>;
   onMove: (x: number, y: number) => void;
   onEnd?: () => void;
-  getZoom?: () => number;
+  getZoom: () => number;
+  getPan: () => { x: number; y: number };
 }
 
-export function useDraggable({ boardRef, onMove, onEnd, getZoom }: DragOptions) {
+export function useDraggable({ onMove, onEnd, getZoom, getPan }: DragOptions) {
   const dragging = useRef(false);
   const offset = useRef({ dx: 0, dy: 0 });
 
@@ -18,30 +18,35 @@ export function useDraggable({ boardRef, onMove, onEnd, getZoom }: DragOptions) 
       e.preventDefault();
       dragging.current = true;
 
-      const board = boardRef.current;
-      const scrollLeft = board?.scrollLeft ?? 0;
-      const scrollTop = board?.scrollTop ?? 0;
-      const boardRect = board?.getBoundingClientRect();
-      const boardLeft = boardRect?.left ?? 0;
-      const boardTop = boardRect?.top ?? 0;
-      const zoom = getZoom?.() ?? 1;
+      const zoom = getZoom();
+      const pan = getPan();
 
+      // Convert viewport mouse position to canvas position
+      const canvasX = (e.clientX - pan.x) / zoom;
+      const canvasY = (e.clientY - pan.y) / zoom;
+
+      // Calculate the offset from the element's actual position
       offset.current = {
-        dx: (e.clientX - boardLeft + scrollLeft) / zoom - currentX,
-        dy: (e.clientY - boardTop + scrollTop) / zoom - currentY,
+        dx: canvasX - currentX,
+        dy: canvasY - currentY,
       };
 
       const handleMove = (me: MouseEvent) => {
         if (!dragging.current) return;
-        const sl = board?.scrollLeft ?? 0;
-        const st = board?.scrollTop ?? 0;
-        const bl = board?.getBoundingClientRect().left ?? 0;
-        const bt = board?.getBoundingClientRect().top ?? 0;
-        const z = getZoom?.() ?? 1;
+        
+        const currentZoom = getZoom();
+        const currentPan = getPan();
 
-        const newX = (me.clientX - bl + sl) / z - offset.current.dx;
-        const newY = (me.clientY - bt + st) / z - offset.current.dy;
-        onMove(Math.max(0, newX), Math.max(0, newY));
+        const newCanvasX = (me.clientX - currentPan.x) / currentZoom;
+        const newCanvasY = (me.clientY - currentPan.y) / currentZoom;
+
+        // Apply offset to get the top-left of the card
+        const newX = newCanvasX - offset.current.dx;
+        const newY = newCanvasY - offset.current.dy;
+
+        // Optionally clamp to >= 0 or let it go negative (infinite canvas allows negative!)
+        // Milanote allows infinite scrolling in any direction, so we don't clamp.
+        onMove(newX, newY);
       };
 
       const handleUp = () => {
@@ -54,7 +59,7 @@ export function useDraggable({ boardRef, onMove, onEnd, getZoom }: DragOptions) 
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     },
-    [boardRef, onMove, onEnd, getZoom]
+    [onMove, onEnd, getZoom, getPan]
   );
 
   return { handleMouseDown };
