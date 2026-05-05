@@ -50,7 +50,6 @@ const CAMERA_MOVEMENTS = [
 
 interface Props {
   element: SuiteElement;
-  boardRef: React.RefObject<HTMLDivElement | null>;
   onMove: (id: string, x: number, y: number) => void;
   onResize: (id: string, w: number, h: number) => void;
   onUpdate: (id: string, data: Record<string, unknown>) => void;

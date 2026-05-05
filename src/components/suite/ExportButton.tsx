@@ -179,8 +179,6 @@ export function ExportButton({
         innerDiv.style.width = originalWidth;
         innerDiv.style.height = originalHeight;
       }
-      board.scrollLeft = savedScrollLeft;
-      board.scrollTop = savedScrollTop;
       setExporting(false);
     }
   }, [boardRef, drawingCanvasRef, elements, scriptTitle, scriptId]);
