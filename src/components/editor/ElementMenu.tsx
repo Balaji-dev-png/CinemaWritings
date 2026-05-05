@@ -51,9 +51,8 @@ export const ElementMenu = ({
     placement: isVertical ? "right-start" : "bottom-start",
     whileElementsMounted: autoUpdate,
     middleware: [
-      offset(8),
-      flip(),
       shift({ padding: 16 }),
+      offset(16),
     ],
   });
 

@@ -718,6 +718,21 @@ export const ScriptEditor = ({
 
 
 
+  const handleLowercase = () => {
+    if (!editor) return;
+    const { from, to, empty } = editor.state.selection;
+    if (empty) {
+      const { $from } = editor.state.selection;
+      const start = $from.start();
+      const end = $from.end();
+      const text = editor.state.doc.textBetween(start, end);
+      editor.chain().focus().insertContentAt({ from: start, to: end }, text.toLowerCase()).run();
+    } else {
+      const text = editor.state.doc.textBetween(from, to);
+      editor.chain().focus().insertContentAt({ from, to }, text.toLowerCase()).run();
+    }
+  };
+
   const currentElement =
     ELEMENT_LABELS[editor.state.selection.$head.parent.type.name] || "ACTION";
 

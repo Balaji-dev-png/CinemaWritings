@@ -281,6 +281,26 @@ export default function EditorPage() {
     }
   }, [editorInstance]);
 
+  const handleLowercase = useCallback(() => {
+    if (!editorInstance) return;
+    const { from, to, empty } = editorInstance.state.selection;
+    
+    if (empty) {
+      const { $from } = editorInstance.state.selection;
+      const start = $from.start();
+      const end = $from.end();
+      const text = editorInstance.state.doc.textBetween(start, end);
+      editorInstance.chain().focus().insertContentAt({ from: start, to: end }, text.toLowerCase()).run();
+    } else {
+      const text = editorInstance.state.doc.textBetween(from, to);
+      editorInstance
+        .chain()
+        .focus()
+        .insertContentAt({ from, to }, text.toLowerCase())
+        .run();
+    }
+  }, [editorInstance]);
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
     setTitle(newTitle);
@@ -571,6 +591,17 @@ export default function EditorPage() {
                 title="Uppercase"
               >
                 AB
+              </button>
+
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleLowercase();
+                }}
+                className="p-1.5 rounded-lg font-medium text-[10px] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+                title="Lowercase"
+              >
+                ab
               </button>
 
               <button

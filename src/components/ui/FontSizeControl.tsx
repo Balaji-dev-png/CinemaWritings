@@ -28,7 +28,9 @@ export const FontSizeControl = ({ editor, defaultSize = 12 }: FontSizeControlPro
     // If there's a selection but no explicit font size attribute across the entire selection,
     // we use '-' for mixed or default
     if (from !== to && attrs.fontSize === undefined) {
-      setDisplayValue("-");
+      // Try to get attribute from the start of selection if uniform check fails
+      const startAttrs = editor.getAttributes("textStyle");
+      setDisplayValue(startAttrs.fontSize || "-");
     } else {
       setDisplayValue(attrs.fontSize || String(defaultSize));
     }
