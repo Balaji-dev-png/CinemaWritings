@@ -782,7 +782,7 @@ export const ScriptEditor = ({
               position: "fixed",
               left: 0,
               top: 0,
-              transform: toolbarPos.x === -1 ? `translate(calc(100vw - 2rem - ${toolbarOrientation === "horizontal" ? "260px" : "60px"}), 15%)` : `translate(${toolbarPos.x}px, ${toolbarPos.y}px)`,
+              transform: toolbarPos.x === -1 ? `translate(calc(100vw - 3.5rem - ${toolbarOrientation === "horizontal" ? "260px" : "60px"}), 15%)` : `translate(${toolbarPos.x}px, ${toolbarPos.y}px)`,
               willChange: "transform",
               zIndex: 100,
               display: "flex",

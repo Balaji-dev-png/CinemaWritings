@@ -48,7 +48,7 @@ export const ElementMenu = ({
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
-    placement: isVertical ? "right-start" : "bottom-start",
+    placement: isVertical ? "left-start" : "bottom-start",
     whileElementsMounted: autoUpdate,
     middleware: [
       shift({ padding: 16 }),
