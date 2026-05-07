@@ -1,4 +1,4 @@
-# 🎬 CinemaWritings
+# CinemaWritings
 
 **CinemaWritings** is a professional, browser-based screenplay editor built for writers who want industry-standard formatting without the complexity of traditional screenwriting software. Write, format, export, and collaborate — all in one beautiful, cinematic app.
 
@@ -6,7 +6,7 @@
 
 ---
 
-## ✨ Features
+## Features
 
 ### Editor
 - **TipTap-powered rich editor** with native bold, italic, and underline support
@@ -60,7 +60,7 @@
 
 ---
 
-## 🎨 Director's Suite (Pre-Production Canvas)
+## Director's Suite (Pre-Production Canvas)
 
 A full-featured, Milanote-style **infinite canvas workspace** for pre-production planning and shot design.
 
@@ -83,20 +83,20 @@ A full-featured, Milanote-style **infinite canvas workspace** for pre-production
 - **Connect Mode** — Wire any two cards together with directional bezier connection lines
 - **Drag Handles** — In Connect Mode, a dedicated grip handle appears on every card so you can freely reposition cards without toggling modes
 - **Smart Bezier Curves** — Connection lines bend naturally in any direction (horizontal, vertical, diagonal)
-- **One-Click Delete** — Click the `✕` button at the wire midpoint to remove a connection
+- **One-Click Delete** — Click the X button at the wire midpoint to remove a connection
 
 ### Freehand Drawing
 - **Draw Mode Toggle** — Activates a custom pen cursor across the entire workspace
 - **5 Drawing Tools:**
-  - ✏️ **Pen** — Solid, precise strokes
-  - 📝 **Pencil** — Semi-transparent, textured look
-  - 🖌️ **Brush** — Wide, soft brush strokes
-  - ◻️ **Eraser** — True transparency eraser (`destination-out`)
-  - 🖱️ **Select** — Drag-and-drop any individual drawn stroke to reposition it
+  - **Pen** — Solid, precise strokes
+  - **Pencil** — Semi-transparent, textured look
+  - **Brush** — Wide, soft brush strokes
+  - **Eraser** — True transparency eraser (destination-out)
+  - **Select** — Drag-and-drop any individual drawn stroke to reposition it
 - **Adjustable Color & Width** — Full color picker and width slider
 - **Undo & Clear** — Step back one stroke or wipe the canvas clean
 - **Coordinate-Aware** — Drawing coordinates are precisely translated across all zoom levels and pan positions, including negative canvas space
-- **Persistent Strokes** — All strokes are stored as vector data in `localStorage` per script and survive page refreshes
+- **Persistent Strokes** — All strokes are stored as vector data in localStorage per script and survive page refreshes
 
 ### Export
 - **Export to PDF** — Composites the full 10,000×10,000 canvas (cards + connector lines + drawing strokes) into a high-resolution PDF via server-side WeasyPrint or client-side jsPDF fallback
@@ -104,7 +104,7 @@ A full-featured, Milanote-style **infinite canvas workspace** for pre-production
 
 ---
 
-## 🛠 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
@@ -119,7 +119,7 @@ A full-featured, Milanote-style **infinite canvas workspace** for pre-production
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Backend Setup (Django)
 Navigate to the `backend` directory, install requirements, and run migrations:
@@ -144,7 +144,7 @@ npm run dev
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -182,7 +182,7 @@ src/
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## Keyboard Shortcuts
 
 | Shortcut | Action |
 |---|---|
@@ -212,6 +212,6 @@ src/
 
 ---
 
-## 📄 License
+## License
 
 MIT
