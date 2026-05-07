@@ -35,8 +35,8 @@ export function ExportButton({
         originalWidth = innerDiv.style.width;
         originalHeight = innerDiv.style.height;
         innerDiv.style.transform = "none";
-        innerDiv.style.width = "4000px";
-        innerDiv.style.height = "3000px";
+        innerDiv.style.width = "10000px";
+        innerDiv.style.height = "10000px";
       }
 
       // Dynamic import dom-to-image-more
@@ -46,8 +46,8 @@ export function ExportButton({
       try {
         boardDataUrl = await domToImage.toPng(innerDiv || board, {
           bgcolor: "#0d0d0d",
-          width: 4000,
-          height: 3000,
+          width: 10000,
+          height: 10000,
           style: {
             transform: "scale(2)",
             transformOrigin: "top left"
@@ -78,7 +78,7 @@ export function ExportButton({
           0, 0,
           drawingCanvasRef.current.width,
           drawingCanvasRef.current.height,
-          0, 0,
+          -3000, -3000,
           compositeCanvas.width,
           compositeCanvas.height
         );

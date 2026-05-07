@@ -313,7 +313,7 @@ export const ScriptEditor = ({
   const [mounted, setMounted] = useState(false);
   const [toolbarOrientation, setToolbarOrientation] = useState<
     "horizontal" | "vertical"
-  >("horizontal");
+  >("vertical");
   const [toolbarPos, setToolbarPos] = useState({ x: -1, y: -1 });
   const toolbarRef = useRef<HTMLDivElement>(null);
   const editorCanvasRef = useRef<HTMLDivElement>(null);
@@ -348,7 +348,14 @@ export const ScriptEditor = ({
     if (savedPos) {
       try {
         const pos = JSON.parse(savedPos);
-        setTimeout(() => setToolbarPos(pos), 0);
+        setTimeout(() => {
+          const w = window.innerWidth;
+          const h = window.innerHeight;
+          setToolbarPos({ 
+            x: Math.max(16, Math.min(pos.x, w - 80)), 
+            y: Math.max(16, Math.min(pos.y, h - 80)) 
+          });
+        }, 0);
       } catch (e) {
         const def = calculateDefaultPosition();
         if (def) setTimeout(() => setToolbarPos(def), 0);
@@ -376,9 +383,16 @@ export const ScriptEditor = ({
       // However, if the window shrinks, we should keep it on-screen.
       setToolbarPos(current => {
         const toolbarWidth = toolbarOrientation === "horizontal" ? 300 : 60;
-        if (current.x + toolbarWidth > window.innerWidth - 16) {
-          return { ...current, x: Math.max(16, window.innerWidth - toolbarWidth - 16) };
+        const toolbarHeight = toolbarOrientation === "horizontal" ? 60 : 300;
+        let x = current.x;
+        let y = current.y;
+        if (x + toolbarWidth > window.innerWidth - 16) {
+          x = Math.max(16, window.innerWidth - toolbarWidth - 16);
         }
+        if (y + toolbarHeight > window.innerHeight - 16) {
+          y = Math.max(16, window.innerHeight - toolbarHeight - 16);
+        }
+        if (x !== current.x || y !== current.y) return { x, y };
         return current;
       });
     });
@@ -884,9 +898,11 @@ export const ScriptEditor = ({
                   if (e.currentTarget.hasPointerCapture(e.pointerId)) {
                     const offsetX = parseFloat(e.currentTarget.dataset.offsetX || "0");
                     const offsetY = parseFloat(e.currentTarget.dataset.offsetY || "0");
+                    const newX = e.clientX - offsetX;
+                    const newY = e.clientY - offsetY;
                     setToolbarPos({
-                      x: e.clientX - offsetX,
-                      y: e.clientY - offsetY,
+                      x: Math.max(16, Math.min(newX, window.innerWidth - 80)),
+                      y: Math.max(16, Math.min(newY, window.innerHeight - 80)),
                     });
                   }
                 }}

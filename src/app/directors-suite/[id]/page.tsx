@@ -11,6 +11,8 @@ import { useLoadingState } from "@/hooks/useLoadingState";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import "@/styles/suite.css";
 
+import { DrawingToolbar } from "@/components/suite/DrawingToolbar";
+
 function uid() {
   return crypto.randomUUID();
 }
@@ -27,6 +29,8 @@ export default function DirectorsSuitePage() {
 
   const boardRef = useRef<HTMLDivElement>(null);
   const drawingCanvasRef = useRef<HTMLCanvasElement>(null);
+  const zoomRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
 
   const suite = useSuiteState(scriptId);
 
@@ -71,17 +75,19 @@ export default function DirectorsSuitePage() {
   // Drawing hook
   const drawing = useDrawing({
     canvasRef: drawingCanvasRef,
-    boardRef,
-    active: drawMode,
-    onSaveDataUrl: suite.setDrawingDataUrl,
+    viewportRef: boardRef,
+    zoomRef,
+    panRef,
+    isDrawMode: drawMode,
     initialDataUrl: suite.state.drawingDataUrl,
+    onStrokeComplete: suite.setDrawingDataUrl,
+    scriptId,
   });
 
   // ── Add element helpers ──
   const addIdea = useCallback(() => {
-    const board = boardRef.current;
-    const x = (board?.scrollLeft ?? 0) + 100 + Math.random() * 200;
-    const y = (board?.scrollTop ?? 0) + 100 + Math.random() * 100;
+    const x = -panRef.current.x / zoomRef.current + 100 + Math.random() * 200;
+    const y = -panRef.current.y / zoomRef.current + 100 + Math.random() * 100;
     const el: SuiteElement = {
       id: uid(), type: "idea",
       x, y, width: 240, height: 180,
@@ -91,9 +97,8 @@ export default function DirectorsSuitePage() {
   }, [suite]);
 
   const addShot = useCallback(() => {
-    const board = boardRef.current;
-    const x = (board?.scrollLeft ?? 0) + 100 + Math.random() * 200;
-    const y = (board?.scrollTop ?? 0) + 100 + Math.random() * 100;
+    const x = -panRef.current.x / zoomRef.current + 100 + Math.random() * 200;
+    const y = -panRef.current.y / zoomRef.current + 100 + Math.random() * 100;
     const num = suite.nextShotNumber();
     const el: SuiteElement = {
       id: uid(), type: "shot",
@@ -109,9 +114,8 @@ export default function DirectorsSuitePage() {
   }, [suite]);
 
   const addImage = useCallback(() => {
-    const board = boardRef.current;
-    const x = (board?.scrollLeft ?? 0) + 100 + Math.random() * 200;
-    const y = (board?.scrollTop ?? 0) + 100 + Math.random() * 100;
+    const x = -panRef.current.x / zoomRef.current + 100 + Math.random() * 200;
+    const y = -panRef.current.y / zoomRef.current + 100 + Math.random() * 100;
     const el: SuiteElement = {
       id: uid(), type: "image",
       x, y, width: 260, height: 220,
@@ -121,9 +125,8 @@ export default function DirectorsSuitePage() {
   }, [suite]);
 
   const addLink = useCallback(() => {
-    const board = boardRef.current;
-    const x = (board?.scrollLeft ?? 0) + 100 + Math.random() * 200;
-    const y = (board?.scrollTop ?? 0) + 100 + Math.random() * 100;
+    const x = -panRef.current.x / zoomRef.current + 100 + Math.random() * 200;
+    const y = -panRef.current.y / zoomRef.current + 100 + Math.random() * 100;
     const el: SuiteElement = {
       id: uid(), type: "link",
       x, y, width: 220, height: 100,
@@ -197,7 +200,7 @@ export default function DirectorsSuitePage() {
       </header>
 
       {/* Main workspace */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         <SuiteToolbar
           onAddIdea={addIdea}
           onAddShot={addShot}
@@ -215,16 +218,17 @@ export default function DirectorsSuitePage() {
             setDrawMode((v) => !v);
             if (connectMode) setConnectMode(false);
           }}
-          drawTool={drawing.tool}
-          onSetDrawTool={drawing.setTool}
-          drawColor={drawing.color}
-          onSetDrawColor={drawing.setColor}
-          drawWidth={drawing.width}
-          onSetDrawWidth={drawing.setWidth}
-          onDrawUndo={drawing.undo}
-          onDrawClear={drawing.clearAll}
           scriptTitle={scriptTitle}
           isOpen={sidebarOpen}
+          // Obsolete drawing tools from SuiteToolbar were removed
+          drawTool={"pen"}
+          onSetDrawTool={() => {}}
+          drawColor={"#000"}
+          onSetDrawColor={() => {}}
+          drawWidth={2}
+          onSetDrawWidth={() => {}}
+          onDrawUndo={() => {}}
+          onDrawClear={() => {}}
         />
 
         <Board
@@ -235,6 +239,8 @@ export default function DirectorsSuitePage() {
           connectMode={connectMode}
           connectSource={connectSource}
           drawingCanvasRef={drawingCanvasRef}
+          zoomRef={zoomRef}
+          panRef={panRef}
           onMoveElement={suite.moveElement}
           onResizeElement={suite.resizeElement}
           onUpdateData={suite.updateElementData}
@@ -243,6 +249,20 @@ export default function DirectorsSuitePage() {
           onConnectClick={handleConnectClick}
           scriptId={scriptId}
         />
+
+        {/* Floating Drawing Toolbar */}
+        {drawMode && (
+          <DrawingToolbar
+            tool={drawing.tool}
+            setTool={drawing.setTool}
+            color={drawing.color}
+            setColor={drawing.setColor}
+            strokeWidth={drawing.strokeWidth}
+            setStrokeWidth={drawing.setStrokeWidth}
+            undo={drawing.undo}
+            clearAll={drawing.clearAll}
+          />
+        )}
       </div>
     </div>
   );

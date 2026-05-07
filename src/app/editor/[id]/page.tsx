@@ -912,7 +912,10 @@ export default function EditorPage() {
                 scriptId={script.id}
                 title={title}
                 metadata={metadata}
-                onTitleChange={(val) => setTitle(val)}
+                onTitleChange={(val) => {
+                  setTitle(val);
+                  if (script) updateScript(script.id, { title: val });
+                }}
                 onMetaChange={handleMetaChange}
                 docBgColor={docBgColor}
                 docFont={docFont}

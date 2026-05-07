@@ -98,72 +98,7 @@ export function SuiteToolbar({
         </button>
       </div>
 
-      {/* Drawing sub-tools (only visible when draw mode active) */}
-      {drawMode && (
-        <div className="px-4 py-4 space-y-3" style={{ borderBottom: "1px solid #222" }}>
-          <div className="text-[10px] uppercase tracking-[0.15em] text-zinc-500 mb-1">Drawing Tools</div>
 
-          {/* Tool selector */}
-          <div className="flex gap-1 flex-wrap">
-            {(["pen", "pencil", "brush", "eraser"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => onSetDrawTool(t)}
-                className="px-2 py-1 text-[10px] rounded capitalize transition-colors"
-                style={{
-                  backgroundColor: drawTool === t ? "#c9a84c" : "#1a1a1a",
-                  color: drawTool === t ? "#0d0d0d" : "#a1a1aa",
-                  border: "1px solid #333",
-                }}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* Color */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Color</span>
-            <input
-              type="color"
-              value={drawColor}
-              onChange={(e) => onSetDrawColor(e.target.value)}
-              className="w-6 h-6 rounded cursor-pointer border border-zinc-700"
-              style={{ backgroundColor: drawColor }}
-            />
-          </div>
-
-          {/* Width */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-zinc-500 uppercase tracking-wider shrink-0">Width</span>
-            <input
-              type="range"
-              min={1}
-              max={20}
-              value={drawWidth}
-              onChange={(e) => onSetDrawWidth(Number(e.target.value))}
-              className="flex-1"
-            />
-            <span className="text-[10px] text-zinc-400 w-4 text-right">{drawWidth}</span>
-          </div>
-
-          {/* Undo / Clear */}
-          <div className="flex gap-2">
-            <button
-              onClick={onDrawUndo}
-              className="flex-1 px-2 py-1 text-[10px] rounded bg-zinc-800 text-zinc-300 transition-all hover:bg-zinc-700 hover:scale-[1.02] active:scale-95"
-            >
-              ↩ Undo
-            </button>
-            <button
-              onClick={onDrawClear}
-              className="flex-1 px-2 py-1 text-[10px] rounded bg-zinc-800 text-zinc-300 transition-all hover:bg-zinc-700 hover:scale-[1.02] active:scale-95"
-            >
-              🗑 Clear All
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Spacer */}
       <div className="flex-1" />

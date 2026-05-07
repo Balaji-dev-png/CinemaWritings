@@ -2,6 +2,7 @@
 import { useRef, useCallback } from "react";
 import { SuiteElement } from "@/hooks/useSuiteState";
 import { useDraggable } from "@/hooks/useDraggable";
+import { GripHorizontal } from "lucide-react";
 
 const BG_COLORS = [
   "#1a1a1a", "#1a2a1a", "#1a1a2a",
@@ -88,6 +89,17 @@ export function IdeaCard({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 director-suite-card-header">
+        {connectMode && (
+          <div
+            className="cursor-grab text-zinc-500 hover:text-white mr-2"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              handleMouseDown(e, element.x, element.y);
+            }}
+          >
+            <GripHorizontal className="w-4 h-4" />
+          </div>
+        )}
         <input
           className="bg-transparent text-sm font-bold gold-accent outline-none border-none w-full"
           style={{ fontFamily: "inherit" }}

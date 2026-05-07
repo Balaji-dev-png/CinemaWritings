@@ -23,6 +23,8 @@ interface Props {
   onConnectClick: (id: string) => void;
   connectSource?: string | null;
   scriptId: string;
+  zoomRef: React.MutableRefObject<number>;
+  panRef: React.MutableRefObject<{ x: number; y: number }>;
 }
 
 interface CanvasState {
@@ -34,6 +36,7 @@ export const Board = forwardRef<HTMLDivElement, Props>(
   function Board(
     {
       elements, connectors, drawMode, connectMode, connectSource, drawingCanvasRef,
+      zoomRef, panRef,
       onMoveElement, onResizeElement, onUpdateData, onRemoveElement,
       onRemoveConnector, onConnectClick, scriptId
     },
@@ -45,14 +48,12 @@ export const Board = forwardRef<HTMLDivElement, Props>(
     
     // Canvas State
     const [canvas, setCanvas] = useState<CanvasState>({ zoom: 1, pan: { x: 0, y: 0 } });
-    const zoomRef = useRef(1);
-    const panRef = useRef({ x: 0, y: 0 });
 
     // Sync refs with state
     useEffect(() => {
       zoomRef.current = canvas.zoom;
       panRef.current = canvas.pan;
-    }, [canvas]);
+    }, [canvas, zoomRef, panRef]);
 
     // Panning State
     const isPanning = useRef(false);
@@ -108,31 +109,28 @@ export const Board = forwardRef<HTMLDivElement, Props>(
 
       e.preventDefault();
 
-      if (e.ctrlKey) {
-        const ZOOM_SENSITIVITY = 0.005;
-        const MIN_ZOOM = 0.1;
-        const MAX_ZOOM = 3.0;
+      // Zoom on scroll
+      const ZOOM_SENSITIVITY = 0.001; // reduced sensitivity
+      const MIN_ZOOM = 0.1;
+      const MAX_ZOOM = 3.0;
 
-        const mouseX = e.clientX;
-        const mouseY = e.clientY;
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
 
-        const delta = -e.deltaY * ZOOM_SENSITIVITY;
-        const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current * (1 + delta)));
+      // Calculate delta and clamp to max 5% change per event
+      let delta = -e.deltaY * ZOOM_SENSITIVITY;
+      if (delta > 0.05) delta = 0.05;
+      if (delta < -0.05) delta = -0.05;
+      
+      const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current * (1 + delta)));
 
-        const canvasPointX = (mouseX - panRef.current.x) / zoomRef.current;
-        const canvasPointY = (mouseY - panRef.current.y) / zoomRef.current;
+      const canvasPointX = (mouseX - panRef.current.x) / zoomRef.current;
+      const canvasPointY = (mouseY - panRef.current.y) / zoomRef.current;
 
-        const newPanX = mouseX - canvasPointX * newZoom;
-        const newPanY = mouseY - canvasPointY * newZoom;
+      const newPanX = mouseX - canvasPointX * newZoom;
+      const newPanY = mouseY - canvasPointY * newZoom;
 
-        setCanvas({ zoom: newZoom, pan: { x: newPanX, y: newPanY } });
-      } else {
-        const newPan = {
-          x: panRef.current.x - e.deltaX,
-          y: panRef.current.y - e.deltaY
-        };
-        setCanvas(prev => ({ ...prev, pan: newPan }));
-      }
+      setCanvas({ zoom: newZoom, pan: { x: newPanX, y: newPanY } });
     }, []);
 
     useEffect(() => {
@@ -144,7 +142,7 @@ export const Board = forwardRef<HTMLDivElement, Props>(
 
     // PANNING LOGIC (Feature 2)
     const handleMouseDown = (e: React.MouseEvent) => {
-      if (e.button === 1 || (e.button === 0 && isSpaceDown.current)) {
+      if (e.button === 1 || (e.button === 0 && isSpaceDown.current && !drawMode)) {
         e.preventDefault();
         isPanning.current = true;
         panStart.current = {
@@ -162,7 +160,15 @@ export const Board = forwardRef<HTMLDivElement, Props>(
             x: e.clientX - panStart.current.x,
             y: e.clientY - panStart.current.y
           };
-          setCanvas(prev => ({ ...prev, pan: newPan }));
+          panRef.current = newPan;
+
+          // Direct DOM mutation for 60fps panning
+          if (canvasRef.current) {
+            canvasRef.current.style.transform = `translate(${newPan.x}px, ${newPan.y}px) scale(${zoomRef.current})`;
+          }
+          if (viewportRef.current) {
+            viewportRef.current.style.backgroundPosition = `${newPan.x}px ${newPan.y}px`;
+          }
         }
       };
 
@@ -172,6 +178,8 @@ export const Board = forwardRef<HTMLDivElement, Props>(
           if (viewportRef.current) {
             viewportRef.current.style.cursor = isSpaceDown.current ? 'grab' : 'default';
           }
+          // Sync state at end of pan
+          setCanvas({ zoom: zoomRef.current, pan: panRef.current });
         }
       };
 
@@ -280,7 +288,7 @@ export const Board = forwardRef<HTMLDivElement, Props>(
     return (
       <div
         ref={viewportRef}
-        className="flex-1 relative overflow-hidden select-none"
+        className={`flex-1 relative overflow-hidden select-none ${drawMode ? "draw-mode-active" : ""}`}
         style={{
           backgroundColor: '#0d0d0d',
           backgroundImage: 'radial-gradient(circle, #1e1e1e 1px, transparent 1px)',
@@ -289,14 +297,6 @@ export const Board = forwardRef<HTMLDivElement, Props>(
         }}
         onMouseDown={handleMouseDown}
       >
-        <ConnectorLayer
-          elements={elements}
-          connectors={connectors}
-          zoom={canvas.zoom}
-          pan={canvas.pan}
-          onRemoveConnector={onRemoveConnector}
-        />
-
         <div
           ref={canvasRef}
           className="director-suite-canvas"
@@ -304,45 +304,55 @@ export const Board = forwardRef<HTMLDivElement, Props>(
             position: 'absolute',
             top: 0,
             left: 0,
-            width: '4000px',
-            height: '3000px',
+            width: '10000px',
+            height: '10000px',
+            zIndex: 10,
+            pointerEvents: 'none',
             transformOrigin: '0 0',
             transform: `translate(${canvas.pan.x}px, ${canvas.pan.y}px) scale(${canvas.zoom})`,
           }}
         >
           <DrawingCanvas
             ref={drawingCanvasRef}
-            width={4000}
-            height={3000}
+            width={10000}
+            height={10000}
             active={drawMode}
           />
 
-          {elements.map((el) => {
-            const isConnectSource = connectSource === el.id;
-            const commonProps = {
-              element: el,
-              onMove: onMoveElement,
-              onResize: onResizeElement,
-              onUpdate: onUpdateData,
-              onRemove: onRemoveElement,
-              onConnectClick,
-              connectMode,
-              isConnectSource,
-              getZoom,
-              getPan,
-            };
+          <ConnectorLayer
+            elements={elements}
+            connectors={connectors}
+            onRemoveConnector={onRemoveConnector}
+          />
 
-            switch (el.type) {
-              case "idea": return <IdeaCard key={el.id} {...commonProps} />;
-              case "shot": return <ShotCard key={el.id} {...commonProps} />;
-              case "image": return <ImageCard key={el.id} {...commonProps} />;
-              case "link": return <LinkCard key={el.id} {...commonProps} />;
-              default: return null;
-            }
-          })}
+          <div style={{ pointerEvents: drawMode ? "none" : "auto" }}>
+            {elements.map((el) => {
+              const isConnectSource = connectSource === el.id;
+              const commonProps = {
+                element: el,
+                onMove: onMoveElement,
+                onResize: onResizeElement,
+                onUpdate: onUpdateData,
+                onRemove: onRemoveElement,
+                onConnectClick,
+                connectMode,
+                isConnectSource,
+                getZoom,
+                getPan,
+              };
+
+              switch (el.type) {
+                case "idea": return <IdeaCard key={el.id} {...commonProps} />;
+                case "shot": return <ShotCard key={el.id} {...commonProps} />;
+                case "image": return <ImageCard key={el.id} {...commonProps} />;
+                case "link": return <LinkCard key={el.id} {...commonProps} />;
+                default: return null;
+              }
+            })}
+          </div>
         </div>
 
-        <div className="absolute bottom-6 left-6 flex items-center gap-2 z-50">
+        <div className="absolute bottom-6 right-6 flex items-center gap-2 z-50">
           <div className="flex items-center gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-1 shadow-2xl">
             <button
               onClick={() => zoomTowardCenter(canvas.zoom * 0.9)}

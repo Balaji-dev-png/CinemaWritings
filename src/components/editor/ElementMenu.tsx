@@ -82,7 +82,7 @@ export const ElementMenu = ({
         title="Change Element Type"
       >
         <span
-          style={isVertical ? { writingMode: "vertical-rl", transform: "rotate(180deg)" } : {}}
+          style={isVertical ? { writingMode: "vertical-rl" } : {}}
           className="whitespace-nowrap"
         >
           {activeElement.label}

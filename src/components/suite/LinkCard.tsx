@@ -2,6 +2,7 @@
 import { useCallback, useRef } from "react";
 import { SuiteElement } from "@/hooks/useSuiteState";
 import { useDraggable } from "@/hooks/useDraggable";
+import { GripHorizontal, Link as LinkIcon } from "lucide-react";
 
 interface Props {
   element: SuiteElement;
@@ -71,7 +72,7 @@ export function LinkCard({
         left: element.x, top: element.y,
         width: element.width, height: element.height,
         zIndex: 10,
-        cursor: connectMode ? "crosshair" : "grab",
+        cursor: connectMode ? "crosshair" : "default",
         boxShadow: isConnectSource ? "0 0 0 3px #c9a84c, 0 0 20px rgba(201,168,76,0.5)" : "none",
       }}
       onMouseDown={(e) => {
@@ -81,9 +82,26 @@ export function LinkCard({
     >
       {/* Delete */}
       <button
-        className="absolute top-2 right-2 text-zinc-600 hover:text-red-500 text-xs transition-colors"
+        className="absolute top-2 right-2 text-zinc-600 hover:text-red-500 text-xs transition-colors z-10"
         onMouseDown={(e) => { e.stopPropagation(); onRemove(element.id); }}
       >✕</button>
+
+      <div className="flex items-center justify-between p-3 director-suite-card-header" style={{ borderBottom: "1px solid #333" }}>
+        <div className="flex items-center gap-2 text-zinc-400 max-w-[80%]">
+          {connectMode && (
+            <div
+              className="cursor-grab hover:text-white"
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleMouseDown(e, element.x, element.y);
+              }}
+            >
+              <GripHorizontal className="w-4 h-4" />
+            </div>
+          )}
+          <LinkIcon size={14} className="shrink-0" />
+        </div>
+      </div>
 
       <div className="p-3 space-y-2">
         {/* Label */}

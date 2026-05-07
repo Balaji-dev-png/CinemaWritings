@@ -2,6 +2,7 @@
 import { useRef, useCallback } from "react";
 import { SuiteElement } from "@/hooks/useSuiteState";
 import { useDraggable } from "@/hooks/useDraggable";
+import { GripHorizontal } from "lucide-react";
 
 const SHOT_TYPES = [
   "Extreme Wide Shot (EWS)",
@@ -129,6 +130,17 @@ export function ShotCard({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 director-suite-card-header"
         style={{ borderLeft: "3px solid #c9a84c" }}>
+        {connectMode && (
+          <div
+            className="cursor-grab text-zinc-500 hover:text-white mr-2"
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              handleMouseDown(e, element.x, element.y);
+            }}
+          >
+            <GripHorizontal className="w-4 h-4" />
+          </div>
+        )}
         <input
           className="bg-transparent text-sm font-bold gold-accent outline-none border-none w-24"
           value={(d.shotNumber as string) || "Shot 01"}
@@ -206,7 +218,8 @@ export function ShotCard({
             </div>
           ) : (
             <div
-              className="border border-dashed border-zinc-700 rounded p-3 text-center text-zinc-600 text-[11px] cursor-pointer hover:border-[#c9a84c] transition-colors"
+              className="rounded p-3 text-center text-zinc-600 text-[11px] cursor-pointer hover:border-[#c9a84c] transition-colors"
+              style={{ border: "1px dashed #3f3f46" }}
               onClick={() => {
                 const input = document.createElement("input");
                 input.type = "file";

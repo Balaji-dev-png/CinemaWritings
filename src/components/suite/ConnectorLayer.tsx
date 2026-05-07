@@ -4,8 +4,6 @@ import { SuiteElement, Connector } from "@/hooks/useSuiteState";
 interface Props {
   elements: SuiteElement[];
   connectors: Connector[];
-  zoom: number;
-  pan: { x: number; y: number };
   onRemoveConnector: (id: string) => void;
 }
 
@@ -17,11 +15,11 @@ function getCenter(el: SuiteElement): { x: number; y: number } {
 }
 
 export function ConnectorLayer({
-  elements, connectors, zoom, pan, onRemoveConnector,
+  elements, connectors, onRemoveConnector,
 }: Props) {
   const toViewport = (canvasX: number, canvasY: number) => ({
-    x: canvasX * zoom + pan.x,
-    y: canvasY * zoom + pan.y,
+    x: canvasX,
+    y: canvasY,
   });
 
   return (
@@ -58,12 +56,16 @@ export function ConnectorLayer({
         const from = toViewport(fromCanvas.x, fromCanvas.y);
         const to = toViewport(toCanvas.x, toCanvas.y);
 
-        // Cubic bezier curve
+        // Cubic bezier — use the larger of dx/dy for control point offset
+        // so curves look natural both horizontally and vertically
         const dx = to.x - from.x;
         const dy = to.y - from.y;
-        const cx1 = from.x + dx * 0.4;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const offset = Math.min(dist * 0.4, 200);
+
+        const cx1 = from.x + offset * Math.sign(dx || 1);
         const cy1 = from.y;
-        const cx2 = to.x - dx * 0.4;
+        const cx2 = to.x - offset * Math.sign(dx || 1);
         const cy2 = to.y;
 
         // Midpoint for delete button

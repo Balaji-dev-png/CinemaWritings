@@ -14,11 +14,13 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, Props>(
         ref={ref}
         width={width}
         height={height}
-        className="absolute top-0 left-0"
+        className="absolute"
         style={{
-          zIndex: active ? 10 : 1,
-          pointerEvents: active ? "auto" : "none",
-          cursor: active ? "crosshair" : "default",
+          top: -3000,
+          left: -3000,
+          zIndex: active ? 100 : -1,
+          pointerEvents: active ? "all" : "none",
+          background: "transparent",
         }}
       />
     );
