@@ -1,28 +1,8 @@
 /**
- * Storyboard API client — wraps all /api/storyboards/ endpoints.
- * Uses the existing authenticated apiFetch from @/lib/api.
+ * Storyboard API client — LocalStorage implementation for Netlify production
+ * This prevents the 'Failed to load storyboard' error by storing data locally
+ * until a Supabase schema is finalized for storyboards.
  */
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-
-async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  const { createBrowserClient } = await import("@supabase/ssr");
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-
-  return fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
-}
 
 export interface SceneCard {
   id: string;
@@ -84,56 +64,95 @@ export const CAMERA_MOVEMENTS: Record<string, string> = {
   whip: "Whip Pan",
 };
 
+const storageKey = (id: string) => `storyboard_${id}`;
+
 export async function getStoryboard(scriptId: string): Promise<Storyboard> {
-  const res = await authFetch(`${API_BASE}/storyboards/${scriptId}/`);
-  if (!res.ok) throw new Error("Failed to load storyboard");
-  return res.json();
+  if (typeof window !== "undefined") {
+    const raw = localStorage.getItem(storageKey(scriptId));
+    if (raw) return JSON.parse(raw);
+  }
+  
+  const initial: Storyboard = {
+    id: scriptId,
+    script_title: "Untitled",
+    title: "Storyboard",
+    aspect_ratio: "16:9",
+    cards: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  
+  if (typeof window !== "undefined") {
+    localStorage.setItem(storageKey(scriptId), JSON.stringify(initial));
+  }
+  
+  return initial;
 }
 
 export async function updateStoryboard(scriptId: string, data: Partial<Storyboard>): Promise<Storyboard> {
-  const res = await authFetch(`${API_BASE}/storyboards/${scriptId}/`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update storyboard");
-  return res.json();
+  const sb = await getStoryboard(scriptId);
+  const updated: Storyboard = { ...sb, ...data, updated_at: new Date().toISOString() };
+  if (typeof window !== "undefined") {
+    localStorage.setItem(storageKey(scriptId), JSON.stringify(updated));
+  }
+  return updated;
 }
 
 export async function createSceneCard(storyboardId: string, data: Partial<SceneCard> = {}): Promise<SceneCard> {
-  const res = await authFetch(`${API_BASE}/storyboards/${storyboardId}/cards/`, {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to create scene card");
-  return res.json();
+  const sb = await getStoryboard(storyboardId);
+  const newCard: SceneCard = {
+    id: crypto.randomUUID(),
+    order: sb.cards.length,
+    shot_number: "",
+    scene_heading: "",
+    shot_type: "MS",
+    camera_movement: "static",
+    lens: "",
+    technical_notes: "",
+    image_url: "",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ...data,
+  };
+  sb.cards.push(newCard);
+  await updateStoryboard(storyboardId, { cards: sb.cards });
+  return newCard;
 }
 
 export async function updateSceneCard(storyboardId: string, cardId: string, data: Partial<SceneCard>): Promise<SceneCard> {
-  const res = await authFetch(`${API_BASE}/storyboards/${storyboardId}/cards/${cardId}/`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update scene card");
-  return res.json();
+  const sb = await getStoryboard(storyboardId);
+  const idx = sb.cards.findIndex(c => c.id === cardId);
+  if (idx === -1) throw new Error("Card not found");
+  
+  sb.cards[idx] = { ...sb.cards[idx], ...data, updated_at: new Date().toISOString() };
+  await updateStoryboard(storyboardId, { cards: sb.cards });
+  return sb.cards[idx];
 }
 
 export async function deleteSceneCard(storyboardId: string, cardId: string): Promise<void> {
-  const res = await authFetch(`${API_BASE}/storyboards/${storyboardId}/cards/${cardId}/`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete scene card");
+  const sb = await getStoryboard(storyboardId);
+  sb.cards = sb.cards.filter(c => c.id !== cardId);
+  await updateStoryboard(storyboardId, { cards: sb.cards });
 }
 
 export async function reorderSceneCards(storyboardId: string, orderedIds: string[]): Promise<void> {
-  const res = await authFetch(`${API_BASE}/storyboards/${storyboardId}/cards/reorder/`, {
-    method: "POST",
-    body: JSON.stringify({ order: orderedIds }),
-  });
-  if (!res.ok) throw new Error("Failed to reorder cards");
+  const sb = await getStoryboard(storyboardId);
+  const cardsMap = new Map(sb.cards.map(c => [c.id, c]));
+  
+  sb.cards = orderedIds.map((id, index) => {
+    const card = cardsMap.get(id);
+    if (card) {
+      card.order = index;
+      return card;
+    }
+    return null;
+  }).filter(Boolean) as SceneCard[];
+  
+  await updateStoryboard(storyboardId, { cards: sb.cards });
 }
 
 export async function bulkDeleteSceneCards(storyboardId: string, ids: string[]): Promise<void> {
-  const res = await authFetch(`${API_BASE}/storyboards/${storyboardId}/cards/bulk_delete/`, {
-    method: "DELETE",
-    body: JSON.stringify({ ids }),
-  });
-  if (!res.ok) throw new Error("Failed to bulk delete cards");
+  const sb = await getStoryboard(storyboardId);
+  sb.cards = sb.cards.filter(c => !ids.includes(c.id));
+  await updateStoryboard(storyboardId, { cards: sb.cards });
 }

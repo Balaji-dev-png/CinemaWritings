@@ -261,6 +261,26 @@ export const deleteScript = async (id: string) => {
   }
 };
 
+export const recordHistory = async (id: string, action: HistoryEvent["action"], details?: string) => {
+  try {
+    const script = await getScriptById(id);
+    if (!script) return;
+    
+    const newEvent = { action, timestamp: Date.now(), details };
+    const historyList = [...(script.historyList || []), newEvent];
+    
+    const dbHistory = historyList.map(h => ({
+      action: h.action,
+      timestamp: new Date(h.timestamp).toISOString(),
+      details: h.details
+    }));
+
+    await supabase.from("scripts").update({ history: dbHistory }).eq("id", id);
+  } catch (e) {
+    console.error("Failed to record history:", e);
+  }
+};
+
 /* ─── Version Management ─── */
 export const saveVersion = async (
   id: string,
@@ -282,6 +302,8 @@ export const saveVersion = async (
       
       existing.push(newVersion);
       localStorage.setItem(`script_versions_${id}`, JSON.stringify(existing));
+      
+      await recordHistory(id, "VERSION_SAVED", `Saved version: "${name}"`);
       return true;
     }
     return false;
@@ -302,7 +324,6 @@ export const restoreVersion = async (
       
       const versions = JSON.parse(existingRaw);
       
-      // If versionIdOrIndex is a number, we treat it as an index. Otherwise, find by name.
       let targetVersion;
       if (typeof versionIdOrIndex === "number") {
         targetVersion = versions[versionIdOrIndex];
@@ -311,8 +332,8 @@ export const restoreVersion = async (
       }
       
       if (targetVersion) {
-        // Save restored content to backend
         await updateScript(id, { content: targetVersion.content });
+        await recordHistory(id, "VERSION_RESTORED", `Restored version: "${targetVersion.name}"`);
         return targetVersion.content;
       }
     }

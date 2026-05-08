@@ -340,7 +340,11 @@ export default function EditorPage() {
   };
 
   const handleTitleBlur = () => {
-    // Already saved on change
+    if (script && title !== script.title) {
+      import("@/lib/storage").then(({ recordHistory }) => {
+        recordHistory(script.id, "TITLE_CHANGED", `Changed title to "${title}"`);
+      });
+    }
   };
 
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
