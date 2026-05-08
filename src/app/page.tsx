@@ -400,7 +400,7 @@ export default function Dashboard() {
             </a>
           </div>
           <div className="text-right">
-            <p className="text-[11px] text-zinc-500">Next.js · Django · Supabase</p>
+            <p className="text-[11px] text-zinc-500">Built for filmmakers by DGARTSWORK</p>
             <p className="text-[11px] text-zinc-600">{new Date().getFullYear()}</p>
           </div>
         </div>

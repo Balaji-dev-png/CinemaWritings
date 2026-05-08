@@ -187,14 +187,20 @@ export function ChatbotWidget() {
   const resolveActionPath = useCallback((path: string) => {
     if (path === "__help") return path;
     if (path.startsWith("http")) return path;
-    if (path === "/directors-suite" && pathname?.includes("/editor/")) {
-      const id = pathname.split("/editor/")[1];
-      return `/directors-suite/${id}`;
+    
+    // Extract ID if we are on any script page
+    let currentId = null;
+    if (pathname) {
+      const match = pathname.match(/\/(?:editor|directors-suite|storyboard)\/([^\/]+)/);
+      if (match) currentId = match[1];
     }
-    if (path === "/storyboard" && pathname?.includes("/editor/")) {
-      const id = pathname.split("/editor/")[1];
-      return `/storyboard/${id}`;
+    
+    if (currentId) {
+      if (path === "/directors-suite") return `/directors-suite/${currentId}`;
+      if (path === "/storyboard") return `/storyboard/${currentId}`;
+      if (path === "/editor") return `/editor/${currentId}`;
     }
+    
     return path;
   }, [pathname]);
 
@@ -219,6 +225,10 @@ export function ChatbotWidget() {
   const handleNavigate = useCallback((path: string) => {
     if (path === "__help") { sendMessage("What features does CinemaWritings have?"); return; }
     if (path.startsWith("http")) { window.open(path, "_blank", "noopener noreferrer"); return; }
+    if (path === "/directors-suite" || path === "/storyboard" || path === "/editor") {
+        sendMessage("You need to open a script from the dashboard first to access this suite.");
+        return;
+    }
     router.push(path);
     setOpen(false);
   }, [router, sendMessage]);
@@ -233,8 +243,7 @@ export function ChatbotWidget() {
 
   return (
     <>
-      {/* FAB — positioned bottom-right but ABOVE the Board's zoom controls (which are also bottom-6 right-6) */}
-      {/* We use bottom-24 to clear the Board zoom bar which is at bottom-6 */}
+      {/* FAB — positioned bottom-right but ABOVE the Board's zoom controls */}
       <motion.button
         id="chatbot-fab"
         onClick={() => { setOpen(v => !v); setMinimized(false); }}
@@ -242,8 +251,8 @@ export function ChatbotWidget() {
         whileTap={{ scale: 0.95 }}
         className="fixed z-[60] w-13 h-13 rounded-full flex items-center justify-center shadow-2xl"
         style={{
-          bottom: "1.5rem",
-          left: "1.5rem",
+          bottom: "5rem",
+          right: "1.5rem",
           width: 52,
           height: 52,
           background: open ? "rgba(201,168,76,0.95)" : "linear-gradient(135deg,#c9a84c,#a8862e)",
@@ -264,7 +273,7 @@ export function ChatbotWidget() {
         {open && (
           <motion.div
             id="chatbot-window"
-            initial={{ opacity: 0, y: 20, scale: 0.95, originX: 0, originY: 1 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95, originX: 1, originY: 1 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 400, damping: 32 }}
@@ -272,8 +281,8 @@ export function ChatbotWidget() {
             style={{
               width: 360,
               height: minimized ? "auto" : 520,
-              bottom: "5.5rem",
-              left: "1.5rem",
+              bottom: "9rem",
+              right: "1.5rem",
               background: "rgba(10,10,18,0.97)",
               border: "1px solid rgba(201,168,76,0.2)",
               boxShadow: "0 24px 64px -8px rgba(0,0,0,0.8), 0 0 0 0.5px rgba(201,168,76,0.08)",
