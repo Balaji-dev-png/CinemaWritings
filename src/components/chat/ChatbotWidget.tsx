@@ -229,8 +229,12 @@ export function ChatbotWidget() {
         sendMessage("You need to open a script from the dashboard first to access this suite.");
         return;
     }
-    router.push(path);
-    setOpen(false);
+    sendMessage("Opening... ⏳");
+    // Small timeout to allow the message to render before router blocks the main thread
+    setTimeout(() => {
+      router.push(path);
+      setOpen(false);
+    }, 100);
   }, [router, sendMessage]);
 
   const resetChat = () => {
@@ -241,22 +245,34 @@ export function ChatbotWidget() {
     }]);
   };
 
+  const isLeftAligned = pathname?.includes("/editor/");
+
   return (
-    <>
-      {/* FAB — positioned bottom-right but ABOVE the Board's zoom controls */}
+    <motion.div
+      drag
+      dragMomentum={false}
+      style={{
+        position: "fixed",
+        bottom: "5rem",
+        left: isLeftAligned ? "1.5rem" : undefined,
+        right: !isLeftAligned ? "1.5rem" : undefined,
+        zIndex: 60,
+      }}
+      className={`flex flex-col-reverse ${isLeftAligned ? "items-start" : "items-end"} gap-4`}
+    >
+      {/* FAB — Drag Handle */}
       <motion.button
         id="chatbot-fab"
         onClick={() => { setOpen(v => !v); setMinimized(false); }}
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.95 }}
-        className="fixed z-[60] w-13 h-13 rounded-full flex items-center justify-center shadow-2xl"
+        className="w-13 h-13 rounded-full flex items-center justify-center shadow-2xl shrink-0 cursor-grab active:cursor-grabbing"
         style={{
-          bottom: "5rem",
-          right: "1.5rem",
           width: 52,
           height: 52,
           background: open ? "rgba(201,168,76,0.95)" : "linear-gradient(135deg,#c9a84c,#a8862e)",
           boxShadow: "0 8px 32px rgba(201,168,76,0.3), 0 2px 8px rgba(0,0,0,0.5)",
+          pointerEvents: "auto",
         }}
         aria-label="Open CinemaWritings assistant"
       >
@@ -268,25 +284,25 @@ export function ChatbotWidget() {
         </AnimatePresence>
       </motion.button>
 
-      {/* Chat window — positioned to NOT overlap the Board's bottom-right toolbar */}
+      {/* Chat window */}
       <AnimatePresence>
         {open && (
           <motion.div
             id="chatbot-window"
-            initial={{ opacity: 0, y: 20, scale: 0.95, originX: 1, originY: 1 }}
+            onPointerDownCapture={(e) => e.stopPropagation()} // Prevent dragging from the window
+            initial={{ opacity: 0, y: 20, scale: 0.95, originX: isLeftAligned ? 0 : 1, originY: 1 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 400, damping: 32 }}
-            className="fixed z-[60] rounded-2xl overflow-hidden flex flex-col"
+            className="rounded-2xl overflow-hidden flex flex-col shrink-0"
             style={{
               width: 360,
               height: minimized ? "auto" : 520,
-              bottom: "9rem",
-              right: "1.5rem",
               background: "rgba(10,10,18,0.97)",
               border: "1px solid rgba(201,168,76,0.2)",
               boxShadow: "0 24px 64px -8px rgba(0,0,0,0.8), 0 0 0 0.5px rgba(201,168,76,0.08)",
               backdropFilter: "blur(20px)",
+              pointerEvents: "auto",
             }}
           >
             {/* Header */}
@@ -345,6 +361,6 @@ export function ChatbotWidget() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </motion.div>
   );
 }
