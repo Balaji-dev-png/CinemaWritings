@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # Frontend — npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    groups:
+      supabase:
+        patterns:
+          - "@supabase/*"
+      tiptap:
+        patterns:
+          - "@tiptap/*"
+      framer:
+        patterns:
+          - "framer-motion"
+
+  # Backend — pip
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5

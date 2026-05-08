@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { PenTool, ArrowRight } from "lucide-react";
+import { PenTool, ArrowRight, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 import { supabase } from "@/lib/supabase";
+
+// ─── Rate Limiting ────────────────────────────────────────────────────────
+const MAX_ATTEMPTS = 5;
+const COOLDOWN_MS = 30_000; // 30 seconds
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,22 +19,71 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Rate limiting state
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startCooldown = () => {
+    const until = Date.now() + COOLDOWN_MS;
+    setCooldownUntil(until);
+    setCooldownSeconds(Math.ceil(COOLDOWN_MS / 1000));
+
+    cooldownTimer.current = setInterval(() => {
+      const remaining = Math.ceil((until - Date.now()) / 1000);
+      if (remaining <= 0) {
+        clearInterval(cooldownTimer.current!);
+        setCooldownUntil(null);
+        setCooldownSeconds(0);
+        setFailedAttempts(0);
+      } else {
+        setCooldownSeconds(remaining);
+      }
+    }, 1000);
+  };
+
+  const isInCooldown = cooldownUntil !== null && Date.now() < cooldownUntil;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isInCooldown) return;
+
     setLoading(true);
     setError("");
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      const { error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) throw authError;
-      
+      if (authError) {
+        // Increment failed attempts
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+
+        if (newAttempts >= MAX_ATTEMPTS) {
+          startCooldown();
+          setError(
+            `Too many failed attempts. Please wait ${COOLDOWN_MS / 1000} seconds before trying again.`
+          );
+        } else {
+          // Generic message — never expose the raw Supabase error
+          setError(
+            `Invalid email or password. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts === 1 ? "" : "s"} remaining.`
+          );
+        }
+        return;
+      }
+
+      // Success — clear password from state immediately
+      setPassword("");
       router.push("/");
-    } catch (err: any) {
-      setError(err.message || "Failed to login. Please check your credentials.");
+    } catch {
+      // Generic catch — never expose internal error details
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -42,7 +95,7 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 40, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -57,13 +110,28 @@ export default function LoginPage() {
             Welcome back
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-            Sign in to access your writer's room
+            Sign in to access your writer&apos;s room
           </p>
         </div>
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-xl text-red-600 dark:text-red-400 text-sm text-center font-medium">
             {error}
+          </div>
+        )}
+
+        {/* Cooldown indicator */}
+        {isInCooldown && (
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex items-center gap-3">
+            <Clock className="w-5 h-5 text-amber-500 shrink-0" />
+            <div>
+              <p className="text-amber-700 dark:text-amber-400 text-sm font-medium">
+                Too many failed attempts
+              </p>
+              <p className="text-amber-600 dark:text-amber-500 text-xs mt-0.5">
+                Please wait <span className="font-bold tabular-nums">{cooldownSeconds}s</span> before trying again.
+              </p>
+            </div>
           </div>
         )}
 
@@ -77,6 +145,8 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
+              disabled={isInCooldown}
+              autoComplete="email"
             />
           </div>
 
@@ -89,16 +159,18 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              disabled={isInCooldown}
+              autoComplete="current-password"
             />
           </div>
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || isInCooldown}
             className="w-full group flex items-center justify-center gap-3 bg-[#1c1d20] dark:bg-zinc-100 hover:bg-black dark:hover:bg-white text-white dark:text-black py-4 rounded-xl font-medium shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
-            <span>{loading ? "Signing in..." : "Sign In"}</span>
-            {!loading && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
+            <span>{loading ? "Signing in..." : isInCooldown ? `Wait ${cooldownSeconds}s` : "Sign In"}</span>
+            {!loading && !isInCooldown && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
           </button>
         </form>
 

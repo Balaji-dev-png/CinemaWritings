@@ -2,7 +2,7 @@
 import { useRef, useCallback } from "react";
 import { SuiteElement } from "@/hooks/useSuiteState";
 import { useDraggable } from "@/hooks/useDraggable";
-import { GripHorizontal } from "lucide-react";
+import { GripHorizontal, Camera, Trash2 } from "lucide-react";
 
 const SHOT_TYPES = [
   "Extreme Wide Shot (EWS)",
@@ -114,13 +114,12 @@ export function ShotCard({
 
   return (
     <div
-      className="absolute director-suite-card rounded-lg select-none overflow-hidden"
+      className={`absolute director-suite-card select-none overflow-hidden ${isConnectSource ? "suite-connect-source" : ""}`}
       style={{
         left: element.x, top: element.y,
         width: element.width, height: element.height,
         zIndex: 10,
         cursor: connectMode ? "crosshair" : "grab",
-        boxShadow: isConnectSource ? "0 0 0 3px #c9a84c, 0 0 20px rgba(201,168,76,0.5)" : "none",
       }}
       onMouseDown={(e) => {
         if (connectMode) { e.stopPropagation(); onConnectClick?.(element.id); return; }
@@ -128,39 +127,45 @@ export function ShotCard({
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 director-suite-card-header"
-        style={{ borderLeft: "3px solid #c9a84c" }}>
+      <div
+        className="director-suite-card-header flex items-center gap-2 px-3"
+        style={{ borderLeft: "3px solid #c9a84c", minHeight: 40 }}
+      >
         {connectMode && (
           <div
-            className="cursor-grab text-zinc-500 hover:text-white mr-2"
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              handleMouseDown(e, element.x, element.y);
-            }}
+            className="cursor-grab text-zinc-500 hover:text-zinc-300 transition-colors"
+            onMouseDown={(e) => { e.stopPropagation(); handleMouseDown(e, element.x, element.y); }}
           >
-            <GripHorizontal className="w-4 h-4" />
+            <GripHorizontal className="w-3.5 h-3.5" />
           </div>
         )}
+        <Camera className="w-3.5 h-3.5 shrink-0" style={{ color: "#c9a84c" }} />
         <input
-          className="bg-transparent text-sm font-bold gold-accent outline-none border-none w-24"
+          className="bg-transparent text-sm font-bold gold-accent outline-none border-none flex-1 min-w-0"
           value={(d.shotNumber as string) || "Shot 01"}
           onChange={(e) => onUpdate(element.id, { shotNumber: e.target.value })}
           onMouseDown={(e) => e.stopPropagation()}
+          placeholder="Shot 01"
         />
         <button
-          className="text-zinc-600 hover:text-red-500 transition-colors text-xs"
+          className="suite-delete-btn ml-auto shrink-0"
           onMouseDown={(e) => { e.stopPropagation(); onRemove(element.id); }}
-        >✕</button>
+          title="Delete"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
       </div>
 
-      {/* Fields */}
-      <div className="p-3 space-y-2 overflow-y-auto suite-scrollbar" style={{ height: element.height - 44 }}
-        onMouseDown={(e) => e.stopPropagation()}>
-
+      {/* Body */}
+      <div
+        className="p-3 space-y-2.5 overflow-y-auto suite-scrollbar"
+        style={{ height: element.height - 40 }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         {/* Shot Type */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-0.5">Shot Type</label>
-          <select className="suite-select w-full text-xs"
+          <label className="suite-label">Shot Type</label>
+          <select className="suite-select w-full"
             value={(d.shotType as string) || ""}
             onChange={(e) => onUpdate(element.id, { shotType: e.target.value })}>
             <option value="">Select...</option>
@@ -170,8 +175,8 @@ export function ShotCard({
 
         {/* Camera Movement */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-0.5">Camera Movement</label>
-          <select className="suite-select w-full text-xs"
+          <label className="suite-label">Camera Movement</label>
+          <select className="suite-select w-full"
             value={(d.cameraMovement as string) || ""}
             onChange={(e) => onUpdate(element.id, { cameraMovement: e.target.value })}>
             <option value="">Select...</option>
@@ -181,17 +186,17 @@ export function ShotCard({
 
         {/* Lens */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-0.5">Lens</label>
-          <input className="suite-input w-full text-xs"
-            placeholder="e.g. 50mm"
+          <label className="suite-label">Lens / Focal Length</label>
+          <input className="suite-input w-full"
+            placeholder="e.g. 50mm, 85mm"
             value={(d.lens as string) || ""}
             onChange={(e) => onUpdate(element.id, { lens: e.target.value })} />
         </div>
 
         {/* Description */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-0.5">Description</label>
-          <textarea className="suite-input w-full text-xs resize-none suite-scrollbar"
+          <label className="suite-label">Description</label>
+          <textarea className="suite-input suite-scrollbar w-full"
             rows={3} placeholder="What happens in this shot..."
             value={(d.description as string) || ""}
             onChange={(e) => onUpdate(element.id, { description: e.target.value })} />
@@ -199,27 +204,31 @@ export function ShotCard({
 
         {/* Notes */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-0.5">Notes</label>
-          <textarea className="suite-input w-full text-xs resize-none suite-scrollbar"
-            rows={2} placeholder="Crew/director notes..."
+          <label className="suite-label">Director Notes</label>
+          <textarea className="suite-input suite-scrollbar w-full"
+            rows={2} placeholder="Crew / director notes..."
             value={(d.notes as string) || ""}
             onChange={(e) => onUpdate(element.id, { notes: e.target.value })} />
         </div>
 
         {/* Image Attachment */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-0.5">Image</label>
+          <label className="suite-label">Frame Reference</label>
           {d.imageBase64 ? (
-            <div className="relative">
+            <div className="relative rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
               <img src={d.imageBase64 as string} alt="Shot ref"
-                className="w-full rounded" style={{ maxHeight: 120, objectFit: "contain" }} />
-              <button className="absolute top-1 right-1 text-[10px] bg-black/70 text-white rounded px-1"
-                onClick={() => onUpdate(element.id, { imageBase64: "" })}>✕</button>
+                className="w-full rounded-lg" style={{ maxHeight: 120, objectFit: "cover" }} />
+              <button
+                className="absolute top-1.5 right-1.5 suite-delete-btn"
+                style={{ background: "rgba(0,0,0,0.7)" }}
+                onClick={() => onUpdate(element.id, { imageBase64: "" })}
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
             </div>
           ) : (
             <div
-              className="rounded p-3 text-center text-zinc-600 text-[11px] cursor-pointer hover:border-[#c9a84c] transition-colors"
-              style={{ border: "1px dashed #3f3f46" }}
+              className="suite-drop-zone flex flex-col items-center justify-center gap-1 py-4 text-center"
               onClick={() => {
                 const input = document.createElement("input");
                 input.type = "file";
@@ -230,39 +239,40 @@ export function ShotCard({
                 };
                 input.click();
               }}
-              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.add("drag-over"); }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove("drag-over"); }}
               onDrop={(e) => {
                 e.preventDefault(); e.stopPropagation();
+                e.currentTarget.classList.remove("drag-over");
                 const f = e.dataTransfer.files[0];
                 if (f && f.type.startsWith("image/")) handleImageUpload(f);
               }}
             >
-              📷 Click or drop image
+              <span style={{ fontSize: 20 }}>🎞️</span>
+              <span className="text-[10px]" style={{ color: "rgba(148,163,184,0.5)" }}>Click or drop frame reference</span>
             </div>
           )}
         </div>
 
         {/* Reference Link */}
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 block mb-0.5">Reference Link</label>
-          <input className="suite-input w-full text-xs"
+          <label className="suite-label">Reference Link</label>
+          <input className="suite-input w-full"
             placeholder="https://..."
             value={(d.refLink as string) || ""}
             onChange={(e) => onUpdate(element.id, { refLink: e.target.value })} />
           {typeof d.refLink === "string" && d.refLink && (
             <a href={d.refLink} target="_blank" rel="noopener noreferrer"
-              className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide"
-              style={{ backgroundColor: "#c9a84c", color: "#0d0d0d" }}>
-              🔗 {(() => { try { return new URL(d.refLink).hostname; } catch { return "Link"; } })()}
+              className="inline-flex items-center gap-1 mt-1.5 px-2 py-1 rounded-md text-[10px] font-bold gold-bg"
+              onMouseDown={(e) => e.stopPropagation()}>
+              🔗 {(() => { try { return new URL(d.refLink).hostname; } catch { return "Open Link"; } })()}
             </a>
           )}
         </div>
       </div>
 
       {/* Resize handle */}
-      <div className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-        style={{ borderRight: "2px solid #c9a84c", borderBottom: "2px solid #c9a84c" }}
-        onMouseDown={startResize} />
+      <div className="suite-resize-handle" onMouseDown={startResize} />
     </div>
   );
 }

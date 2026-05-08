@@ -129,7 +129,7 @@ export default function DirectorsSuitePage() {
     const y = -panRef.current.y / zoomRef.current + 100 + Math.random() * 100;
     const el: SuiteElement = {
       id: uid(), type: "link",
-      x, y, width: 220, height: 100,
+      x, y, width: 260, height: 200,
       data: { label: "", url: "" },
     };
     suite.addElement(el);

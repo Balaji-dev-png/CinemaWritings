@@ -7,7 +7,7 @@ Script also includes versions and history in detail view.
 
 from rest_framework import serializers
 
-from .models import Element, HistoryEvent, Scene, Script, ScriptVersion, WorkspaceAsset
+from .models import Element, HistoryEvent, Scene, Script, ScriptVersion, WorkspaceAsset, Storyboard, SceneCard
 
 
 class WorkspaceAssetSerializer(serializers.ModelSerializer):
@@ -140,6 +140,40 @@ class ScriptCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating scripts (flat metadata + content)."""
 
     id = serializers.UUIDField(required=False)
+    title = serializers.CharField(
+        max_length=255,
+        required=False,
+        default="Untitled Script",
+    )
+    logline = serializers.CharField(
+        max_length=1000,
+        required=False,
+        allow_blank=True,
+    )
+    synopsis = serializers.CharField(
+        max_length=5000,
+        required=False,
+        allow_blank=True,
+    )
+    # Content is stored as HTML — limit to ~5MB to prevent abuse
+    content = serializers.CharField(
+        max_length=5 * 1024 * 1024,
+        required=False,
+        allow_blank=True,
+    )
+
+    def validate_title(self, value):
+        """Strip leading/trailing whitespace and enforce non-empty."""
+        stripped = value.strip()
+        if not stripped:
+            raise serializers.ValidationError("Title cannot be blank.")
+        return stripped
+
+    def validate_font_size(self, value):
+        """Enforce reasonable font size range."""
+        if value is not None and not (6 <= value <= 72):
+            raise serializers.ValidationError("Font size must be between 6 and 72.")
+        return value
 
     class Meta:
         model = Script
@@ -177,3 +211,44 @@ class BulkElementSerializer(serializers.Serializer):
         scene.elements.all().delete()
         objs = [Element(scene=scene, **el_data) for el_data in elements_data]
         return Element.objects.bulk_create(objs)
+
+
+class SceneCardSerializer(serializers.ModelSerializer):
+    """Serializer for individual storyboard scene cards."""
+
+    class Meta:
+        model = SceneCard
+        fields = [
+            "id",
+            "order",
+            "shot_number",
+            "scene_heading",
+            "shot_type",
+            "camera_movement",
+            "lens",
+            "technical_notes",
+            "image_url",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class StoryboardSerializer(serializers.ModelSerializer):
+    """Serializer for the storyboard with nested scene cards."""
+
+    cards = SceneCardSerializer(many=True, read_only=True)
+    script_title = serializers.CharField(source="script.title", read_only=True)
+
+    class Meta:
+        model = Storyboard
+        fields = [
+            "id",
+            "script_title",
+            "title",
+            "aspect_ratio",
+            "cards",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]

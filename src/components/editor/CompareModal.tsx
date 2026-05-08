@@ -2,6 +2,23 @@
 
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
+import DOMPurify from "dompurify";
+
+// Allowed tags for screenplay HTML content rendering in compare view.
+// Matches the elements TipTap outputs for screenplay element types.
+const SCREENPLAY_ALLOWED_TAGS = [
+  "p", "span", "strong", "em", "u", "br", "div",
+  "h1", "h2", "h3", "b", "i", "s",
+];
+const SCREENPLAY_ALLOWED_ATTR = ["class", "style", "data-type"];
+
+function sanitizeScreenplayHtml(html: string): string {
+  if (typeof window === "undefined") return ""; // SSR guard
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: SCREENPLAY_ALLOWED_TAGS,
+    ALLOWED_ATTR: SCREENPLAY_ALLOWED_ATTR,
+  });
+}
 
 export function CompareModal({
   currentContent,
@@ -14,6 +31,13 @@ export function CompareModal({
   versionName: string;
   onClose: () => void;
 }) {
+  const safeSavedContent = sanitizeScreenplayHtml(
+    savedContent || "<p class='action'>Empty script.</p>"
+  );
+  const safeCurrentContent = sanitizeScreenplayHtml(
+    currentContent || "<p class='action'>Empty script.</p>"
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -48,7 +72,7 @@ export function CompareModal({
             <div className="script-page mx-auto shadow-xl">
               <div
                 className="ProseMirror"
-                dangerouslySetInnerHTML={{ __html: savedContent || "<p class='action'>Empty script.</p>" }}
+                dangerouslySetInnerHTML={{ __html: safeSavedContent }}
               />
             </div>
           </div>
@@ -63,7 +87,7 @@ export function CompareModal({
             <div className="script-page mx-auto shadow-xl">
               <div
                 className="ProseMirror"
-                dangerouslySetInnerHTML={{ __html: currentContent || "<p class='action'>Empty script.</p>" }}
+                dangerouslySetInnerHTML={{ __html: safeCurrentContent }}
               />
             </div>
           </div>

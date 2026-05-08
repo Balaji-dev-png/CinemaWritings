@@ -3,9 +3,7 @@ URL routing for the scripts API.
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from . import views
-from . import auth
+from . import views, auth
 
 router = DefaultRouter()
 router.register(r"scripts", views.ScriptViewSet, basename="script")
@@ -13,8 +11,6 @@ router.register(r"scripts", views.ScriptViewSet, basename="script")
 urlpatterns = [
     path("", include(router.urls)),
     path("auth/register/", auth.RegisterView.as_view(), name="auth_register"),
-    path("auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("scripts/search/", views.search_scripts, name="script-search"),
     # Nested scene routes
     path(
@@ -38,6 +34,12 @@ urlpatterns = [
         views.ElementViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}),
         name="element-detail",
     ),
-    # Workspace PDF export
+    # Workspace endpoints
     path("export/workspace-pdf/", views.export_workspace_pdf, name="export-workspace-pdf"),
+    # Storyboard endpoints
+    path("storyboards/<uuid:script_pk>/", views.StoryboardViewSet.as_view({"get": "retrieve", "patch": "partial_update"}), name="storyboard"),
+    path("storyboards/<uuid:storyboard_pk>/cards/", views.SceneCardViewSet.as_view({"get": "list", "post": "create"}), name="scenecard-list"),
+    path("storyboards/<uuid:storyboard_pk>/cards/reorder/", views.SceneCardViewSet.as_view({"post": "reorder"}), name="scenecard-reorder"),
+    path("storyboards/<uuid:storyboard_pk>/cards/bulk_delete/", views.SceneCardViewSet.as_view({"delete": "bulk_delete"}), name="scenecard-bulk-delete"),
+    path("storyboards/<uuid:storyboard_pk>/cards/<uuid:pk>/", views.SceneCardViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}), name="scenecard-detail"),
 ]

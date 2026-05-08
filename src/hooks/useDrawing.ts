@@ -25,9 +25,8 @@ interface UseDrawingProps {
   scriptId?: string;
 }
 
-// Distance math helpers
-function dist2(v: {x: number, y: number}, w: {x: number, y: number}) { 
-  return (v.x - w.x)*(v.x - w.x) + (v.y - w.y)*(v.y - w.y); 
+function dist2(v: {x: number, y: number}, w: {x: number, y: number}) {
+  return (v.x - w.x)*(v.x - w.x) + (v.y - w.y)*(v.y - w.y);
 }
 function distToSegmentSquared(p: {x: number, y: number}, v: {x: number, y: number}, w: {x: number, y: number}) {
   const l2 = dist2(v, w);
@@ -38,14 +37,8 @@ function distToSegmentSquared(p: {x: number, y: number}, v: {x: number, y: numbe
 }
 
 export function useDrawing({
-  canvasRef,
-  viewportRef,
-  zoomRef,
-  panRef,
-  isDrawMode,
-  initialDataUrl,
-  onStrokeComplete,
-  scriptId
+  canvasRef, viewportRef, zoomRef, panRef,
+  isDrawMode, initialDataUrl, onStrokeComplete, scriptId
 }: UseDrawingProps) {
   const [tool, setTool] = useState<DrawingOptions["tool"]>("pen");
   const [color, setColor] = useState("#c9a84c");
@@ -55,52 +48,52 @@ export function useDrawing({
   const currentStroke = useRef<{ x: number; y: number }[]>([]);
   const strokes = useRef<Stroke[]>([]);
   const optionsRef = useRef<DrawingOptions>({ tool: "pen", color: "#c9a84c", strokeWidth: 2 });
-  
+
+  // Keep options ref in sync — no re-renders on draw
+  useEffect(() => { optionsRef.current = { tool, color, strokeWidth }; }, [tool, color, strokeWidth]);
+
+  // isDrawMode ref to avoid stale closure in pointer handlers
+  const isDrawModeRef = useRef(isDrawMode);
+  useEffect(() => { isDrawModeRef.current = isDrawMode; }, [isDrawMode]);
+
   const draggingStrokeIndex = useRef<number | null>(null);
   const dragStartPos = useRef<{x: number, y: number} | null>(null);
+
+  // rAF state
   const rafId = useRef<number | null>(null);
   const isDirty = useRef(false);
 
+  // ── Persist ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    optionsRef.current = { tool, color, strokeWidth };
-  }, [tool, color, strokeWidth]);
-
-  // Load strokes array if present
-  useEffect(() => {
-    if (scriptId) {
-      try {
-        const stored = localStorage.getItem(`cinema_strokes_${scriptId}`);
-        if (stored) {
-          strokes.current = JSON.parse(stored);
-        }
-      } catch(e) {}
-    }
+    if (!scriptId) return;
+    try {
+      const stored = localStorage.getItem(`cinema_strokes_${scriptId}`);
+      if (stored) strokes.current = JSON.parse(stored);
+    } catch { /* ignore */ }
   }, [scriptId]);
 
-  // Save to local storage on change
   const persistStrokes = useCallback(() => {
     if (scriptId) {
       localStorage.setItem(`cinema_strokes_${scriptId}`, JSON.stringify(strokes.current));
     }
   }, [scriptId]);
 
-  // Convert viewport mouse position → canvas element position
+  // ── Coordinate conversion ──────────────────────────────────────────────
+  // Pure ref-based — never causes re-render
   const viewportToCanvas = useCallback((clientX: number, clientY: number) => {
     const viewport = viewportRef.current;
     if (!viewport) return { x: 0, y: 0 };
-
     const rect = viewport.getBoundingClientRect();
-    const viewportX = clientX - rect.left;
-    const viewportY = clientY - rect.top;
-    const unpannedX = viewportX - panRef.current.x;
-    const unpannedY = viewportY - panRef.current.y;
-    const canvasX = (unpannedX / zoomRef.current) + 3000;
-    const canvasY = (unpannedY / zoomRef.current) + 3000;
-
-    return { x: canvasX, y: canvasY };
+    const vx = clientX - rect.left;
+    const vy = clientY - rect.top;
+    return {
+      x: (vx - panRef.current.x) / zoomRef.current + 3000,
+      y: (vy - panRef.current.y) / zoomRef.current + 3000,
+    };
   }, [viewportRef, zoomRef, panRef]);
 
-  const applyToolStyle = useCallback((ctx: CanvasRenderingContext2D) => {
+  // ── Drawing helpers ───────────────────────────────────────────────────
+  const applyStyle = useCallback((ctx: CanvasRenderingContext2D) => {
     const { tool, color, strokeWidth } = optionsRef.current;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -109,8 +102,6 @@ export function useDrawing({
       ctx.strokeStyle = "rgba(0,0,0,1)";
       ctx.lineWidth = strokeWidth * 3;
       ctx.globalAlpha = 1;
-    } else if (tool === "select") {
-      ctx.globalCompositeOperation = "source-over";
     } else {
       ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = color;
@@ -125,20 +116,16 @@ export function useDrawing({
     stroke: Partial<Stroke>
   ) => {
     if (points.length < 2) return;
-
     ctx.save();
-    if (stroke.tool) {
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = stroke.color || "#c9a84c";
-      ctx.lineWidth = stroke.tool === "brush" ? (stroke.strokeWidth || 2) * 4 : (stroke.strokeWidth || 2);
-      ctx.globalAlpha = stroke.tool === "pencil" ? 0.8 : stroke.tool === "brush" ? 0.6 : 1;
-      ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
-    }
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = stroke.color || "#c9a84c";
+    ctx.lineWidth = stroke.tool === "brush" ? (stroke.strokeWidth || 2) * 4 : (stroke.strokeWidth || 2);
+    ctx.globalAlpha = stroke.tool === "pencil" ? 0.8 : stroke.tool === "brush" ? 0.6 : 1;
+    ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
 
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
-
     for (let i = 1; i < points.length - 1; i++) {
       const midX = (points[i].x + points[i + 1].x) / 2;
       const midY = (points[i].y + points[i + 1].y) / 2;
@@ -154,14 +141,13 @@ export function useDrawing({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    strokes.current.forEach(stroke => {
+    for (const stroke of strokes.current) {
       drawStroke(ctx, stroke.points, stroke);
-    });
+    }
   }, [canvasRef, drawStroke]);
 
-  // rAF-throttled redraw: only redraws when isDirty
+  // rAF-throttled — coalesce multiple pointer events into one frame
   const scheduleRedraw = useCallback(() => {
     if (rafId.current !== null) return;
     rafId.current = requestAnimationFrame(() => {
@@ -173,7 +159,7 @@ export function useDrawing({
     });
   }, [redrawAll]);
 
-  // Initial load
+  // ── Load initial data URL ─────────────────────────────────────────────
   useEffect(() => {
     if (initialDataUrl && canvasRef.current) {
       const ctx = canvasRef.current.getContext("2d");
@@ -186,48 +172,29 @@ export function useDrawing({
     }
   }, [initialDataUrl, canvasRef]);
 
+  // ── Pointer handlers — stable refs, NO deps on isDrawMode ────────────
+  // Use isDrawModeRef to avoid re-registering listeners on every mode toggle
   const onPointerDown = useCallback((e: PointerEvent) => {
-    if (!isDrawMode) return;
-    if (e.button !== 0) return;
-
+    if (!isDrawModeRef.current || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     canvas.setPointerCapture(e.pointerId);
-    
     const pos = viewportToCanvas(e.clientX, e.clientY);
 
     if (optionsRef.current.tool === "select") {
-      let hitIndex = -1;
-      // Reverse loop to pick topmost line
       for (let i = strokes.current.length - 1; i >= 0; i--) {
         const s = strokes.current[i];
         if (s.tool === "eraser") continue;
-        
-        let hit = false;
-        const width = s.tool === "brush" ? (s.strokeWidth * 4) : s.strokeWidth;
-        const hitRadius = Math.max(10, width * 2);
+        const hitRadius = Math.max(10, (s.tool === "brush" ? s.strokeWidth * 4 : s.strokeWidth) * 2);
         const radiusSq = hitRadius * hitRadius;
-
+        let hit = false;
         for (let j = 0; j < s.points.length - 1; j++) {
-           if (distToSegmentSquared(pos, s.points[j], s.points[j+1]) <= radiusSq) {
-             hit = true;
-             break;
-           }
+          if (distToSegmentSquared(pos, s.points[j], s.points[j + 1]) <= radiusSq) { hit = true; break; }
         }
-        if (hit) {
-          hitIndex = i;
-          break;
-        }
-      }
-      
-      if (hitIndex !== -1) {
-        draggingStrokeIndex.current = hitIndex;
-        dragStartPos.current = pos;
-        isDrawing.current = true;
+        if (hit) { draggingStrokeIndex.current = i; dragStartPos.current = pos; isDrawing.current = true; return; }
       }
       return;
     }
@@ -237,50 +204,42 @@ export function useDrawing({
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    applyToolStyle(ctx);
+    applyStyle(ctx);
     ctx.beginPath();
     ctx.moveTo(pos.x, pos.y);
-  }, [isDrawMode, canvasRef, viewportToCanvas, applyToolStyle]);
+  }, [canvasRef, viewportToCanvas, applyStyle]);
 
   const onPointerMove = useCallback((e: PointerEvent) => {
-    if (!isDrawing.current || !isDrawMode) return;
-
+    if (!isDrawing.current || !isDrawModeRef.current) return;
     const pos = viewportToCanvas(e.clientX, e.clientY);
 
+    // Select / drag stroke
     if (optionsRef.current.tool === "select" && draggingStrokeIndex.current !== null && dragStartPos.current) {
       const dx = pos.x - dragStartPos.current.x;
       const dy = pos.y - dragStartPos.current.y;
       dragStartPos.current = pos;
-      
       const s = strokes.current[draggingStrokeIndex.current];
-      for (const p of s.points) {
-        p.x += dx;
-        p.y += dy;
-      }
+      for (const p of s.points) { p.x += dx; p.y += dy; }
       isDirty.current = true;
       scheduleRedraw();
       return;
     }
 
+    // Drawing — incremental render (single segment per move = fastest)
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: false });
     if (!ctx) return;
 
     currentStroke.current.push(pos);
     const points = currentStroke.current;
     const len = points.length;
 
-    applyToolStyle(ctx);
     ctx.beginPath();
-
     if (len >= 3) {
       const prev = points[len - 2];
       const curr = points[len - 1];
-      const mid = {
-        x: (prev.x + curr.x) / 2,
-        y: (prev.y + curr.y) / 2
-      };
+      const mid = { x: (prev.x + curr.x) / 2, y: (prev.y + curr.y) / 2 };
       ctx.moveTo((points[len - 3].x + prev.x) / 2, (points[len - 3].y + prev.y) / 2);
       ctx.quadraticCurveTo(prev.x, prev.y, mid.x, mid.y);
     } else {
@@ -288,7 +247,7 @@ export function useDrawing({
       ctx.lineTo(pos.x, pos.y);
     }
     ctx.stroke();
-  }, [isDrawMode, canvasRef, viewportToCanvas, applyToolStyle, scheduleRedraw]);
+  }, [canvasRef, viewportToCanvas, applyStyle, scheduleRedraw]);
 
   const onPointerUp = useCallback((e: PointerEvent) => {
     if (!isDrawing.current) return;
@@ -315,41 +274,20 @@ export function useDrawing({
     }
     currentStroke.current = [];
 
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const dataUrl = canvas.toDataURL("image/png");
-      onStrokeComplete?.(dataUrl);
+    if (canvasRef.current) {
+      onStrokeComplete?.(canvasRef.current.toDataURL("image/png"));
     }
   }, [canvasRef, onStrokeComplete, persistStrokes]);
 
-  const undo = useCallback(() => {
-    strokes.current.pop();
-    persistStrokes();
-    redrawAll();
-    const canvas = canvasRef.current;
-    if (canvas) {
-      onStrokeComplete?.(canvas.toDataURL("image/png"));
-    }
-  }, [redrawAll, canvasRef, onStrokeComplete, persistStrokes]);
-
-  const clearAll = useCallback(() => {
-    strokes.current = [];
-    persistStrokes();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx?.clearRect(0, 0, canvas.width, canvas.height);
-    onStrokeComplete?.("");
-  }, [canvasRef, onStrokeComplete, persistStrokes]);
-
+  // ── Register listeners once — stable handlers don't cause re-registration
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    canvas.addEventListener("pointerdown", onPointerDown);
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("pointercancel", onPointerUp);
-
+    // passive: false only on pointerdown to prevent scroll
+    canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
+    canvas.addEventListener("pointermove", onPointerMove, { passive: true });
+    canvas.addEventListener("pointerup", onPointerUp, { passive: true });
+    canvas.addEventListener("pointercancel", onPointerUp, { passive: true });
     return () => {
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
@@ -358,11 +296,21 @@ export function useDrawing({
     };
   }, [onPointerDown, onPointerMove, onPointerUp, canvasRef]);
 
-  return {
-    tool, setTool,
-    color, setColor,
-    strokeWidth, setStrokeWidth,
-    undo,
-    clear: clearAll,
-  };
+  const undo = useCallback(() => {
+    strokes.current.pop();
+    persistStrokes();
+    redrawAll();
+    if (canvasRef.current) onStrokeComplete?.(canvasRef.current.toDataURL("image/png"));
+  }, [redrawAll, canvasRef, onStrokeComplete, persistStrokes]);
+
+  const clearAll = useCallback(() => {
+    strokes.current = [];
+    persistStrokes();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+    onStrokeComplete?.("");
+  }, [canvasRef, onStrokeComplete, persistStrokes]);
+
+  return { tool, setTool, color, setColor, strokeWidth, setStrokeWidth, undo, clearAll };
 }

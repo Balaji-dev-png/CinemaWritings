@@ -491,8 +491,9 @@ export default function EditorPage() {
 
       pdf.save(`${title || "script"}.pdf`);
     } catch (err: any) {
-      console.error("PDF export failed:", err);
-      setExportError(`Export failed: ${err.message || "Unknown error"}`);
+      // Log internally (stripped in production by removeConsole)
+      console.error("[PDF Export Error]:", err);
+      setExportError("Export failed. Please try again.");
     } finally {
       setIsExporting(false);
     }

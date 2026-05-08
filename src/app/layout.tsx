@@ -26,6 +26,7 @@ const comicNeue = Comic_Neue({ weight: ["300", "400", "700"], subsets: ["latin"]
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { ChatbotWidget } from "@/components/chat/ChatbotWidget";
 
 export const metadata: Metadata = {
   title: "CinemaWritings - Screenplay Editor",
@@ -45,8 +46,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans transition-colors duration-500 bg-zinc-50 dark:bg-black">
         <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
-        </ThemeProvider>
+            {children}
+            <ChatbotWidget />
+          </ThemeProvider>
       </body>
     </html>
   );

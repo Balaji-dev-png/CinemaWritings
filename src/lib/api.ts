@@ -102,12 +102,21 @@ async function apiFetch<T>(
 
   if (response.status === 401) {
     logout();
-    throw new Error("Unauthorized");
+    throw new Error("Your session has expired. Please log in again.");
   }
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API Error ${response.status}: ${errorText}`);
+    // Log internally but never expose API URL or raw status to the user
+    const status = response.status;
+    if (process.env.NODE_ENV !== "production") {
+      const errorText = await response.text().catch(() => "(no body)");
+      console.error(`[API] ${options.method || "GET"} ${path} → ${status}:`, errorText);
+    }
+    throw new Error(
+      status >= 500
+        ? "A server error occurred. Please try again later."
+        : "Request failed. Please check your input and try again."
+    );
   }
 
   // Handle 204 No Content
@@ -231,11 +240,26 @@ export async function apiSearchScripts(
 // ─── PDF Export ───────────────────────────────────────────────────────────
 
 export async function apiExportPdf(scriptId: string): Promise<void> {
+  // Use apiFetch to ensure the Authorization header is sent
+  const token = await getAccessToken();
+  if (!token) throw new Error("Not authenticated");
+
   const url = `${API_BASE}/scripts/${scriptId}/export/pdf/`;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`PDF export failed: ${response.status}`);
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (response.status === 401) {
+    logout();
+    throw new Error("Your session has expired. Please log in again.");
   }
+
+  if (!response.ok) {
+    throw new Error("PDF export failed. Please try again.");
+  }
+
   const blob = await response.blob();
   const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");

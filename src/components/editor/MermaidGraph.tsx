@@ -3,6 +3,18 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { MermaidElement, ViewportState } from "@/lib/canvasTypes";
 import { Trash2, ArrowUpToLine, ArrowDownToLine, Play, Code2, Edit2, X, RefreshCw } from "lucide-react";
 import { useTheme } from "next-themes";
+import DOMPurify from "dompurify";
+
+// Safe sanitization for Mermaid-generated SVG.
+// Allows SVG elements but strips scripts and event handlers.
+function sanitizeSvg(svg: string): string {
+  if (typeof window === "undefined") return "";
+  return DOMPurify.sanitize(svg, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    FORBID_TAGS: ["script", "foreignObject"],
+    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
+  });
+}
 
 interface Props {
   element: MermaidElement;
@@ -88,7 +100,7 @@ export function MermaidGraph({ element, viewport, isSelected, onUpdate, onSelect
             </div>
           </div>
         ) : (
-          <div ref={svgRef} className="p-3 flex-1 flex items-center justify-center [&_svg]:max-w-full [&_svg]:h-auto mermaid-container overflow-hidden" dangerouslySetInnerHTML={{ __html: element.renderedSvg || '<p style="color:#888;font-size:12px;text-align:center">Double-click to add graph code</p>' }} />
+          <div ref={svgRef} className="p-3 flex-1 flex items-center justify-center [&_svg]:max-w-full [&_svg]:h-auto mermaid-container overflow-hidden" dangerouslySetInnerHTML={{ __html: element.renderedSvg ? sanitizeSvg(element.renderedSvg) : '<p style="color:#888;font-size:12px;text-align:center">Double-click to add graph code</p>' }} />
         )}
       </div>
 

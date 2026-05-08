@@ -2,11 +2,15 @@
 import { useRef, useCallback } from "react";
 import { SuiteElement } from "@/hooks/useSuiteState";
 import { useDraggable } from "@/hooks/useDraggable";
-import { GripHorizontal } from "lucide-react";
+import { Lightbulb, Trash2 } from "lucide-react";
 
-const BG_COLORS = [
-  "#1a1a1a", "#1a2a1a", "#1a1a2a",
-  "#2a1a1a", "#2a2a1a", "#1a2a2a",
+const BG_OPTIONS = [
+  { color: "#12121e", label: "Midnight" },
+  { color: "#0f1e12", label: "Forest" },
+  { color: "#0f0f1e", label: "Indigo" },
+  { color: "#1e0f12", label: "Crimson" },
+  { color: "#1e1a0f", label: "Amber" },
+  { color: "#0f1a1e", label: "Teal" },
 ];
 
 interface Props {
@@ -27,7 +31,7 @@ export function IdeaCard({
   onConnectClick, connectMode, isConnectSource, getZoom, getPan,
 }: Props) {
   const resizeRef = useRef({ startX: 0, startY: 0, startW: 0, startH: 0 });
-  const bg = (element.data.bgColor as string) || BG_COLORS[0];
+  const bg = (element.data.bgColor as string) || BG_OPTIONS[0].color;
 
   const { handleMouseDown } = useDraggable({
     onMove: useCallback((x: number, y: number) => onMove(element.id, x, y), [onMove, element.id]),
@@ -47,12 +51,10 @@ export function IdeaCard({
       };
       const z = getZoom?.() ?? 1;
       const handleMove = (me: MouseEvent) => {
-        const dw = (me.clientX - resizeRef.current.startX) / z;
-        const dh = (me.clientY - resizeRef.current.startY) / z;
         onResize(
           element.id,
-          Math.max(160, resizeRef.current.startW + dw),
-          Math.max(120, resizeRef.current.startH + dh)
+          Math.max(160, resizeRef.current.startW + (me.clientX - resizeRef.current.startX) / z),
+          Math.max(120, resizeRef.current.startH + (me.clientY - resizeRef.current.startY) / z)
         );
       };
       const handleUp = () => {
@@ -67,7 +69,7 @@ export function IdeaCard({
 
   return (
     <div
-      className="absolute director-suite-card rounded-lg select-none"
+      className={`absolute director-suite-card select-none flex flex-col overflow-hidden ${isConnectSource ? "suite-connect-source" : ""}`}
       style={{
         left: element.x,
         top: element.y,
@@ -76,7 +78,6 @@ export function IdeaCard({
         backgroundColor: bg,
         zIndex: 10,
         cursor: connectMode ? "crosshair" : "grab",
-        boxShadow: isConnectSource ? "0 0 0 3px #c9a84c, 0 0 20px rgba(201,168,76,0.5)" : "none",
       }}
       onMouseDown={(e) => {
         if (connectMode) {
@@ -88,69 +89,56 @@ export function IdeaCard({
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 director-suite-card-header">
-        {connectMode && (
-          <div
-            className="cursor-grab text-zinc-500 hover:text-white mr-2"
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              handleMouseDown(e, element.x, element.y);
-            }}
-          >
-            <GripHorizontal className="w-4 h-4" />
-          </div>
-        )}
+      <div className="director-suite-card-header flex items-center gap-2 px-3 shrink-0">
+        <Lightbulb className="w-3.5 h-3.5 shrink-0" style={{ color: "#c9a84c" }} />
         <input
-          className="bg-transparent text-sm font-bold gold-accent outline-none border-none w-full"
-          style={{ fontFamily: "inherit" }}
+          className="bg-transparent text-sm font-bold gold-accent outline-none border-none flex-1 min-w-0"
           value={(element.data.title as string) || ""}
-          placeholder="Idea"
+          placeholder="Idea title..."
           onChange={(e) => onUpdate(element.id, { title: e.target.value })}
           onMouseDown={(e) => e.stopPropagation()}
         />
         <button
-          className="ml-2 text-zinc-600 hover:text-red-500 transition-colors text-xs shrink-0"
+          className="suite-delete-btn ml-auto shrink-0"
           onMouseDown={(e) => { e.stopPropagation(); onRemove(element.id); }}
           title="Delete"
         >
-          ✕
+          <Trash2 className="w-3 h-3" />
         </button>
       </div>
 
       {/* Body */}
       <textarea
-        className="w-full flex-1 bg-transparent text-zinc-300 text-xs resize-none outline-none p-3 suite-scrollbar"
-        style={{ height: element.height - 72 }}
+        className="flex-1 bg-transparent text-zinc-300 text-xs resize-none outline-none px-3 py-2.5 suite-scrollbar leading-relaxed"
         value={(element.data.content as string) || ""}
-        placeholder="Start writing..."
+        placeholder="Write your idea here..."
         onChange={(e) => onUpdate(element.id, { content: e.target.value })}
         onMouseDown={(e) => e.stopPropagation()}
       />
 
-      {/* Color picker */}
-      <div className="flex items-center gap-1 px-3 pb-2">
-        {BG_COLORS.map((c) => (
+      {/* Footer — color picker */}
+      <div
+        className="flex items-center gap-1.5 px-3 py-2 shrink-0"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <span className="suite-label mr-1" style={{ marginBottom: 0 }}>Tone</span>
+        {BG_OPTIONS.map((opt) => (
           <button
-            key={c}
-            className="w-4 h-4 rounded-full border transition-transform hover:scale-125"
-            style={{
-              backgroundColor: c,
-              borderColor: bg === c ? "#c9a84c" : "#333",
-            }}
+            key={opt.color}
+            className={`suite-color-swatch ${bg === opt.color ? "active" : ""}`}
+            style={{ backgroundColor: opt.color, border: `2px solid ${bg === opt.color ? "#c9a84c" : "rgba(255,255,255,0.15)"}` }}
+            title={opt.label}
             onMouseDown={(e) => {
               e.stopPropagation();
-              onUpdate(element.id, { bgColor: c });
+              onUpdate(element.id, { bgColor: opt.color });
             }}
           />
         ))}
       </div>
 
       {/* Resize handle */}
-      <div
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
-        style={{ borderRight: "2px solid #c9a84c", borderBottom: "2px solid #c9a84c" }}
-        onMouseDown={startResize}
-      />
+      <div className="suite-resize-handle" onMouseDown={startResize} />
     </div>
   );
 }

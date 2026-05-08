@@ -205,3 +205,99 @@ class WorkspaceAsset(models.Model):
 
     def __str__(self):
         return f"[{self.asset_type}] {self.content.get('title', self.id)}"
+
+
+class Storyboard(models.Model):
+    """Visual storyboard linked to a Script. One storyboard per script."""
+
+    ASPECT_RATIOS = [
+        ("16:9", "Widescreen 16:9"),
+        ("2.39:1", "Cinemascope 2.39:1"),
+        ("4:3", "Academy 4:3"),
+        ("1.85:1", "Flat 1.85:1"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    script = models.OneToOneField(
+        Script, on_delete=models.CASCADE, related_name="storyboard"
+    )
+    title = models.CharField(max_length=255, blank=True, default="")
+    aspect_ratio = models.CharField(
+        max_length=10, choices=ASPECT_RATIOS, default="16:9"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Storyboard"
+        verbose_name_plural = "Storyboards"
+
+    def __str__(self):
+        return f"Storyboard for {self.script.title}"
+
+
+class SceneCard(models.Model):
+    """Individual shot card in a storyboard."""
+
+    SHOT_TYPES = [
+        ("EWS", "Extreme Wide Shot"),
+        ("WS", "Wide Shot"),
+        ("FS", "Full Shot"),
+        ("MWS", "Medium Wide / Cowboy"),
+        ("MS", "Medium Shot"),
+        ("MCU", "Medium Close-Up"),
+        ("CU", "Close-Up"),
+        ("ECU", "Extreme Close-Up"),
+        ("INSERT", "Insert Shot"),
+        ("OTS", "Over-the-Shoulder"),
+        ("POV", "Point of View"),
+        ("TWO", "Two Shot"),
+        ("DUTCH", "Dutch Angle"),
+        ("AERIAL", "Aerial Shot"),
+        ("CRANE", "Crane Shot"),
+    ]
+
+    CAMERA_MOVEMENTS = [
+        ("static", "Static"),
+        ("pan_l", "Pan Left"),
+        ("pan_r", "Pan Right"),
+        ("tilt_u", "Tilt Up"),
+        ("tilt_d", "Tilt Down"),
+        ("dolly_in", "Dolly In"),
+        ("dolly_out", "Dolly Out"),
+        ("crane_u", "Crane Up"),
+        ("crane_d", "Crane Down"),
+        ("handheld", "Handheld"),
+        ("steadicam", "Steadicam"),
+        ("zoom_in", "Zoom In"),
+        ("zoom_out", "Zoom Out"),
+        ("arc", "Arc Shot"),
+        ("whip", "Whip Pan"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    storyboard = models.ForeignKey(
+        Storyboard, on_delete=models.CASCADE, related_name="cards"
+    )
+    order = models.PositiveIntegerField(default=0, db_index=True)
+    shot_number = models.CharField(max_length=20, default="", blank=True)
+    scene_heading = models.CharField(max_length=255, default="", blank=True)
+    shot_type = models.CharField(
+        max_length=20, choices=SHOT_TYPES, default="MS", blank=True
+    )
+    camera_movement = models.CharField(
+        max_length=20, choices=CAMERA_MOVEMENTS, default="static", blank=True
+    )
+    lens = models.CharField(max_length=50, default="", blank=True)
+    technical_notes = models.TextField(default="", blank=True)
+    image_url = models.URLField(max_length=2048, default="", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order"]
+        verbose_name = "Scene Card"
+        verbose_name_plural = "Scene Cards"
+
+    def __str__(self):
+        return f"Shot {self.shot_number or self.order} — {self.scene_heading[:40]}"

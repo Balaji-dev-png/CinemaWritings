@@ -223,12 +223,10 @@ export const updateScript = async (id: string, updates: Partial<Script>) => {
   if (updateTimeout) clearTimeout(updateTimeout);
   updateTimeout = setTimeout(async () => {
     try {
-      // Pre-check session to avoid library trying to refresh a non-existent token
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        console.warn("No active session found. Update aborted.");
+      // Use getUser() — server-validated — never getSession() alone
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        // Not logging the error detail to avoid leaking session info
         return;
       }
 

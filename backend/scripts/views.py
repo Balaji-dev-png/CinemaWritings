@@ -8,7 +8,7 @@ from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 import reversion
 
-from .models import Script, Scene, Element, ScriptVersion, HistoryEvent, WorkspaceAsset
+from .models import Script, Scene, Element, ScriptVersion, HistoryEvent, WorkspaceAsset, Storyboard, SceneCard
 from .serializers import (
     ScriptListSerializer,
     ScriptDetailSerializer,
@@ -19,6 +19,8 @@ from .serializers import (
     HistoryEventSerializer,
     BulkElementSerializer,
     WorkspaceAssetSerializer,
+    StoryboardSerializer,
+    SceneCardSerializer,
 )
 
 
@@ -378,7 +380,7 @@ def search_scripts(request):
 
 
 @api_view(["POST", "OPTIONS"])
-@permission_classes([permissions.AllowAny])
+@permission_classes([permissions.IsAuthenticated])
 def export_workspace_pdf(request):
     """
     POST /api/export/workspace-pdf/
@@ -400,7 +402,9 @@ def export_workspace_pdf(request):
     from weasyprint.text.fonts import FontConfiguration
 
     image_base64 = request.data.get("image_base64", "")
-    title = request.data.get("title", "Director's Suite")
+    # HTML-escape the title before injecting into HTML template
+    from html import escape as html_escape
+    title = html_escape(request.data.get("title", "Director's Suite"))
 
     if not image_base64:
         return Response({"error": "image_base64 is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -486,3 +490,113 @@ body {
     response["Content-Disposition"] = f'attachment; filename="workspace.pdf"'
     response["Access-Control-Allow-Origin"] = "*"
     return response
+
+
+# ─── Storyboard API ────────────────────────────────────────────────────────
+
+
+class StoryboardViewSet(viewsets.ModelViewSet):
+    """
+    GET  /api/storyboards/{script_pk}/  → get or create storyboard for a script
+    PATCH /api/storyboards/{script_pk}/ → update aspect ratio / title
+    """
+
+    serializer_class = StoryboardSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Storyboard.objects.filter(
+            script__owner=self.request.user
+        ).select_related("script").prefetch_related("cards")
+
+    def retrieve(self, request, script_pk=None):
+        """GET → return existing storyboard, or create one if none exists."""
+        try:
+            script = Script.objects.get(pk=script_pk, owner=request.user)
+        except Script.DoesNotExist:
+            return Response({"error": "Script not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        storyboard, _ = Storyboard.objects.get_or_create(script=script)
+        serializer = self.get_serializer(storyboard)
+        return Response(serializer.data)
+
+    def partial_update(self, request, script_pk=None):
+        """PATCH → update title or aspect_ratio."""
+        try:
+            script = Script.objects.get(pk=script_pk, owner=request.user)
+            storyboard = script.storyboard
+        except (Script.DoesNotExist, Storyboard.DoesNotExist):
+            return Response({"error": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.get_serializer(storyboard, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class SceneCardViewSet(viewsets.ModelViewSet):
+    """
+    Full CRUD on scene cards within a storyboard.
+    POST   /api/storyboards/{storyboard_pk}/cards/
+    GET    /api/storyboards/{storyboard_pk}/cards/
+    PATCH  /api/storyboards/{storyboard_pk}/cards/{pk}/
+    DELETE /api/storyboards/{storyboard_pk}/cards/{pk}/
+    POST   /api/storyboards/{storyboard_pk}/cards/reorder/
+    """
+
+    serializer_class = SceneCardSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _get_storyboard(self, storyboard_pk):
+        return Storyboard.objects.get(
+            pk=storyboard_pk,
+            script__owner=self.request.user
+        )
+
+    def get_queryset(self):
+        storyboard_pk = self.kwargs.get("storyboard_pk")
+        return SceneCard.objects.filter(
+            storyboard__pk=storyboard_pk,
+            storyboard__script__owner=self.request.user
+        ).order_by("order")
+
+    def perform_create(self, serializer):
+        storyboard = self._get_storyboard(self.kwargs["storyboard_pk"])
+        max_order = storyboard.cards.count()
+        serializer.save(storyboard=storyboard, order=max_order)
+
+    @action(detail=False, methods=["post"])
+    def reorder(self, request, storyboard_pk=None):
+        """
+        POST /api/storyboards/{storyboard_pk}/cards/reorder/
+        Body: { "order": ["card-uuid-1", "card-uuid-2", ...] }
+        """
+        try:
+            storyboard = self._get_storyboard(storyboard_pk)
+        except Storyboard.DoesNotExist:
+            return Response({"error": "Storyboard not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        ordered_ids = request.data.get("order", [])
+        if not ordered_ids:
+            return Response({"error": "order list is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        cards = {str(c.id): c for c in storyboard.cards.all()}
+        for i, card_id in enumerate(ordered_ids):
+            if card_id in cards:
+                cards[card_id].order = i
+
+        SceneCard.objects.bulk_update(list(cards.values()), ["order"])
+        return Response({"status": "reordered"})
+
+    @action(detail=False, methods=["delete"])
+    def bulk_delete(self, request, storyboard_pk=None):
+        """
+        DELETE /api/storyboards/{storyboard_pk}/cards/bulk_delete/
+        Body: { "ids": ["uuid1", "uuid2"] }
+        """
+        ids = request.data.get("ids", [])
+        SceneCard.objects.filter(
+            id__in=ids,
+            storyboard__script__owner=request.user
+        ).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { History as HistoryIcon, X, Plus, PenTool } from "lucide-react";
+import { History as HistoryIcon, X, Plus, PenTool, Layers } from "lucide-react";
 import { getScripts, createScript, deleteScript, Script, HistoryEvent } from "@/lib/storage";
 import { isAuthenticated, logout } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,6 +34,18 @@ export default function Dashboard() {
   // Floating theme toggle — only on dashboard
   const themeToggle = (
     <div className="fixed top-8 right-8 z-[100] flex items-center gap-4">
+      <a 
+        href="https://github.com/Balaji-dev-png/CinemaWritings" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="p-2 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-black dark:text-white hover:scale-105 transition-transform flex items-center justify-center shadow-sm"
+        title="View on GitHub"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/>
+          <path d="M9 18c-4.51 2-5-2-7-2"/>
+        </svg>
+      </a>
       <ThemeToggle />
       {authenticated && <AccountMenu />}
     </div>
@@ -93,17 +105,20 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f5f7] dark:bg-[#0a0a0a] flex items-center justify-center p-4 sm:p-8 font-sans transition-colors duration-500 overflow-hidden">
+    <div className="min-h-screen bg-[#f4f5f7] dark:bg-[#0a0a0a] flex flex-col font-sans transition-colors duration-500 overflow-x-hidden">
       {themeToggle}
-      {/* Massive floating white pane mimicking the image container */}
-      <motion.div 
-        initial={{ opacity: 0, y: 40, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-6xl bg-white dark:bg-[#131416] rounded-2xl sm:rounded-[3rem] shadow-[0_30px_80px_-15px_rgba(0,0,0,0.06)] dark:shadow-black/50 overflow-hidden border border-white dark:border-[#222] flex flex-col p-5 sm:p-8 md:p-12 min-h-[85vh] relative transition-colors duration-500"
-      >
-        
-        {/* Top Header Section */}
+      
+      {/* Centered content wrapper */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 w-full z-10">
+        {/* Massive floating white pane mimicking the image container */}
+        <motion.div 
+          initial={{ opacity: 0, y: 40, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-6xl bg-white dark:bg-[#131416] rounded-2xl sm:rounded-[3rem] shadow-[0_30px_80px_-15px_rgba(0,0,0,0.06)] dark:shadow-black/50 overflow-hidden border border-white dark:border-[#222] flex flex-col p-5 sm:p-8 md:p-12 min-h-[85vh] relative transition-colors duration-500"
+        >
+          
+          {/* Top Header Section */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -210,6 +225,13 @@ export default function Dashboard() {
                       </div>
                       
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); router.push(`/storyboard/${script.id}`); }}
+                          className="p-2 rounded-full bg-zinc-100/50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                          title="Open Storyboard"
+                        >
+                          <Layers className="w-4 h-4" />
+                        </button>
                         <button 
                           onClick={(e) => handleShowHistory(e, script)}
                           className="p-2 rounded-full bg-zinc-100/50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
@@ -347,6 +369,84 @@ export default function Dashboard() {
         </AnimatePresence>
 
       </motion.div>
+      </div>
+
+      {/* ── Cinematic Footer ── */}
+      <footer
+        className="w-full mt-auto shrink-0 select-none"
+        style={{ background: "#000", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        {/* Top metadata strip */}
+        <div className="flex items-start justify-between px-8 pt-8 pb-4">
+          <div>
+            <p className="text-[11px] text-zinc-500 leading-relaxed">
+              Screenplay Editor · Director&apos;s Suite · Storyboard
+            </p>
+            <p className="text-[11px] text-zinc-600 leading-relaxed">
+              WGA-Standard Formatting · Auto-Save · PDF Export
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-[11px] text-zinc-500">
+              Open source · Built for filmmakers
+            </p>
+            <a
+              href="https://github.com/Balaji-dev-png/CinemaWritings"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-zinc-400 hover:text-white transition-colors underline underline-offset-2"
+            >
+              View Source
+            </a>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] text-zinc-500">Next.js · Django · Supabase</p>
+            <p className="text-[11px] text-zinc-600">{new Date().getFullYear()}</p>
+          </div>
+        </div>
+
+        {/* Big logotype */}
+        <div className="px-6 py-2 overflow-hidden">
+          <h2
+            className="font-black leading-none tracking-tight text-white"
+            style={{
+              fontSize: "clamp(3.5rem, 14vw, 9rem)",
+              letterSpacing: "-0.03em",
+              lineHeight: 0.9,
+            }}
+          >
+            CinemaWritings
+          </h2>
+        </div>
+
+        {/* Bottom links */}
+        <div className="flex items-center justify-between px-8 py-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center gap-6">
+            <a
+              href="https://github.com/Balaji-dev-png/CinemaWritings"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-zinc-500 hover:text-white transition-colors underline underline-offset-2"
+            >
+              GitHub
+            </a>
+            <a
+              href="https://github.com/Balaji-dev-png/CinemaWritings/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-zinc-500 hover:text-white transition-colors underline underline-offset-2"
+            >
+              Report Issue
+            </a>
+          </div>
+          <p className="text-[11px] text-zinc-700">
+            © {new Date().getFullYear()} CinemaWritings. Built with ❤️ for storytellers.
+          </p>
+          <div className="flex items-center gap-4">
+            <span className="text-[11px] text-zinc-600">Screenplay · Vision · Story</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -1,5 +1,13 @@
 """
 Django settings for CinemaWritings project.
+
+Security hardening applied:
+- DEBUG defaults to False (must explicitly set to True in dev)
+- Supabase JWT authentication replaces simple-jwt
+- All security middleware settings enabled
+- BrowsableAPIRenderer disabled in production
+- Custom exception handler prevents info leakage
+- CORS restricted to known origins only
 """
 import os
 from pathlib import Path
@@ -9,11 +17,23 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-me-in-production-xyz123")
+# ─── Core Security Settings ───────────────────────────────────────────────
 
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
+# SECURITY: Never default to True — always read from env
+# In production, this must be False or unset (defaults to False here)
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    # Insecure default — only acceptable if DEBUG=True locally
+    "django-insecure-change-me-in-production-xyz123"
+)
 
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+# Default to False — must explicitly opt in to debug mode
+DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("true", "1", "yes")
+
+ALLOWED_HOSTS = os.getenv(
+    "DJANGO_ALLOWED_HOSTS",
+    "localhost,127.0.0.1"
+).split(",")
 
 # ─── Application definition ───────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -26,7 +46,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party
     "rest_framework",
-    "rest_framework_simplejwt",
     "corsheaders",
     "reversion",
     "channels",
@@ -74,7 +93,7 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("DB_NAME", "cinemawritings"),
         "USER": os.getenv("DB_USER", "postgres"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "yamini123"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
         "HOST": os.getenv("DB_HOST", "localhost"),
         "PORT": os.getenv("DB_PORT", "5432"),
     }
@@ -91,39 +110,61 @@ CHANNEL_LAYERS = {
 }
 
 # ─── REST Framework ────────────────────────────────────────────────────────
+_renderers = ["rest_framework.renderers.JSONRenderer"]
+# Only enable the browsable API in local development
+if DEBUG:
+    _renderers.append("rest_framework.renderers.BrowsableAPIRenderer")
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "scripts.supabase_auth.SupabaseAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+        "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
-    "DEFAULT_RENDERER_CLASSES": [
-        "rest_framework.renderers.JSONRenderer",
-        "rest_framework.renderers.BrowsableAPIRenderer",
-    ],
-}
-
-from datetime import timedelta
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": False,
-    "BLACKLIST_AFTER_ROTATION": False,
-    "UPDATE_LAST_LOGIN": True,
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
-    "AUTH_HEADER_TYPES": ("Bearer",),
+    "DEFAULT_RENDERER_CLASSES": _renderers,
+    # Custom exception handler — never leaks stack traces
+    "EXCEPTION_HANDLER": "cinemawritings.exception_handler.custom_exception_handler",
 }
 
 # ─── CORS ──────────────────────────────────────────────────────────────────
+# Explicit opt-out from allow-all — must always be False
+CORS_ALLOW_ALL_ORIGINS = False
+
 CORS_ALLOWED_ORIGINS = os.getenv(
     "CORS_ALLOWED_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000"
 ).split(",")
+
 CORS_ALLOW_CREDENTIALS = True
+
+# ─── Security Middleware Settings ─────────────────────────────────────────
+# These are automatically managed by Django's SecurityMiddleware
+# and should be enabled in production.
+
+# XSS filter header (legacy but harmless)
+SECURE_BROWSER_XSS_FILTER = True
+
+# Prevent MIME sniffing
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Block clickjacking
+X_FRAME_OPTIONS = "DENY"
+
+# HSTS — enforce HTTPS for 1 year
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Redirect HTTP → HTTPS (only in production)
+SECURE_SSL_REDIRECT = not DEBUG
+
+# Secure cookies (only over HTTPS — disable in local dev)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = True
 
 # ─── Password validation ──────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [

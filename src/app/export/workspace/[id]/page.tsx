@@ -20,8 +20,25 @@ import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { SHOT_TYPES, IDEA_COLORS, STICKY_COLORS } from "@/lib/canvasTypes";
 import type { CanvasElement, ShotElement, IdeaElement, StickyNoteElement, TextElement, ImageElement, LinkCardElement, EdgeConnection } from "@/lib/canvasTypes";
+import { getAccessToken, logout } from "@/lib/auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+/**
+ * Authenticated fetch wrapper for this page.
+ * Mirrors apiFetch from src/lib/api.ts but used locally
+ * to avoid circular dependency issues.
+ */
+async function authFetch(url: string): Promise<Response> {
+  const token = await getAccessToken();
+  if (!token) {
+    logout();
+    throw new Error("Not authenticated");
+  }
+  return fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
 
 // Landscape Letter dimensions in px at 96 DPI
 const PAGE_W = 1056; // 11in × 96
@@ -54,8 +71,8 @@ export default function ExportWorkspacePage() {
 
     const fetchData = async () => {
       try {
-        // Fetch workspace assets
-        const res = await fetch(`${API_BASE}/scripts/${scriptId}/workspace/`);
+        // Fetch workspace assets — authenticated
+        const res = await authFetch(`${API_BASE}/scripts/${scriptId}/workspace/`);
         if (res.ok) {
           const assets: WorkspaceAssetRow[] = await res.json();
           const mapped = (Array.isArray(assets) ? assets : []).map((a: WorkspaceAssetRow) => ({
@@ -70,14 +87,14 @@ export default function ExportWorkspacePage() {
           setElements(mapped);
         }
 
-        // Fetch script title
-        const scriptRes = await fetch(`${API_BASE}/scripts/${scriptId}/`);
+        // Fetch script title — authenticated
+        const scriptRes = await authFetch(`${API_BASE}/scripts/${scriptId}/`);
         if (scriptRes.ok) {
           const script = await scriptRes.json();
           setTitle(script.title || "UNTITLED");
         }
 
-        // Load edges from localStorage
+        // Load edges from localStorage (non-sensitive workspace layout data)
         try {
           const raw = localStorage.getItem(`workspace_meta_${scriptId}`);
           if (raw) {
@@ -85,8 +102,8 @@ export default function ExportWorkspacePage() {
             setEdges(meta.edges || []);
           }
         } catch { /* ignore */ }
-      } catch (err) {
-        console.error("Failed to load workspace data:", err);
+      } catch {
+        // Do not log or expose internal errors to the client
       } finally {
         setLoading(false);
       }

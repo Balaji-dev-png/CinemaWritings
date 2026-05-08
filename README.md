@@ -52,6 +52,17 @@
   - **Mixed Selection Handling** — Displays `-` when multiple font sizes are selected.
 - **Cinematic Loading System** — Seamless transitions with animated clapperboards, progress bars, and cycling film-themed loading messages.
 
+### Storyboard Suite
+- **Visual Shot Planning** — Drag-and-drop scene cards to build your storyboard
+- **Aspect Ratio Toggles** — Switch between 16:9, 2.39:1, 4:3, and 1.85:1 frame ratios
+- **Export Shot List** — Generate a formatted PDF shot list for your crew
+- **Bulk Edit & Reorder** — Powered by `dnd-kit` for fluid grid reordering
+
+### Context-Aware AI Assistant
+- **Global Chatbot** — The "Lead Producer" assistant lives in the corner of your screen
+- **Feature Knowledge Base** — Ask questions about screenplay formatting, camera movements, and navigation
+- **Contextual Responses** — The assistant knows what page you're on and offers direct navigation links
+
 ### Multi-Document Dashboard
 - Create, organize, and delete multiple scripts
 - Securely stored in the cloud via Django backend

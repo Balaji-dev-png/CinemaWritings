@@ -328,8 +328,8 @@ export const ScriptEditor = ({
     
     const toolbarWidth = toolbarOrientation === "horizontal" ? 300 : 60;
     
-    // Default: 24px gap from page edge
-    let x = pageRightEdge + 24;
+    // Default: Pin to the right edge of the window
+    let x = canvasWidth - toolbarWidth - 16;
     const y = 80;
 
     // Boundary check: if it goes off-screen, pin to right edge
