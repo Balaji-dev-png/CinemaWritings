@@ -170,12 +170,7 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
     <div className="flex flex-col h-full overflow-hidden relative">
       {/* Toolbar */}
       <div
-        className="flex items-center gap-3 px-6 py-3 shrink-0 relative z-50"
-        style={{
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          background: "rgba(10,10,20,0.8)",
-          backdropFilter: "blur(12px)",
-        }}
+        className="flex items-center gap-3 px-6 py-3 shrink-0 relative z-50 bg-white/80 dark:bg-[rgba(10,10,20,0.8)] backdrop-blur-xl border-b border-zinc-200 dark:border-white/5"
       >
         <button
           onClick={() => {
@@ -185,7 +180,7 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
             connectMode
               ? "bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30"
-              : "bg-white/5 text-zinc-400 hover:text-zinc-200"
+              : "bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
           }`}
         >
           <Workflow className="w-3.5 h-3.5" /> Connect Mode
@@ -193,7 +188,7 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
 
         <button
           onClick={autoLayout}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/5 text-zinc-400 hover:text-zinc-200 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
         >
           <LayoutGrid className="w-3.5 h-3.5" /> Auto-Layout Grid
         </button>
@@ -221,15 +216,17 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
       {/* Infinite Canvas Viewport */}
       <div
         ref={boardRef}
-        className="flex-1 w-full h-full relative cursor-grab bg-[#0d0d0d]"
+        className="flex-1 w-full h-full relative cursor-grab bg-zinc-50 dark:bg-[#0d0d0d]"
         style={{ overflow: "hidden" }}
       >
         {/* Dot pattern background fixed to viewport, sliding with pan */}
         <div
-          className="absolute inset-0 pointer-events-none suite-bg-pattern opacity-30"
+          className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-30"
           style={{
+            backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
             backgroundPosition: `${panRef.current.x}px ${panRef.current.y}px`,
             backgroundSize: `${32 * zoomRef.current}px ${32 * zoomRef.current}px`,
+            color: "var(--foreground, #000)" // will automatically tint dark in light mode
           }}
         />
 

@@ -157,7 +157,7 @@ export default function DirectorsSuitePage() {
   );
 
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: "#0d0d0d" }}>
+    <div className="h-screen flex flex-col bg-zinc-50 dark:bg-[#0d0d0d] text-zinc-900 dark:text-white">
       <LoadingOverlay 
         isVisible={isLoading} 
         message={message} 
@@ -166,32 +166,31 @@ export default function DirectorsSuitePage() {
       />
       {/* Top bar */}
       <header
-        className="flex items-center justify-between px-5 py-3 shrink-0"
-        style={{ backgroundColor: "#111", borderBottom: "1px solid #222" }}
+        className="flex items-center justify-between px-5 py-3 shrink-0 bg-white dark:bg-[#111] border-b border-zinc-200 dark:border-[#222]"
       >
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.push(`/editor/${scriptId}`)}
-            className="text-xs text-zinc-500 hover:text-white transition-colors"
+            className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
             ← Back to Editor
           </button>
-          <div className="h-4 w-px bg-zinc-800" />
+          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
           <button
             onClick={() => router.push(`/storyboard/${scriptId}`)}
-            className="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1"
+            className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1"
           >
             <Layers className="w-3 h-3" /> Storyboard
           </button>
-          <div className="h-4 w-px bg-zinc-800" />
+          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="text-xs text-zinc-400 hover:text-white transition-colors flex items-center gap-1"
+            className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1"
           >
             {sidebarOpen ? "◀ Hide Tools" : "▶ Show Tools"}
           </button>
-          <div className="h-4 w-px bg-zinc-800" />
-          <span className="text-sm font-bold text-white truncate max-w-[300px]">
+          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+          <span className="text-sm font-bold text-zinc-900 dark:text-white truncate max-w-[300px]">
             {scriptTitle}
           </span>
         </div>

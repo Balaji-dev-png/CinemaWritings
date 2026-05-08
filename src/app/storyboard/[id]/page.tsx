@@ -34,9 +34,9 @@ export default function StoryboardPage() {
   }, [scriptId, router]);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#080810", color: "white", fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-[#080810] text-zinc-900 dark:text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Top Header */}
-      <header className="flex items-center gap-4 px-6 py-3 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(8,8,16,0.9)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 40 }}>
+      <header className="flex items-center gap-4 px-6 py-3 shrink-0 bg-white/80 dark:bg-[rgba(8,8,16,0.9)] backdrop-blur-xl border-b border-zinc-200 dark:border-white/5" style={{ position: "sticky", top: 0, zIndex: 40 }}>
         <button
           onClick={() => router.push(`/editor/${scriptId}`)}
           className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 transition-colors text-sm"
@@ -63,15 +63,14 @@ export default function StoryboardPage() {
               placeholder="Storyboard Name"
             />
           )}
-          <span className="text-zinc-600 text-xs">— Visual Storyboard</span>
+          <span className="text-zinc-500 dark:text-zinc-600 text-xs">— Visual Storyboard</span>
         </div>
 
         <div className="flex-1" />
 
         <button
           onClick={() => window.print()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-colors"
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10"
         >
           <Download className="w-3.5 h-3.5" />
           Export Shot List

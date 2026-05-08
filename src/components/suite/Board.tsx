@@ -288,12 +288,12 @@ export const Board = forwardRef<HTMLDivElement, Props>(
     return (
       <div
         ref={viewportRef}
-        className={`flex-1 relative overflow-hidden select-none ${drawMode ? "draw-mode-active" : ""}`}
+        className={`flex-1 relative overflow-hidden select-none ${drawMode ? "draw-mode-active" : ""} bg-zinc-50 dark:bg-[#0d0d0d]`}
         style={{
-          backgroundColor: '#0d0d0d',
-          backgroundImage: 'radial-gradient(circle, #1e1e1e 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
           backgroundSize: `${28 * canvas.zoom}px ${28 * canvas.zoom}px`,
           backgroundPosition: `${canvas.pan.x}px ${canvas.pan.y}px`,
+          color: "var(--foreground, #888)" // This will inherit text color, allowing dots to respond to light/dark
         }}
         onMouseDown={handleMouseDown}
       >
