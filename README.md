@@ -53,10 +53,14 @@
 - **Cinematic Loading System** — Seamless transitions with animated clapperboards, progress bars, and cycling film-themed loading messages.
 
 ### Storyboard Suite
-- **Visual Shot Planning** — Drag-and-drop scene cards to build your storyboard
-- **Aspect Ratio Toggles** — Switch between 16:9, 2.39:1, 4:3, and 1.85:1 frame ratios
-- **Export Shot List** — Generate a formatted PDF shot list for your crew
-- **Bulk Edit & Reorder** — Powered by `dnd-kit` for fluid grid reordering
+- **Infinite Canvas Workspace** — Milanote-style infinite planning area with smooth 60fps panning and cursor-anchored zoom.
+- **High-Performance Interaction** — Zero-latency dragging and resizing optimized via `requestAnimationFrame` for 1:1 cursor tracking.
+- **Auto-Grid System** — Smart placement engine that organizes new cards into a clean grid by default.
+- **Cinematic Aspect Ratio Library** — 24+ industry-standard ratios including 2.39:1 (Anamorphic), IMAX 70mm, Univisium, and 9:16 Vertical.
+- **Resizable & Scrollable Cards** — Manual card resizing with internal scrollable areas for extensive technical and lighting notes.
+- **Visual Image Management** — Hover-based action menu for direct image uploads or external URL pasting with live preview.
+- **Bulk Management** — Marquee-based multi-selection with bulk deletion and "Clear Board" capabilities.
+- **Connect Mode** — Visual wiring system to map shot-to-shot transitions and narrative flow.
 
 ### Context-Aware AI Assistant
 - **Global Chatbot** — The "Lead Producer" assistant lives in the corner of your screen
@@ -170,6 +174,10 @@ src/
 │   ├── editor/
 │   │   ├── ScriptEditor.tsx            # Main editor + theme sync
 │   │   └── TitlePage.tsx               # Title page with metadata
+│   ├── storyboard/
+│   │   ├── StoryboardView.tsx          # Infinite storyboard canvas
+│   │   ├── InlineSceneCard.tsx         # Resizable, cinematic shot card
+│   │   └── ConnectorLayer.tsx          # Shot-to-shot connection wires
 │   └── suite/
 │       ├── Board.tsx                   # Infinite canvas engine
 │       ├── ConnectorLayer.tsx          # SVG bezier connection wires
@@ -184,7 +192,8 @@ src/
 │
 ├── hooks/
 │   ├── useDrawing.ts                   # Drawing engine with hit-detection & rAF throttling
-│   ├── useDraggable.ts                 # Card drag-and-drop hook
+│   ├── useDraggable.ts                 # Real-time cursor tracking & drag hook
+│   ├── useStoryboardCanvas.ts          # Storyboard state & persistence
 │   └── useSuiteState.ts               # Canvas state & persistence
 │
 └── styles/

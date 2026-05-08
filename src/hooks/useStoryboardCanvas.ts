@@ -97,11 +97,33 @@ export function useStoryboardCanvas(storyboard: Storyboard) {
     [update]
   );
 
+  const removeCards = useCallback(
+    (ids: string[]) => {
+      update((s) => ({
+        ...s,
+        cards: s.cards.filter((c) => !ids.includes(c.id)),
+        connectors: s.connectors.filter(
+          (conn) => !ids.includes(conn.fromId) && !ids.includes(conn.toId)
+        ),
+      }));
+    },
+    [update]
+  );
+
+  const removeAll = useCallback(() => {
+    if (!window.confirm("Are you sure you want to delete all shots? This cannot be undone.")) return;
+    update((s) => ({
+      ...s,
+      cards: [],
+      connectors: [],
+    }));
+  }, [update]);
+
   const autoLayout = useCallback(() => {
     update((s) => {
       const COLS = 4;
       const GAP_X = 360;
-      const GAP_Y = 280;
+      const GAP_Y = 480; // increased for the larger cards
       const START_X = 100;
       const START_Y = 100;
       
@@ -126,6 +148,8 @@ export function useStoryboardCanvas(storyboard: Storyboard) {
     addCard,
     updateCard,
     removeCard,
+    removeCards,
+    removeAll,
     moveCard,
     addConnector,
     removeConnector,

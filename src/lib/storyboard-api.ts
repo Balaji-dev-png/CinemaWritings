@@ -27,14 +27,14 @@ export interface SceneCard {
   y?: number;
   width?: number;
   height?: number;
-  aspect_ratio?: "16:9" | "2.39:1" | "4:3" | "1.85:1";
+  aspect_ratio?: string;
 }
 
 export interface Storyboard {
   id: string;
   script_title: string;
   title: string;
-  aspect_ratio: "16:9" | "2.39:1" | "4:3" | "1.85:1"; // default global fallback
+  aspect_ratio: string; // default global fallback
   cards: SceneCard[];
   connectors?: Connector[];
   created_at: string;
@@ -98,7 +98,7 @@ export async function getStoryboard(scriptId: string): Promise<Storyboard> {
     id: scriptId,
     script_title: "Untitled",
     title: "Storyboard",
-    aspect_ratio: "16:9",
+    aspect_ratio: "1.78:1",
     cards: [],
     connectors: [],
     created_at: new Date().toISOString(),
@@ -138,7 +138,7 @@ export async function createSceneCard(storyboardId: string, data: Partial<SceneC
     y: 0,
     width: 320,
     height: 180,
-    aspect_ratio: sb.aspect_ratio || "16:9",
+    aspect_ratio: sb.aspect_ratio || "1.78:1",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     ...data,

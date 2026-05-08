@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, Camera, Loader2, Workflow, GripHorizontal, LayoutGrid, Minus, ChevronDown, Maximize, Home } from "lucide-react";
+import { Plus, Camera, Loader2, Workflow, GripHorizontal, LayoutGrid, Minus, ChevronDown, Maximize, Home, Trash2, Square } from "lucide-react";
 import { Storyboard, createSceneCard } from "@/lib/storyboard-api";
 import { useStoryboardCanvas } from "@/hooks/useStoryboardCanvas";
 import { InlineSceneCard } from "./InlineSceneCard";
@@ -18,6 +18,8 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
     addCard,
     updateCard,
     removeCard,
+    removeCards,
+    removeAll,
     moveCard,
     addConnector,
     removeConnector,
@@ -27,6 +29,8 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
   const [adding, setAdding] = useState(false);
   const [connectMode, setConnectMode] = useState(false);
   const [connectSource, setConnectSource] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectionRect, setSelectionRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
   // Viewport State
   const boardRef = useRef<HTMLDivElement>(null);
@@ -50,43 +54,133 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Pan and Zoom logic
+  // Keyboard listeners for Pan (Space) and Delete
+  const isSpaceDown = useRef(false);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space") isSpaceDown.current = true;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const activeEl = document.activeElement;
+        const isInput = activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA";
+        if (!isInput && selectedIds.length > 0) {
+          if (window.confirm(`Delete ${selectedIds.length} shots?`)) {
+            removeCards(selectedIds);
+            setSelectedIds([]);
+          }
+        }
+      }
+      if (e.key === "Escape") {
+        setConnectMode(false);
+        setConnectSource(null);
+        setSelectedIds([]);
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") isSpaceDown.current = false;
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [selectedIds, removeCards]);
+
+  // Pan and Zoom and Selection logic
   useEffect(() => {
     const board = boardRef.current;
     if (!board) return;
 
     let isPanning = false;
+    let isSelecting = false;
     let startX = 0;
     let startY = 0;
     let initialPanX = 0;
     let initialPanY = 0;
 
     const onMouseDown = (e: MouseEvent) => {
-      // Start panning if middle mouse button, or Space + Left click, or dragging on background
-      if (e.button === 1 || e.target === board || (e.target as HTMLElement).closest(".suite-bg-pattern")) {
+      if ((e.target as HTMLElement).closest('.suite-scrollbar')) return;
+      
+      startX = e.clientX;
+      startY = e.clientY;
+
+      // Pan Mode: Space + Left Click OR Middle Click
+      if (e.button === 1 || (e.button === 0 && isSpaceDown.current)) {
         e.preventDefault();
         isPanning = true;
-        startX = e.clientX;
-        startY = e.clientY;
         initialPanX = panRef.current.x;
         initialPanY = panRef.current.y;
         board.style.cursor = "grabbing";
+        return;
+      }
+
+      // Selection Mode: Left Click on background
+      if (e.button === 0 && (e.target === board || (e.target as HTMLElement).closest(".suite-bg-pattern"))) {
+        isSelecting = true;
+        if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+          setSelectedIds([]);
+        }
       }
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!isPanning) return;
-      panRef.current = {
-        x: initialPanX + (e.clientX - startX),
-        y: initialPanY + (e.clientY - startY),
-      };
-      triggerRender();
+      if (isPanning) {
+        panRef.current = {
+          x: initialPanX + (e.clientX - startX),
+          y: initialPanY + (e.clientY - startY),
+        };
+        triggerRender();
+      } else if (isSelecting) {
+        const rect = board.getBoundingClientRect();
+        const curX = e.clientX - rect.left;
+        const curY = e.clientY - rect.top;
+        const originX = startX - rect.left;
+        const originY = startY - rect.top;
+
+        const x = Math.min(originX, curX);
+        const y = Math.min(originY, curY);
+        const w = Math.abs(curX - originX);
+        const h = Math.abs(curY - originY);
+
+        setSelectionRect({ x, y, w, h });
+
+        const zoom = zoomRef.current;
+        const pan = panRef.current;
+        
+        const canvasX = (x - pan.x) / zoom;
+        const canvasY = (y - pan.y) / zoom;
+        const canvasW = w / zoom;
+        const canvasH = h / zoom;
+
+        const ids = state.cards.filter(card => {
+          const cx = card.x || 0;
+          const cy = card.y || 0;
+          const cw = card.width || 320;
+          const ch = card.height || 450;
+          return (
+            cx + cw > canvasX &&
+            cx < canvasX + canvasW &&
+            cy + ch > canvasY &&
+            cy < canvasY + canvasH
+          );
+        }).map(c => c.id);
+
+        if (e.shiftKey || e.metaKey || e.ctrlKey) {
+          setSelectedIds(prev => Array.from(new Set([...prev, ...ids])));
+        } else {
+          setSelectedIds(ids);
+        }
+      }
     };
 
     const onMouseUp = () => {
       if (isPanning) {
         isPanning = false;
         if (board) board.style.cursor = "grab";
+      }
+      if (isSelecting) {
+        isSelecting = false;
+        setSelectionRect(null);
       }
     };
 
@@ -194,19 +288,55 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
     triggerRender();
   }, [triggerRender]);
 
+  // Center canvas initially
+  useEffect(() => {
+    if (boardRef.current && panRef.current.x === 0 && panRef.current.y === 0 && state.cards.length === 0) {
+      panRef.current = {
+        x: boardRef.current.clientWidth / 2 - 200,
+        y: boardRef.current.clientHeight / 2 - 200
+      };
+      triggerRender();
+    }
+  }, [state.cards.length, triggerRender]);
+
   const handleAddCard = async () => {
     setAdding(true);
     try {
-      // Place near center of current viewport
-      const cx = -panRef.current.x / zoomRef.current + 200 + Math.random() * 50;
-      const cy = -panRef.current.y / zoomRef.current + 200 + Math.random() * 50;
+      // Default to grid-based placement for "Auto Grid" feel
+      const COLS = 4;
+      const GAP_X = 380;
+      const GAP_Y = 580; 
+      const START_X = 100;
+      const START_Y = 100;
+      
+      const index = state.cards.length;
+      const row = Math.floor(index / COLS);
+      const col = index % COLS;
+      
+      const cx = START_X + col * GAP_X;
+      const cy = START_Y + row * GAP_Y;
       
       const card = await createSceneCard(storyboard.id, {
-        shot_number: `${String(state.cards.length + 1).padStart(2, "0")}`,
+        shot_number: `${String(index + 1).padStart(2, "0")}`,
         x: cx,
         y: cy,
+        width: 320,
+        height: 500,
+        aspect_ratio: "1.78:1",
+        shot_type: "MS",
+        camera_movement: "static"
       });
       addCard(card);
+
+      // If it's the first card, center the view on it
+      if (index === 0) {
+        zoomRef.current = 0.8;
+        panRef.current = { 
+          x: 100, 
+          y: 100 
+        };
+        triggerRender();
+      }
     } catch (err) {
       console.error("Failed to add shot:", err);
     } finally {
@@ -243,10 +373,10 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
   }, []);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden relative">
+    <div className="flex flex-col h-full overflow-hidden relative bg-zinc-50 dark:bg-[#0d0d0d]">
       {/* Toolbar */}
       <div
-        className="flex items-center gap-3 px-6 py-3 shrink-0 relative z-50 bg-white/80 dark:bg-[rgba(10,10,20,0.8)] backdrop-blur-xl border-b border-zinc-200 dark:border-white/5"
+        className="flex items-center gap-3 px-6 py-3 shrink-0 relative z-50 bg-white dark:bg-[#111] border-b border-zinc-200 dark:border-[#222]"
       >
         <button
           onClick={() => {
@@ -255,8 +385,8 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
           }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
             connectMode
-              ? "bg-[#c9a84c]/20 text-[#c9a84c] border border-[#c9a84c]/30"
-              : "bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+              ? "bg-[#c9a84c] text-white shadow-sm"
+              : "bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
           }`}
         >
           <Workflow className="w-3.5 h-3.5" /> Connect Mode
@@ -264,9 +394,37 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
 
         <button
           onClick={autoLayout}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
         >
           <LayoutGrid className="w-3.5 h-3.5" /> Auto-Layout Grid
+        </button>
+
+        <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800 mx-1" />
+
+        {selectedIds.length > 0 && (
+          <button
+            onClick={() => {
+              if (window.confirm(`Are you sure you want to delete ${selectedIds.length} shots?`)) {
+                removeCards(selectedIds);
+                setSelectedIds([]);
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all animate-in zoom-in-95 duration-200"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete Selected ({selectedIds.length})
+          </button>
+        )}
+
+        <button
+          onClick={() => {
+            removeAll();
+            setSelectedIds([]);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-500 hover:text-red-500 hover:bg-red-500/5 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Delete All
         </button>
 
         <div className="flex-1" />
@@ -281,8 +439,7 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
         <button
           onClick={handleAddCard}
           disabled={adding}
-          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all hover:brightness-110 disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg,#c9a84c,#a8862e)", color: "#0d0d0d" }}
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all hover:brightness-110 disabled:opacity-60 bg-[#c9a84c] text-black shadow-sm"
         >
           {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           Add Shot
@@ -292,17 +449,29 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
       {/* Infinite Canvas Viewport */}
       <div
         ref={boardRef}
-        className="flex-1 w-full h-full relative cursor-grab bg-zinc-50 dark:bg-[#0d0d0d]"
-        style={{ overflow: "hidden" }}
+        className="flex-1 w-full relative cursor-grab bg-zinc-50 dark:bg-[#0d0d0d] overflow-hidden"
       >
+        {/* Selection Marquee */}
+        {selectionRect && (
+          <div
+            className="absolute border border-[#c9a84c] bg-[#c9a84c]/5 z-[100] pointer-events-none"
+            style={{
+              left: selectionRect.x,
+              top: selectionRect.y,
+              width: selectionRect.w,
+              height: selectionRect.h,
+            }}
+          />
+        )}
+
         {/* Dot pattern background fixed to viewport, sliding with pan */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-30"
+          className="absolute inset-0 pointer-events-none opacity-[0.15] dark:opacity-30"
           style={{
-            backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
+            backgroundImage: 'radial-gradient(circle, currentColor 1.5px, transparent 1.5px)',
             backgroundPosition: `${panRef.current.x}px ${panRef.current.y}px`,
-            backgroundSize: `${32 * zoomRef.current}px ${32 * zoomRef.current}px`,
-            color: "var(--foreground, #000)" // will automatically tint dark in light mode
+            backgroundSize: `${40 * zoomRef.current}px ${40 * zoomRef.current}px`,
+            color: "var(--foreground, #888)"
           }}
         />
 
@@ -326,12 +495,25 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
               <InlineSceneCard
                 key={card.id}
                 card={card}
-                onUpdate={updateCard}
-                onRemove={removeCard}
-                onMove={moveCard}
+                onUpdate={(patch) => updateCard(card.id, patch)}
+                onRemove={(id) => {
+                  removeCard(id);
+                  setSelectedIds(prev => prev.filter(p => p !== id));
+                }}
+                onMove={(x, y) => moveCard(card.id, x, y)}
                 onConnectClick={handleConnectClick}
                 connectMode={connectMode}
                 isConnectSource={connectSource === card.id}
+                isSelected={selectedIds.includes(card.id)}
+                onSelect={(multi) => {
+                  if (multi) {
+                    setSelectedIds(prev => 
+                      prev.includes(card.id) ? prev.filter(id => id !== card.id) : [...prev, card.id]
+                    );
+                  } else {
+                    setSelectedIds([card.id]);
+                  }
+                }}
                 getZoom={() => zoomRef.current}
                 getPan={() => panRef.current}
               />
@@ -339,27 +521,27 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
           </div>
         </div>
 
-        {/* Zoom Controls (Mirroring Director's Suite) */}
-        <div className="absolute bottom-6 right-6 flex items-center gap-2 z-50">
-          <div className="flex items-center gap-1 bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#2a2a2a] rounded-lg p-1 shadow-2xl">
+        {/* Zoom Controls */}
+        <div className="absolute bottom-6 right-6 flex items-center gap-3 z-50">
+          <div className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-1.5 shadow-xl">
             <button
               onClick={() => zoomTowardCenter(zoomRef.current * 0.9)}
-              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-500 dark:text-zinc-400"
             >
-              <Minus className="w-3.5 h-3.5" />
+              <Minus className="w-4 h-4" />
             </button>
             
-            <div className="relative px-2 min-w-[50px] text-center" ref={zoomMenuRef}>
+            <div className="relative px-3 min-w-[60px] text-center" ref={zoomMenuRef}>
               <button 
                 onClick={() => setIsZoomMenuOpen(!isZoomMenuOpen)}
-                className="text-[11px] font-mono font-bold text-[#c9a84c] flex items-center gap-1 hover:brightness-110 transition-colors"
+                className="text-xs font-bold text-[#c9a84c] flex items-center gap-1 hover:brightness-110"
               >
                 {Math.round(zoomRef.current * 100)}%
-                <ChevronDown className={`w-3 h-3 opacity-50 transition-transform ${isZoomMenuOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isZoomMenuOpen ? "rotate-180" : ""}`} />
               </button>
               
               {isZoomMenuOpen && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex flex-col bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#2a2a2a] rounded-lg py-1 shadow-2xl min-w-[80px] animate-in fade-in slide-in-from-bottom-2">
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl py-2 shadow-2xl min-w-[100px] overflow-hidden">
                   {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3].map(z => (
                     <button
                       key={z}
@@ -367,7 +549,7 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
                         zoomTowardCenter(z);
                         setIsZoomMenuOpen(false);
                       }}
-                      className="px-3 py-1.5 text-[10px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left transition-colors"
+                      className="px-4 py-2 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800 text-left transition-colors"
                     >
                       {Math.round(z * 100)}%
                     </button>
@@ -378,26 +560,26 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
 
             <button
               onClick={() => zoomTowardCenter(zoomRef.current * 1.1)}
-              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-500 dark:text-zinc-400"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-4 h-4" />
             </button>
           </div>
 
           <button
             onClick={fitToContent}
-            className="p-2 bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#2a2a2a] rounded-lg shadow-2xl text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
             title="Fit to Content"
           >
-            <Maximize className="w-4 h-4" />
+            <Maximize className="w-4.5 h-4.5" />
           </button>
 
           <button
             onClick={resetCanvas}
-            className="p-2 bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#2a2a2a] rounded-lg shadow-2xl text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
             title="Reset View"
           >
-            <Home className="w-4 h-4" />
+            <Home className="w-4.5 h-4.5" />
           </button>
         </div>
       </div>

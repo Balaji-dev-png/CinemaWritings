@@ -34,18 +34,18 @@ export default function StoryboardPage() {
   }, [scriptId, router]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-[#080810] text-zinc-900 dark:text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="h-screen flex flex-col bg-zinc-50 dark:bg-[#0d0d0d] text-zinc-900 dark:text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Top Header */}
-      <header className="flex items-center gap-4 px-6 py-3 shrink-0 bg-white/80 dark:bg-[rgba(8,8,16,0.9)] backdrop-blur-xl border-b border-zinc-200 dark:border-white/5" style={{ position: "sticky", top: 0, zIndex: 40 }}>
+      <header className="flex items-center gap-4 px-6 py-3 shrink-0 bg-white dark:bg-[#111] border-b border-zinc-200 dark:border-[#222]" style={{ position: "sticky", top: 0, zIndex: 40 }}>
         <button
           onClick={() => router.push(`/editor/${scriptId}`)}
-          className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 transition-colors text-sm"
+          className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Editor
         </button>
 
-        <div className="w-px h-5 bg-white/10" />
+        <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800" />
 
         <div className="flex items-center gap-2 group">
           <Film className="w-4 h-4" style={{ color: "#c9a84c" }} />
@@ -63,14 +63,14 @@ export default function StoryboardPage() {
               placeholder="Storyboard Name"
             />
           )}
-          <span className="text-zinc-500 dark:text-zinc-600 text-xs">— Visual Storyboard</span>
+          <span className="text-zinc-400 dark:text-zinc-500 text-xs">— Visual Storyboard</span>
         </div>
 
         <div className="flex-1" />
 
         <button
           onClick={() => window.print()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/10"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 shadow-sm"
         >
           <Download className="w-3.5 h-3.5" />
           Export Shot List
