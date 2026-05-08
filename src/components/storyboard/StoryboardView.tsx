@@ -131,6 +131,8 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
         y: cy,
       });
       addCard(card);
+    } catch (err) {
+      console.error("Failed to add shot:", err);
     } finally {
       setAdding(false);
     }
@@ -236,8 +238,8 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
           className="absolute top-0 left-0 origin-top-left pointer-events-none"
           style={{
             transform: `translate(${panRef.current.x}px, ${panRef.current.y}px) scale(${zoomRef.current})`,
-            width: 0,
-            height: 0,
+            width: "10000px",
+            height: "10000px",
           }}
         >
           <StoryboardConnectorLayer

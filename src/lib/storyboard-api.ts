@@ -82,7 +82,16 @@ const storageKey = (id: string) => `storyboard_${id}`;
 export async function getStoryboard(scriptId: string): Promise<Storyboard> {
   if (typeof window !== "undefined") {
     const raw = localStorage.getItem(storageKey(scriptId));
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        parsed.cards = parsed.cards || [];
+        parsed.connectors = parsed.connectors || [];
+        return parsed;
+      } catch (e) {
+        console.error("Failed to parse storyboard from local storage", e);
+      }
+    }
   }
   
   const initial: Storyboard = {
@@ -115,7 +124,7 @@ export async function updateStoryboard(scriptId: string, data: Partial<Storyboar
 export async function createSceneCard(storyboardId: string, data: Partial<SceneCard> = {}): Promise<SceneCard> {
   const sb = await getStoryboard(storyboardId);
   const newCard: SceneCard = {
-    id: crypto.randomUUID(),
+    id: (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2, 9),
     order: sb.cards.length,
     shot_number: "",
     scene_heading: "",
