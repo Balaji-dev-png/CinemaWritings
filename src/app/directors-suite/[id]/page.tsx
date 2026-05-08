@@ -11,6 +11,7 @@ import { useLoadingState } from "@/hooks/useLoadingState";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import "@/styles/suite.css";
 
+import { Layers } from "lucide-react";
 import { DrawingToolbar } from "@/components/suite/DrawingToolbar";
 
 function uid() {
@@ -174,6 +175,13 @@ export default function DirectorsSuitePage() {
             className="text-xs text-zinc-500 hover:text-white transition-colors"
           >
             ← Back to Editor
+          </button>
+          <div className="h-4 w-px bg-zinc-800" />
+          <button
+            onClick={() => router.push(`/storyboard/${scriptId}`)}
+            className="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1"
+          >
+            <Layers className="w-3 h-3" /> Storyboard
           </button>
           <div className="h-4 w-px bg-zinc-800" />
           <button

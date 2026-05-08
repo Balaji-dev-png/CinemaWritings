@@ -226,13 +226,6 @@ export default function Dashboard() {
                       
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
-                          onClick={(e) => { e.stopPropagation(); router.push(`/storyboard/${script.id}`); }}
-                          className="p-2 rounded-full bg-zinc-100/50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                          title="Open Storyboard"
-                        >
-                          <Layers className="w-4 h-4" />
-                        </button>
-                        <button 
                           onClick={(e) => handleShowHistory(e, script)}
                           className="p-2 rounded-full bg-zinc-100/50 dark:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                           title="View History"

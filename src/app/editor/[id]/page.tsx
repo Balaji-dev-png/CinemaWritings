@@ -51,6 +51,7 @@ import {
   Minus,
   Plus,
   Eraser,
+  Layers,
 } from "lucide-react";
 
 export default function EditorPage() {
@@ -587,6 +588,13 @@ export default function EditorPage() {
               title="Director's Suite"
             >
               <Sparkles className="w-3.5 h-3.5 group-hover:text-blue-400 transition-colors" />
+            </button>
+            <button
+              onClick={() => router.push(`/storyboard/${params.id}`)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
+              title="Storyboard"
+            >
+              <Layers className="w-3.5 h-3.5 group-hover:text-purple-400 transition-colors" />
             </button>
           </div>
 
