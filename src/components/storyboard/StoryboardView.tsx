@@ -168,7 +168,7 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
     <div className="flex flex-col h-full overflow-hidden relative">
       {/* Toolbar */}
       <div
-        className="flex items-center gap-3 px-6 py-3 shrink-0 absolute top-0 left-0 right-0 z-50 pointer-events-auto"
+        className="flex items-center gap-3 px-6 py-3 shrink-0 relative z-50"
         style={{
           borderBottom: "1px solid rgba(255,255,255,0.06)",
           background: "rgba(10,10,20,0.8)",

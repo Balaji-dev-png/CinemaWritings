@@ -47,11 +47,22 @@ export default function StoryboardPage() {
 
         <div className="w-px h-5 bg-white/10" />
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 group">
           <Film className="w-4 h-4" style={{ color: "#c9a84c" }} />
-          <span className="text-sm font-bold" style={{ color: "#c9a84c" }}>
-            {storyboard?.script_title || "Storyboard"}
-          </span>
+          {storyboard && (
+            <input
+              className="bg-transparent text-sm font-bold outline-none border-b border-transparent hover:border-[#c9a84c]/30 focus:border-[#c9a84c] transition-colors"
+              style={{ color: "#c9a84c" }}
+              value={storyboard.script_title}
+              onChange={(e) => setStoryboard({ ...storyboard, script_title: e.target.value })}
+              onBlur={async () => {
+                if (storyboard) {
+                  await import("@/lib/storyboard-api").then((m) => m.updateStoryboard(storyboard.id, { script_title: storyboard.script_title }));
+                }
+              }}
+              placeholder="Storyboard Name"
+            />
+          )}
           <span className="text-zinc-600 text-xs">— Visual Storyboard</span>
         </div>
 
