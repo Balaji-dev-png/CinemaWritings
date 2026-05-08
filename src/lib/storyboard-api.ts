@@ -4,6 +4,12 @@
  * until a Supabase schema is finalized for storyboards.
  */
 
+export interface Connector {
+  id: string;
+  fromId: string;
+  toId: string;
+}
+
 export interface SceneCard {
   id: string;
   order: number;
@@ -16,14 +22,21 @@ export interface SceneCard {
   image_url: string;
   created_at: string;
   updated_at: string;
+  // Spatial properties for infinite canvas
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  aspect_ratio?: "16:9" | "2.39:1" | "4:3" | "1.85:1";
 }
 
 export interface Storyboard {
   id: string;
   script_title: string;
   title: string;
-  aspect_ratio: "16:9" | "2.39:1" | "4:3" | "1.85:1";
+  aspect_ratio: "16:9" | "2.39:1" | "4:3" | "1.85:1"; // default global fallback
   cards: SceneCard[];
+  connectors?: Connector[];
   created_at: string;
   updated_at: string;
 }
@@ -78,6 +91,7 @@ export async function getStoryboard(scriptId: string): Promise<Storyboard> {
     title: "Storyboard",
     aspect_ratio: "16:9",
     cards: [],
+    connectors: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -110,6 +124,11 @@ export async function createSceneCard(storyboardId: string, data: Partial<SceneC
     lens: "",
     technical_notes: "",
     image_url: "",
+    x: 0,
+    y: 0,
+    width: 320,
+    height: 180,
+    aspect_ratio: sb.aspect_ratio || "16:9",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     ...data,
