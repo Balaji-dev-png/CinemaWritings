@@ -42,7 +42,7 @@ export function useStoryboardCanvas(storyboard: Storyboard) {
 
   const addCard = useCallback(
     (card: SceneCard) => {
-      update((s) => ({ ...s, cards: [...s.cards, card] }));
+      update((s) => ({ ...s, cards: [...(s.cards || []), card] }));
     },
     [update]
   );
@@ -51,7 +51,7 @@ export function useStoryboardCanvas(storyboard: Storyboard) {
     (id: string, patch: Partial<SceneCard>) => {
       update((s) => ({
         ...s,
-        cards: s.cards.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        cards: (s.cards || []).map((c) => (c.id === id ? { ...c, ...patch } : c)),
       }));
     },
     [update]

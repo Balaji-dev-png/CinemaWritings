@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, Camera, Loader2, Workflow, GripHorizontal, LayoutGrid } from "lucide-react";
+import { Plus, Camera, Loader2, Workflow, GripHorizontal, LayoutGrid, Minus, ChevronDown, Maximize, Home } from "lucide-react";
 import { Storyboard, createSceneCard } from "@/lib/storyboard-api";
 import { useStoryboardCanvas } from "@/hooks/useStoryboardCanvas";
 import { InlineSceneCard } from "./InlineSceneCard";
@@ -36,6 +36,20 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
 
   const triggerRender = useCallback(() => setForceRender((v) => v + 1), []);
 
+  const [isZoomMenuOpen, setIsZoomMenuOpen] = useState(false);
+  const zoomMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close zoom menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (zoomMenuRef.current && !zoomMenuRef.current.contains(e.target as Node)) {
+        setIsZoomMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // Pan and Zoom logic
   useEffect(() => {
     const board = boardRef.current;
@@ -50,6 +64,7 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
     const onMouseDown = (e: MouseEvent) => {
       // Start panning if middle mouse button, or Space + Left click, or dragging on background
       if (e.button === 1 || e.target === board || (e.target as HTMLElement).closest(".suite-bg-pattern")) {
+        e.preventDefault();
         isPanning = true;
         startX = e.clientX;
         startY = e.clientY;
@@ -71,37 +86,37 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
     const onMouseUp = () => {
       if (isPanning) {
         isPanning = false;
-        board.style.cursor = "grab";
+        if (board) board.style.cursor = "grab";
       }
     };
 
     const onWheel = (e: WheelEvent) => {
+      if ((e.target as HTMLElement).closest('.suite-scrollbar')) return;
       e.preventDefault();
-      if (e.ctrlKey || e.metaKey) {
-        // Zoom
-        const zoomDelta = e.deltaY * -0.005;
-        let newZoom = zoomRef.current + zoomDelta;
-        newZoom = Math.min(Math.max(0.2, newZoom), 3);
-        
-        // Zoom towards mouse pointer
-        const rect = board.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        const zoomRatio = newZoom / zoomRef.current;
-        panRef.current = {
-          x: mouseX - (mouseX - panRef.current.x) * zoomRatio,
-          y: mouseY - (mouseY - panRef.current.y) * zoomRatio,
-        };
-        
-        zoomRef.current = newZoom;
-      } else {
-        // Pan
-        panRef.current = {
-          x: panRef.current.x - e.deltaX,
-          y: panRef.current.y - e.deltaY,
-        };
-      }
+
+      const ZOOM_SENSITIVITY = 0.001;
+      const MIN_ZOOM = 0.1;
+      const MAX_ZOOM = 3.0;
+
+      const rect = board.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      let delta = -e.deltaY * ZOOM_SENSITIVITY;
+      if (delta > 0.05) delta = 0.05;
+      if (delta < -0.05) delta = -0.05;
+
+      const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current * (1 + delta)));
+
+      const canvasPointX = (mouseX - panRef.current.x) / zoomRef.current;
+      const canvasPointY = (mouseY - panRef.current.y) / zoomRef.current;
+
+      panRef.current = {
+        x: mouseX - canvasPointX * newZoom,
+        y: mouseY - canvasPointY * newZoom,
+      };
+      
+      zoomRef.current = newZoom;
       triggerRender();
     };
 
@@ -116,6 +131,67 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
       window.removeEventListener("mouseup", onMouseUp);
       board.removeEventListener("wheel", onWheel);
     };
+  }, [triggerRender]);
+
+  const zoomTowardCenter = useCallback((targetZoom: number) => {
+    const board = boardRef.current;
+    if (!board) return;
+    
+    const MIN_ZOOM = 0.1;
+    const MAX_ZOOM = 3.0;
+    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, targetZoom));
+    
+    const rect = board.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    const canvasPointX = (centerX - panRef.current.x) / zoomRef.current;
+    const canvasPointY = (centerY - panRef.current.y) / zoomRef.current;
+
+    panRef.current = {
+      x: centerX - canvasPointX * newZoom,
+      y: centerY - canvasPointY * newZoom,
+    };
+    zoomRef.current = newZoom;
+    triggerRender();
+  }, [triggerRender]);
+
+  const fitToContent = useCallback(() => {
+    if (state.cards.length === 0) {
+      zoomRef.current = 1;
+      panRef.current = { x: 0, y: 0 };
+      triggerRender();
+      return;
+    }
+
+    const minX = Math.min(...state.cards.map(c => c.x || 0));
+    const minY = Math.min(...state.cards.map(c => c.y || 0));
+    const maxX = Math.max(...state.cards.map(c => (c.x || 0) + (c.width || 320)));
+    const maxY = Math.max(...state.cards.map(c => (c.y || 0) + (c.height || 180)));
+
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+    const padding = 80;
+
+    const board = boardRef.current;
+    if (!board) return;
+
+    const scaleX = (board.clientWidth - padding * 2) / contentWidth;
+    const scaleY = (board.clientHeight - padding * 2) / contentHeight;
+    const newZoom = Math.min(scaleX, scaleY, 1.0);
+
+    panRef.current = {
+      x: (board.clientWidth / 2) - ((minX + contentWidth / 2) * newZoom),
+      y: (board.clientHeight / 2) - ((minY + contentHeight / 2) * newZoom),
+    };
+    zoomRef.current = newZoom;
+    triggerRender();
+  }, [state.cards, triggerRender]);
+
+  const resetCanvas = useCallback(() => {
+    zoomRef.current = 1;
+    panRef.current = { x: 0, y: 0 };
+    triggerRender();
   }, [triggerRender]);
 
   const handleAddCard = async () => {
@@ -261,6 +337,68 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
               />
             ))}
           </div>
+        </div>
+
+        {/* Zoom Controls (Mirroring Director's Suite) */}
+        <div className="absolute bottom-6 right-6 flex items-center gap-2 z-50">
+          <div className="flex items-center gap-1 bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#2a2a2a] rounded-lg p-1 shadow-2xl">
+            <button
+              onClick={() => zoomTowardCenter(zoomRef.current * 0.9)}
+              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            
+            <div className="relative px-2 min-w-[50px] text-center" ref={zoomMenuRef}>
+              <button 
+                onClick={() => setIsZoomMenuOpen(!isZoomMenuOpen)}
+                className="text-[11px] font-mono font-bold text-[#c9a84c] flex items-center gap-1 hover:brightness-110 transition-colors"
+              >
+                {Math.round(zoomRef.current * 100)}%
+                <ChevronDown className={`w-3 h-3 opacity-50 transition-transform ${isZoomMenuOpen ? "rotate-180" : ""}`} />
+              </button>
+              
+              {isZoomMenuOpen && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex flex-col bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#2a2a2a] rounded-lg py-1 shadow-2xl min-w-[80px] animate-in fade-in slide-in-from-bottom-2">
+                  {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3].map(z => (
+                    <button
+                      key={z}
+                      onClick={() => {
+                        zoomTowardCenter(z);
+                        setIsZoomMenuOpen(false);
+                      }}
+                      className="px-3 py-1.5 text-[10px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 text-left transition-colors"
+                    >
+                      {Math.round(z * 100)}%
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => zoomTowardCenter(zoomRef.current * 1.1)}
+              className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <button
+            onClick={fitToContent}
+            className="p-2 bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#2a2a2a] rounded-lg shadow-2xl text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            title="Fit to Content"
+          >
+            <Maximize className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={resetCanvas}
+            className="p-2 bg-white dark:bg-[#1a1a1a] border border-zinc-200 dark:border-[#2a2a2a] rounded-lg shadow-2xl text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            title="Reset View"
+          >
+            <Home className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>

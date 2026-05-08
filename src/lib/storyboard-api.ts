@@ -123,6 +123,7 @@ export async function updateStoryboard(scriptId: string, data: Partial<Storyboar
 
 export async function createSceneCard(storyboardId: string, data: Partial<SceneCard> = {}): Promise<SceneCard> {
   const sb = await getStoryboard(storyboardId);
+  sb.cards = sb.cards || [];
   const newCard: SceneCard = {
     id: (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2, 9),
     order: sb.cards.length,
