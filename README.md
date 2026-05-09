@@ -179,7 +179,6 @@ src/
 │       ├── ConnectorLayer.tsx          # SVG bezier connection wires
 │       ├── DrawingCanvas.tsx           # Freehand drawing canvas overlay
 │       ├── DrawingToolbar.tsx          # Floating drawing tools panel
-│       ├── ExportButton.tsx            # PDF export pipeline
 │       ├── IdeaCard.tsx                # Idea node card
 │       ├── ImageCard.tsx               # Moodboard image card
 │       ├── LinkCard.tsx                # Web link reference card
