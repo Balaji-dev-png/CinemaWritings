@@ -66,6 +66,16 @@ export default function EditorPage() {
   const { isLoading, message, startLoading, stopLoading } = useLoadingState();
   const [progress, setProgress] = useState(0);
 
+  // Instant navigation overlay
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [navMessage, setNavMessage] = useState("");
+
+  const navigateTo = (path: string, msg = "Loading...") => {
+    setNavMessage(msg);
+    setIsNavigating(true);
+    router.push(path);
+  };
+
   useEffect(() => {
     startLoading([
       "Opening your script...",
@@ -521,9 +531,9 @@ export default function EditorPage() {
       className={`h-screen flex flex-col bg-[#f4f5f7] dark:bg-[#0a0a0a] font-sans transition-colors duration-300 overflow-hidden ${focusMode ? "focus-mode" : ""}`}
     >
       <LoadingOverlay 
-        isVisible={isLoading} 
-        message={message} 
-        showProgressBar 
+        isVisible={isLoading || isNavigating} 
+        message={isNavigating ? navMessage : message} 
+        showProgressBar={!isNavigating}
         progressPercent={progress} 
       />
       {/* ─── Top Bar (Sticky) ─── */}
@@ -531,7 +541,7 @@ export default function EditorPage() {
         <header className="anim-slide-1 sticky top-0 flex items-center justify-start gap-8 px-4 py-3 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-200/60 dark:border-zinc-800 z-50 shrink-0 overflow-visible no-scrollbar">
           {/* 1. Dashboard Link */}
           <button
-            onClick={() => router.push("/")}
+            onClick={() => navigateTo("/", "Going back to dashboard...")}
             className="flex items-center gap-1.5 px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all shrink-0"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -562,14 +572,14 @@ export default function EditorPage() {
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => router.push(`/directors-suite/${params.id}`)}
+              onClick={() => navigateTo(`/directors-suite/${params.id}`, "Opening Director's Suite...")}
               className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
               title="Director's Suite"
             >
               <Sparkles className="w-3.5 h-3.5 group-hover:text-blue-400 transition-colors" />
             </button>
             <button
-              onClick={() => router.push(`/storyboard/${params.id}`)}
+              onClick={() => navigateTo(`/storyboard/${params.id}`, "Opening Storyboard...")}
               className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
               title="Storyboard"
             >

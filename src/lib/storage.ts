@@ -59,7 +59,11 @@ export const getScripts = async (): Promise<Script[]> => {
         title: s.title,
         content: "",
         updatedAt: new Date(s.updated_at).getTime(),
-        historyList: [],
+        historyList: (s.history || []).map((h: any) => ({
+          action: h.action,
+          timestamp: new Date(h.timestamp).getTime(),
+          details: h.details,
+        })),
         tags: s.tags || [],
         paperColor: settings.paperColor || "",
         fontFamily: settings.fontFamily || "Courier Prime",

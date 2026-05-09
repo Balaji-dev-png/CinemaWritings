@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { AccountMenu } from "@/components/ui/AccountMenu";
 import { useLoadingState } from "@/hooks/useLoadingState";
 import { Loader2 } from "lucide-react";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 
 // Pastel gradient arrays matching the image's vibrant but soft card styles
 const PASTEL_GRADIENTS = [
@@ -28,6 +29,8 @@ export default function Dashboard() {
   const [authenticated, setAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [navigating, setNavigating] = useState(false);
+  const [navigatingMsg, setNavigatingMsg] = useState("Opening your script...");
 
   const { isLoading: isCreating, message: createMsg, startLoading: startCreating, stopLoading: stopCreating } = useLoadingState();
 
@@ -104,8 +107,15 @@ export default function Dashboard() {
     setActiveHistory(script.historyList || []);
   };
 
+  const navigateTo = (path: string, msg = "Opening...") => {
+    setNavigatingMsg(msg);
+    setNavigating(true);
+    router.push(path);
+  };
+
   return (
     <div className="min-h-screen bg-[#f4f5f7] dark:bg-[#0a0a0a] flex flex-col font-sans transition-colors duration-500 overflow-x-hidden">
+      <LoadingOverlay isVisible={navigating} message={navigatingMsg} />
       {themeToggle}
       
       {/* Centered content wrapper */}
@@ -201,7 +211,7 @@ export default function Dashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6 + index * 0.1, duration: 0.5 }}
                   key={script.id}
-                  onClick={() => router.push(`/editor/${script.id}`)}
+                  onClick={() => navigateTo(`/editor/${script.id}`, "Opening your script...")}
                   className={`${gradient} relative flex flex-col p-5 sm:p-7 rounded-2xl sm:rounded-[2rem] border shadow-sm hover:shadow-md transition-all cursor-pointer group h-56 sm:h-72 hover:-translate-y-1 hover:shadow-xl`}
                 >
                   <div className="flex justify-between items-start mb-3">

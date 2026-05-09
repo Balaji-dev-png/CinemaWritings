@@ -27,6 +27,15 @@ export default function DirectorsSuitePage() {
   const [drawMode, setDrawMode] = useState(false);
   const [connectSource, setConnectSource] = useState<string | null>(null);
 
+  // Instant navigation overlay
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [navMessage, setNavMessage] = useState("");
+  const navigateTo = (path: string, msg = "Loading...") => {
+    setNavMessage(msg);
+    setIsNavigating(true);
+    router.push(path);
+  };
+
   const boardRef = useRef<HTMLDivElement>(null);
   const innerCanvasRef = useRef<HTMLDivElement>(null); // inner transform layer for export
   const drawingCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -159,9 +168,9 @@ export default function DirectorsSuitePage() {
   return (
     <div className="h-screen flex flex-col bg-zinc-50 dark:bg-[#0d0d0d] text-zinc-900 dark:text-white">
       <LoadingOverlay 
-        isVisible={isLoading} 
-        message={message} 
-        showProgressBar 
+        isVisible={isLoading || isNavigating} 
+        message={isNavigating ? navMessage : message} 
+        showProgressBar={!isNavigating}
         progressPercent={progress} 
       />
       {/* Top bar */}
@@ -170,14 +179,14 @@ export default function DirectorsSuitePage() {
       >
         <div className="flex items-center gap-4">
           <button
-            onClick={() => router.push(`/editor/${scriptId}`)}
+            onClick={() => navigateTo(`/editor/${scriptId}`, "Back to Editor...")}
             className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
             ← Back to Editor
           </button>
           <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
           <button
-            onClick={() => router.push(`/storyboard/${scriptId}`)}
+            onClick={() => navigateTo(`/storyboard/${scriptId}`, "Opening Storyboard...")}
             className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1"
           >
             <Layers className="w-3 h-3" /> Storyboard

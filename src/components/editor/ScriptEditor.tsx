@@ -20,7 +20,7 @@ import { ScriptKeymap } from "./extensions/KeymapLogic";
 import { PageNode } from "./extensions/PageNode";
 import { ScriptDocument } from "./extensions/ScriptDocument";
 import { FontSize } from "./extensions/FontSize";
-import { updateScript } from "@/lib/storage";
+import { updateScript, recordHistory } from "@/lib/storage";
 import { useAutocomplete, AutocompleteOption } from "@/hooks/useAutocomplete";
 import { AutocompleteOverlay } from "./extensions/nodes/AutocompleteOverlay";
 import { ElementMenu } from "./ElementMenu";
@@ -304,6 +304,10 @@ export const ScriptEditor = ({
   const autocomplete = useAutocomplete();
   const autocompleteRef = useRef(autocomplete);
   const dragControls = useDragControls();
+  // Debounced history recorder — records on first edit, then debounces 5 min
+  const historyTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingHistoryRef = useRef(false);
+  const firstEditRef = useRef(true); // track first keystroke of each session
 
   useEffect(() => {
     autocompleteRef.current = autocomplete;
@@ -559,6 +563,23 @@ export const ScriptEditor = ({
       editorRef.current = ed;
       updateScript(scriptId, { content: ed.getHTML() });
 
+      // History recording:
+      // 1) On the FIRST edit of this session, record immediately.
+      // 2) Afterwards, debounce further entries by 5 minutes of idle time.
+      if (firstEditRef.current) {
+        firstEditRef.current = false;
+        recordHistory(scriptId, "CONTENT_UPDATED", "Script edited");
+      } else {
+        pendingHistoryRef.current = true;
+        if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+        historyTimerRef.current = setTimeout(() => {
+          if (pendingHistoryRef.current) {
+            recordHistory(scriptId, "CONTENT_UPDATED", "Script edited");
+            pendingHistoryRef.current = false;
+          }
+        }, 5 * 60_000); // 5 minutes idle
+      }
+
       // Sync active node type (catches changes like setNode that don't move the cursor)
       const { $head } = ed.state.selection;
       const typeName = $head.parent.type.name;
@@ -702,6 +723,17 @@ export const ScriptEditor = ({
       onEditorReady?.(editor);
     }
   }, [editor, onEditorReady]);
+
+  // Flush pending history on unmount (e.g. navigating away)
+  useEffect(() => {
+    return () => {
+      if (pendingHistoryRef.current) {
+        recordHistory(scriptId, "CONTENT_UPDATED", "Script edited");
+        pendingHistoryRef.current = false;
+      }
+      if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+    };
+  }, [scriptId]);
 
   const handleAddPage = useCallback(() => {
     if (!editor) return;
