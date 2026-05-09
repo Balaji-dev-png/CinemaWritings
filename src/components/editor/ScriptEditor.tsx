@@ -449,11 +449,10 @@ export const ScriptEditor = ({
           const start = from - textBefore.length; // replace from the start of the block
           editorRef.current
             .chain()
-            .setTextSelection({ from: start, to })
-            .deleteSelection()
-            .insertContent(item.id)
             .focus()
             .setNode("sceneHeading")
+            .deleteRange({ from: start, to })
+            .insertContent(item.id)
             .run();
         } else {
           const startMatch = textBefore.match(/[\w']+$/);
@@ -461,10 +460,9 @@ export const ScriptEditor = ({
             const start = from - startMatch[0].length;
             editorRef.current
               .chain()
-              .setTextSelection({ from: start, to })
-              .deleteSelection()
-              .insertContent(item.id)
               .focus()
+              .deleteRange({ from: start, to })
+              .insertContent(item.id)
               .run();
           } else {
             editorRef.current.chain().focus().insertContent(item.id).run();
@@ -480,10 +478,9 @@ export const ScriptEditor = ({
           const start = from - match[0].length;
           editorRef.current
             .chain()
-            .setTextSelection({ from: start, to })
-            .deleteSelection()
-            .insertContent(item.id)
             .focus()
+            .deleteRange({ from: start, to })
+            .insertContent(item.id)
             .run();
         } else {
           editorRef.current.chain().focus().insertContent(item.id).run();

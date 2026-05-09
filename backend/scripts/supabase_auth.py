@@ -64,7 +64,7 @@ class SupabaseAuthentication(BaseAuthentication):
             return None  # Not our auth scheme — let other authenticators try
 
         token = auth_header.split(" ", 1)[1].strip()
-        if not token:
+        if not token or token == "null" or token == "undefined":
             return None
 
         jwt_secret = os.environ.get("SUPABASE_JWT_SECRET", "")
@@ -74,9 +74,7 @@ class SupabaseAuthentication(BaseAuthentication):
                 "SUPABASE_JWT_SECRET is not set. "
                 "Cannot verify Supabase JWTs. Set this env var immediately."
             )
-            raise AuthenticationFailed(
-                "Server authentication configuration error. Contact support."
-            )
+            return None
 
         try:
             payload = jwt.decode(
@@ -89,17 +87,18 @@ class SupabaseAuthentication(BaseAuthentication):
                 },
             )
         except jwt.ExpiredSignatureError:
-            raise AuthenticationFailed("Token has expired. Please log in again.")
+            logger.info("Supabase JWT expired.")
+            return None
         except jwt.InvalidTokenError as e:
             logger.warning("Invalid Supabase JWT: %s", str(e))
-            raise AuthenticationFailed("Invalid authentication token.")
+            return None
         except Exception as e:
             logger.error("Unexpected JWT verification error: %s", str(e))
-            raise AuthenticationFailed("Authentication failed.")
+            return None
 
         user_id = payload.get("sub")
         if not user_id:
-            raise AuthenticationFailed("Token missing subject claim.")
+            return None
 
         email = payload.get("email", "")
         user = SupabaseUser(user_id=user_id, email=email)

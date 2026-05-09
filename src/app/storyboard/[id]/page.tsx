@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Film, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, Film, Download, Loader2, LayoutGrid } from "lucide-react";
 import { getStoryboard, Storyboard } from "@/lib/storyboard-api";
 import { StoryboardView } from "@/components/storyboard/StoryboardView";
 import { isAuthenticated } from "@/lib/auth";
@@ -46,6 +46,14 @@ export default function StoryboardPage() {
         </button>
 
         <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800" />
+        <button
+          onClick={() => router.push(`/directors-suite/${scriptId}`)}
+          className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1"
+        >
+          <LayoutGrid className="w-3 h-3" /> Director&apos;s Suite
+        </button>
+
+        <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800" />
 
         <div className="flex items-center gap-2 group">
           <Film className="w-4 h-4" style={{ color: "#c9a84c" }} />
@@ -67,14 +75,6 @@ export default function StoryboardPage() {
         </div>
 
         <div className="flex-1" />
-
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 shadow-sm"
-        >
-          <Download className="w-3.5 h-3.5" />
-          Export Shot List
-        </button>
       </header>
 
       {/* Content */}
@@ -98,6 +98,8 @@ export default function StoryboardPage() {
             <StoryboardView
               storyboard={storyboard}
               onStoryboardChange={setStoryboard}
+              scriptTitle={storyboard.script_title || "Storyboard"}
+              scriptId={scriptId}
             />
           </motion.div>
         ) : null}

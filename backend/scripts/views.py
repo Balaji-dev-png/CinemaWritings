@@ -4,7 +4,8 @@ DRF ViewSets and API views for the screenplay API.
 from django.http import HttpResponse
 from django.db.models import Q
 from rest_framework import viewsets, status, permissions
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes as permission_classes_decorator
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 import reversion
 
@@ -46,6 +47,8 @@ class ScriptViewSet(viewsets.ModelViewSet):
         return ScriptDetailSerializer
 
     def get_queryset(self):
+        if not self.request.user or self.request.user.is_anonymous:
+            return Script.objects.none()
         qs = Script.objects.filter(owner=self.request.user)
         if self.action == "list":
             qs = qs.prefetch_related("history", "versions", "scenes")
@@ -166,11 +169,48 @@ class ScriptViewSet(viewsets.ModelViewSet):
         serializer = HistoryEventSerializer(events, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["get"], url_path="export/pdf")
+    @action(
+        detail=True, 
+        methods=["get", "post"], 
+        url_path="export/pdf",
+        permission_classes=[AllowAny]
+    )
     def export_pdf(self, request, pk=None):
-        """GET /api/scripts/{id}/export/pdf/ — Generate and download PDF."""
-        script = self.get_object()
+        """
+        GET /api/scripts/{id}/export/pdf/ — Export from DB.
+        POST /api/scripts/{id}/export/pdf/ — Export with custom content/styles.
+        """
+        from django.http import Http404
+        from .models import Script
         from export.renderer import render_screenplay_pdf
+
+        try:
+            script = self.get_object()
+        except Http404:
+            if request.method == "POST":
+                # If script is only in Supabase and not synced to Django yet,
+                # create a transient in-memory Script object for PDF rendering.
+                script = Script(id=pk)
+            else:
+                raise
+
+        # If POST, allow overriding content and styling for immediate export
+        if request.method == "POST":
+            script.content = request.data.get("content", script.content)
+            script.title = request.data.get("title", script.title)
+            script.paper_color = request.data.get("paper_color", script.paper_color)
+            script.font_family = request.data.get("font_family", script.font_family)
+            script.text_color = request.data.get("text_color", script.text_color)
+            script.font_size = request.data.get("font_size", script.font_size)
+            
+            # Metadata overrides
+            meta = request.data.get("meta", {})
+            if meta:
+                script.author = meta.get("author", script.author)
+                script.contact = meta.get("contact", script.contact)
+                script.logline = meta.get("logline", script.logline)
+                script.synopsis = meta.get("synopsis", script.synopsis)
+                script.written_by_prefix = meta.get("written_by_prefix", script.written_by_prefix)
 
         pdf_bytes = render_screenplay_pdf(script)
         filename = (script.title or "screenplay").replace(" ", "_")
@@ -379,48 +419,21 @@ def search_scripts(request):
     return Response({"results": serializer.data})
 
 
-@api_view(["POST", "OPTIONS"])
-@permission_classes([permissions.IsAuthenticated])
-def export_workspace_pdf(request):
+def _render_canvas_snapshot_pdf(image_base64: str, filename: str) -> HttpResponse:
     """
-    POST /api/export/workspace-pdf/
-    Accept a base64 workspace image and generate a landscape PDF with a title page.
-
-    Body: { "image_base64": "data:image/png;base64,...", "title": "...", "script_id": "..." }
-    Returns: application/pdf binary
+    Shared helper — converts a base64 canvas PNG into a Milanote-style
+    landscape A4 PDF: single page, canvas image centred on a dark background.
+    No title page. No reflow. Exactly what Milanote produces.
     """
-    if request.method == "OPTIONS":
-        response = HttpResponse()
-        response["Access-Control-Allow-Origin"] = "*"
-        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        response["Access-Control-Allow-Headers"] = "Content-Type"
-        return response
-
-    import base64
-    import io
     from weasyprint import HTML, CSS
     from weasyprint.text.fonts import FontConfiguration
 
-    image_base64 = request.data.get("image_base64", "")
-    # HTML-escape the title before injecting into HTML template
-    from html import escape as html_escape
-    title = html_escape(request.data.get("title", "Director's Suite"))
-
-    if not image_base64:
-        return Response({"error": "image_base64 is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Build HTML document
     html_content = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body>
-  <div class="title-page">
-    <div class="title">{title}</div>
-    <div class="subtitle">Director's Suite — Workspace Export</div>
-    <div class="date">{__import__('datetime').date.today().strftime('%B %d, %Y')}</div>
-  </div>
-  <div class="workspace-page">
-    <img src="{image_base64}" alt="Workspace" />
+  <div class="canvas-page">
+    <img src="{image_base64}" alt="Canvas" />
   </div>
 </body>
 </html>"""
@@ -428,7 +441,7 @@ def export_workspace_pdf(request):
     css_content = """
 @page {
     size: A4 landscape;
-    margin: 0.4in;
+    margin: 0;
     background-color: #0d0d0d;
 }
 
@@ -436,48 +449,22 @@ body {
     margin: 0;
     padding: 0;
     background-color: #0d0d0d;
-    color: white;
-    font-family: 'Courier New', Courier, monospace;
 }
 
-.title-page {
-    page-break-after: always;
-    height: 7.27in;
+.canvas-page {
+    width: 100%;
+    height: 100vh;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    text-align: center;
+    background-color: #0d0d0d;
 }
 
-.title-page .title {
-    font-size: 32pt;
-    font-weight: bold;
-    color: #c9a84c;
-    margin-bottom: 0.3in;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-}
-
-.title-page .subtitle {
-    font-size: 12pt;
-    color: #777;
-    margin-bottom: 0.2in;
-}
-
-.title-page .date {
-    font-size: 10pt;
-    color: #555;
-}
-
-.workspace-page {
-    text-align: center;
-}
-
-.workspace-page img {
+.canvas-page img {
     max-width: 100%;
-    max-height: 7.27in;
+    max-height: 100%;
     object-fit: contain;
+    display: block;
 }
 """
 
@@ -487,9 +474,61 @@ body {
     pdf_bytes = html.write_pdf(stylesheets=[css], font_config=font_config)
 
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="workspace.pdf"'
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     response["Access-Control-Allow-Origin"] = "*"
     return response
+
+
+@api_view(["POST", "OPTIONS"])
+@permission_classes([permissions.IsAuthenticated])
+def export_workspace_pdf(request):
+    """
+    POST /api/export/workspace-pdf/
+    Milanote-style canvas snapshot PDF for the Director's Suite workspace.
+
+    Body: { "image_base64": "data:image/png;base64,...", "title": "...", "script_id": "..." }
+    Returns: application/pdf binary (landscape A4, canvas-only, no title page)
+    """
+    if request.method == "OPTIONS":
+        response = HttpResponse()
+        response["Access-Control-Allow-Origin"] = "*"
+        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type"
+        return response
+
+    image_base64 = request.data.get("image_base64", "")
+    if not image_base64:
+        return Response({"error": "image_base64 is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    raw_title = request.data.get("title", "workspace")
+    safe_name = raw_title.replace(" ", "_").replace("/", "-") or "workspace"
+    return _render_canvas_snapshot_pdf(image_base64, f"{safe_name}_workspace.pdf")
+
+
+@api_view(["POST", "OPTIONS"])
+@permission_classes([permissions.IsAuthenticated])
+def export_storyboard_pdf(request):
+    """
+    POST /api/export/storyboard-pdf/
+    Milanote-style canvas snapshot PDF for the Storyboard workspace.
+
+    Body: { "image_base64": "data:image/png;base64,...", "title": "...", "script_id": "..." }
+    Returns: application/pdf binary (landscape A4, canvas-only, no title page)
+    """
+    if request.method == "OPTIONS":
+        response = HttpResponse()
+        response["Access-Control-Allow-Origin"] = "*"
+        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type"
+        return response
+
+    image_base64 = request.data.get("image_base64", "")
+    if not image_base64:
+        return Response({"error": "image_base64 is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    raw_title = request.data.get("title", "storyboard")
+    safe_name = raw_title.replace(" ", "_").replace("/", "-") or "storyboard"
+    return _render_canvas_snapshot_pdf(image_base64, f"{safe_name}_storyboard.pdf")
 
 
 # ─── Storyboard API ────────────────────────────────────────────────────────

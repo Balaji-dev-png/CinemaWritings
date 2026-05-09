@@ -47,62 +47,95 @@ def get_dynamic_css(
     font-weight: normal;
     font-style: normal;
 }}
-
 @font-face {{
     font-family: 'Courier Prime';
     src: url('https://fonts.gstatic.com/s/courierprime/v9/u-4k0qW6p57vka8V2WhD9eRfYfg.woff2') format('woff2');
     font-weight: bold;
     font-style: normal;
 }}
-
 @font-face {{
-    font-family: 'Courier Prime';
-    src: url('https://fonts.gstatic.com/s/courierprime/v9/u-4i0qW6p57vka8V2WhD9eRJk4ZKag.woff2') format('woff2');
-    font-weight: normal;
-    font-style: italic;
+    font-family: 'Poppins';
+    src: url('https://fonts.gstatic.com/s/poppins/v20/pxiEyp8kv8JHgFVrJJfecg.woff2') format('woff2');
 }}
-
 @font-face {{
-    font-family: 'Courier Prime';
-    src: url('https://fonts.gstatic.com/s/courierprime/v9/u-4g0qW6p57vka8V2WhD9eRfV_5hJRaC.woff2') format('woff2');
+    font-family: 'Poppins';
+    src: url('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLCz7Z1xlFQ.woff2') format('woff2');
     font-weight: bold;
-    font-style: italic;
+}}
+@font-face {{
+    font-family: 'Inter';
+    src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff2') format('woff2');
+}}
+@font-face {{
+    font-family: 'Inter';
+    src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hjp-Ek-_EeA.woff2') format('woff2');
+    font-weight: bold;
+}}
+@font-face {{
+    font-family: 'Roboto';
+    src: url('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff2') format('woff2');
+}}
+@font-face {{
+    font-family: 'Roboto';
+    src: url('https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc4.woff2') format('woff2');
+    font-weight: bold;
+}}
+@font-face {{
+    font-family: 'Open Sans';
+    src: url('https://fonts.gstatic.com/s/opensans/v34/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-muw.woff2') format('woff2');
+}}
+@font-face {{
+    font-family: 'Lato';
+    src: url('https://fonts.gstatic.com/s/lato/v23/S6uyw4BMUTPHjx4wXg.woff2') format('woff2');
+}}
+@font-face {{
+    font-family: 'Montserrat';
+    src: url('https://fonts.gstatic.com/s/montserrat/v25/JTUSjIg1_i6t8kCHKm4df9GR7ZtCR7A.woff2') format('woff2');
+}}
+@font-face {{
+    font-family: 'Playfair Display';
+    src: url('https://fonts.gstatic.com/s/playfairdisplay/v30/nuFvD7K83om0HaPkAt4RYj6u776u776u776u.woff2') format('woff2');
+}}
+@font-face {{
+    font-family: 'Lora';
+    src: url('https://fonts.gstatic.com/s/lora/v32/0QI6MX1D_JOuMw3I.woff2') format('woff2');
+}}
+@font-face {{
+    font-family: 'Comic Neue';
+    src: url('https://fonts.gstatic.com/s/comicneue/v8/4UaHr6S_T60rk7re7_P7XOvD_w.woff2') format('woff2');
 }}
 
 body {{
     font-family: '{font_family}', 'Courier Prime', 'Courier New', Courier, monospace;
     font-size: {font_size}pt;
-    line-height: 1.2;
+    line-height: 1.4;
     color: {text_color};
     background-color: {paper_color};
     margin: 0;
     padding: 0;
 }}
 
-/* Rich Text Formatting — preserve inline font sizes from TipTap spans */
+/* Rich Text Formatting — preserve inline styles from TipTap */
 span {{ 
     font-size: inherit; 
+    color: inherit;
+    background-color: inherit;
     border: none !important; 
     outline: none !important; 
     box-shadow: none !important;
-    background: transparent !important;
 }}
 .script-body * {{ border: none !important; outline: none !important; }}
 * {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
 
-/* ─── Title Page ───
-   Block-level container with absolute positioning.
-   NO display:flex — WeasyPrint collapses flex containers in paged media,
-   causing the title page and script body to merge onto a single sheet.
-   ──────────────────────────────────────────────────────────────────── */
+/* ─── Title Page ─── */
 .title-page {{
     page-break-after: always;
     position: relative;
     height: 9.0in;
     text-align: center;
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
 }}
 
-/* Title block: absolute-positioned at 3.5in from the top of the page */
 .title-page .title-block {{
     position: absolute;
     top: 3.5in;
@@ -111,23 +144,23 @@ span {{
 }}
 
 .title-page .title {{
-    font-size: {font_size}pt;
+    font-size: 1.5em;
     font-weight: bold;
     text-transform: uppercase;
     text-decoration: underline;
-    margin-bottom: 0.25in;
+    margin-bottom: 0.5in;
 }}
 
 .title-page .written-by {{
-    font-size: {font_size}pt;
+    font-size: 1em;
     margin-bottom: 0.25in;
 }}
 
 .title-page .author {{
-    font-size: {font_size}pt;
+    font-size: 1.1em;
+    font-weight: bold;
 }}
 
-/* Contact info: anchored to the bottom-left of the title page */
 .title-page .contact-block {{
     position: absolute;
     bottom: 0;
@@ -137,20 +170,16 @@ span {{
     line-height: 1.4;
 }}
 
-.title-page .rights-line {{
-    margin-top: 12pt;
-    font-size: {font_size}pt;
-}}
-
 /* ─── Script Elements ─── */
 .script-body p {{
     margin: 0;
     padding: 0;
-    line-height: 1.2;
+    line-height: 1.4;
     font-size: {font_size}pt;
     orphans: 2;
     widows: 2;
     white-space: pre-wrap;
+    text-align: inherit;
 }}
 
 /* Scene Heading */
@@ -164,29 +193,30 @@ span {{
 
 /* Action */
 .script-body p.action {{
-    margin-top: 1em;
+    margin-top: 0.8em;
+    margin-bottom: 0.8em;
 }}
 
-/* Character Name — 2.0in from left margin (= 3.5in from paper edge) */
+/* Character Name — matching 35% indent from editor */
 .script-body p.character {{
     text-transform: uppercase;
     margin-top: 1.2em;
-    margin-left: 2.0in;
+    margin-left: 2.1in; /* 35% of 6in writing area */
     page-break-after: avoid;
 }}
 
-/* Parenthetical */
+/* Parenthetical — matching 25% indent */
 .script-body p.parenthetical {{
-    margin-left: 1.6in;
-    max-width: 2.5in;
+    margin-left: 1.5in; /* 25% of 6in */
+    max-width: 3.0in;   /* 50% of 6in */
     page-break-after: avoid;
 }}
 
-/* Dialogue — 1.0in from both left and right margins */
+/* Dialogue — matching 17% indents */
 .script-body p.dialogue {{
-    margin-left: 1.0in;
+    margin-left: 1.0in; /* 17% of 6in ≈ 1.0in */
     margin-right: 1.0in;
-    margin-bottom: 0.4em;
+    margin-bottom: 0.6em;
 }}
 
 /* Transition */
@@ -207,6 +237,9 @@ span {{
 /* Extension */
 .script-body p.extension {{
     text-transform: uppercase;
+    margin-left: 2.1in;
+    font-size: 0.9em;
+    opacity: 0.7;
 }}
 
 .script-page {{
@@ -267,24 +300,6 @@ def _parse_html_to_elements(html_content):
                 self.in_p = False
                 content = "".join(self.p_html_parts).strip()
                 if content:
-                    # FIX: Normalize scene headings to "INT. LOCATION - TIME"
-                    if self.p_class == "scene-heading":
-                        # Replace "INT," or "EXT," or "I/E," with "INT." or "EXT." or "I/E."
-                        content = re.sub(
-                            r"^(INT|EXT|I\/E|INT\./EXT)[,;:\s]+",
-                            r"\1. ",
-                            content,
-                            flags=re.IGNORECASE,
-                        )
-                        # Ensure a hyphen before the time-of-day keyword
-                        # Uses negative lookbehind to avoid inserting double-hyphens
-                        content = re.sub(
-                            r"(?<!-)\s+(DAY|NIGHT|MORNING|EVENING|DAWN|DUSK|LATER|CONTINUOUS|SAME TIME|MOMENTS LATER)\s*$",
-                            r" - \1",
-                            content,
-                            flags=re.IGNORECASE,
-                        )
-
                     # Transformation: Automatic Uppercase for specific types
                     if self.p_class in UPPER_TYPES:
                         content = content.upper()
@@ -322,6 +337,7 @@ def render_screenplay_pdf(script):
         "contact": script.contact or "",
         "logline": script.logline or "",
         "synopsis": script.synopsis or "",
+        "current_date": script.updated_at.strftime("%B-%d-%Y") if hasattr(script, 'updated_at') and script.updated_at else "",
         "pages": pages,
     }
 

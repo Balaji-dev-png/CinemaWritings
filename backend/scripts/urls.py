@@ -34,8 +34,9 @@ urlpatterns = [
         views.ElementViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}),
         name="element-detail",
     ),
-    # Workspace endpoints
+    # Workspace / canvas snapshot export endpoints
     path("export/workspace-pdf/", views.export_workspace_pdf, name="export-workspace-pdf"),
+    path("export/storyboard-pdf/", views.export_storyboard_pdf, name="export-storyboard-pdf"),
     # Storyboard endpoints
     path("storyboards/<uuid:script_pk>/", views.StoryboardViewSet.as_view({"get": "retrieve", "patch": "partial_update"}), name="storyboard"),
     path("storyboards/<uuid:storyboard_pk>/cards/", views.SceneCardViewSet.as_view({"get": "list", "post": "create"}), name="scenecard-list"),

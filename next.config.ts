@@ -19,7 +19,7 @@ const cspDirectives = [
     "connect-src 'self'",
     "https://*.supabase.co",
     "wss://*.supabase.co",
-    isDev ? "http://localhost:8000 ws://localhost:8000" : "",
+    isDev ? "http://localhost:8000 ws://localhost:8000 http://127.0.0.1:8000 ws://127.0.0.1:8000" : "",
     process.env.NEXT_PUBLIC_API_URL ?? "",
   ]
     .filter(Boolean)

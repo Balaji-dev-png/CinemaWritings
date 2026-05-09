@@ -9,19 +9,20 @@
     <!-- ─── TITLE PAGE ─── -->
     <div class="title-page">
         <div class="title-block">
-            <div class="title">{{ title|upper }}</div>
+            <div class="title">{{ title }}</div>
             <div class="written-by">{{ written_by_prefix }}</div>
             <div class="author">{{ author }}</div>
         </div>
 
         <div class="contact-block">
+            {% if current_date %}
+                {{ current_date }}<br>
+            {% endif %}
             {% if contact %}
                 {% for line in contact.splitlines %}
                     {{ line }}<br>
                 {% endfor %}
             {% endif %}
-            <!-- Hardcoded to fix "remerveil" and "remstved" typos -->
-            <div class="rights-line">All Rights Reserved.</div>
         </div>
     </div>
 

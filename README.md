@@ -35,7 +35,6 @@
 | Format | Description |
 |---|---|
 | **Screenplay PDF** | **Server-side generation (WeasyPrint)** — Generates a high-resolution, WGA-standard PDF adhering to exact Hollywood margins (1.5" left bind). Captures the exact WYSIWYG state of your editor. |
-| **Pitch Deck PDF** | **Server-side generation (WeasyPrint)** — Exports your Director's Suite canvas into a professional landscape 2x2 grid presentation format. |
 | **Fountain (.fountain)** | Standard Fountain plain-text format with title metadata header block |
 | **Plain Text (.txt)** | Human-readable export in Fountain syntax with metadata |
 
@@ -113,9 +112,6 @@ A full-featured, Milanote-style **infinite canvas workspace** for pre-production
 - **Coordinate-Aware** — Drawing coordinates are precisely translated across all zoom levels and pan positions, including negative canvas space
 - **Persistent Strokes** — All strokes are stored as vector data in localStorage per script and survive page refreshes
 
-### Export
-- **Export to PDF** — Composites the full 10,000×10,000 canvas (cards + connector lines + drawing strokes) into a high-resolution PDF via server-side WeasyPrint or client-side jsPDF fallback
-- **Drawing Alignment** — The export pipeline correctly offsets drawing strokes to align perfectly with cards in the final document
 
 ---
 

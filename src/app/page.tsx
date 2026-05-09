@@ -376,7 +376,7 @@ export default function Dashboard() {
               Screenplay Editor · Director&apos;s Suite · Storyboard
             </p>
             <p className="text-[11px] text-zinc-600 leading-relaxed">
-              WGA-Standard Formatting · Auto-Save · PDF Export
+              WGA-Standard Formatting · Auto-Save
             </p>
           </div>
           <div className="text-center">

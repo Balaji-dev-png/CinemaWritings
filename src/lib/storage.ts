@@ -194,6 +194,10 @@ export const updateScript = async (id: string, updates: Partial<Script>) => {
       payload.written_by_prefix = updates.meta.writtenByPrefix;
   }
   if (updates.tags !== undefined) payload.tags = updates.tags;
+  if (updates.paperColor !== undefined) payload.paper_color = updates.paperColor;
+  if (updates.fontFamily !== undefined) payload.font_family = updates.fontFamily;
+  if (updates.textColor !== undefined) payload.text_color = updates.textColor;
+  if (updates.fontSize !== undefined) payload.font_size = updates.fontSize;
 
   // Handle local storage for styling settings since schema doesn't support them
   if (

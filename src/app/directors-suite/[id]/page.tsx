@@ -5,7 +5,6 @@ import { useSuiteState, SuiteElement } from "@/hooks/useSuiteState";
 import { useDrawing } from "@/hooks/useDrawing";
 import { SuiteToolbar } from "@/components/suite/SuiteToolbar";
 import { Board } from "@/components/suite/Board";
-import { ExportButton } from "@/components/suite/ExportButton";
 import { getScriptById } from "@/lib/storage";
 import { useLoadingState } from "@/hooks/useLoadingState";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
@@ -29,6 +28,7 @@ export default function DirectorsSuitePage() {
   const [connectSource, setConnectSource] = useState<string | null>(null);
 
   const boardRef = useRef<HTMLDivElement>(null);
+  const innerCanvasRef = useRef<HTMLDivElement>(null); // inner transform layer for export
   const drawingCanvasRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef(1);
   const panRef = useRef({ x: 0, y: 0 });
@@ -195,15 +195,6 @@ export default function DirectorsSuitePage() {
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <ExportButton
-            boardRef={boardRef}
-            drawingCanvasRef={drawingCanvasRef}
-            elements={suite.state.elements}
-            scriptTitle={scriptTitle}
-            scriptId={scriptId}
-          />
-        </div>
       </header>
 
       {/* Main workspace */}
@@ -240,6 +231,7 @@ export default function DirectorsSuitePage() {
 
         <Board
           ref={boardRef}
+          canvasRef={innerCanvasRef}
           elements={suite.state.elements}
           connectors={suite.state.connectors}
           drawMode={drawMode}

@@ -25,6 +25,8 @@ interface Props {
   scriptId: string;
   zoomRef: React.MutableRefObject<number>;
   panRef: React.MutableRefObject<{ x: number; y: number }>;
+  /** Ref passed back to the parent to point at the inner transform layer */
+  canvasRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 interface CanvasState {
@@ -36,7 +38,7 @@ export const Board = forwardRef<HTMLDivElement, Props>(
   function Board(
     {
       elements, connectors, drawMode, connectMode, connectSource, drawingCanvasRef,
-      zoomRef, panRef,
+      zoomRef, panRef, canvasRef: externalCanvasRef,
       onMoveElement, onResizeElement, onUpdateData, onRemoveElement,
       onRemoveConnector, onConnectClick, scriptId
     },
@@ -45,6 +47,13 @@ export const Board = forwardRef<HTMLDivElement, Props>(
     const internalViewportRef = useRef<HTMLDivElement>(null);
     const viewportRef = (ref as React.RefObject<HTMLDivElement | null>) || internalViewportRef;
     const canvasRef = useRef<HTMLDivElement>(null);
+    // Wire external ref to the inner canvas div
+    const setCanvasRef = (el: HTMLDivElement | null) => {
+      (canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      if (externalCanvasRef) {
+        (externalCanvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+      }
+    };
     
     // Canvas State
     const [canvas, setCanvas] = useState<CanvasState>({ zoom: 1, pan: { x: 0, y: 0 } });
@@ -298,7 +307,7 @@ export const Board = forwardRef<HTMLDivElement, Props>(
         onMouseDown={handleMouseDown}
       >
         <div
-          ref={canvasRef}
+          ref={setCanvasRef}
           className="director-suite-canvas"
           style={{
             position: 'absolute',

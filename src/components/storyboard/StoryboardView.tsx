@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Plus, Camera, Loader2, Workflow, GripHorizontal, LayoutGrid, Minus, ChevronDown, Maximize, Home, Trash2, Square } from "lucide-react";
+import { Plus, Loader2, Workflow, LayoutGrid, Minus, ChevronDown, Maximize, Home, Trash2 } from "lucide-react";
 import { Storyboard, createSceneCard } from "@/lib/storyboard-api";
 import { useStoryboardCanvas } from "@/hooks/useStoryboardCanvas";
 import { InlineSceneCard } from "./InlineSceneCard";
@@ -10,9 +10,11 @@ import { StoryboardConnectorLayer } from "./StoryboardConnectorLayer";
 interface Props {
   storyboard: Storyboard;
   onStoryboardChange: (updated: Storyboard) => void;
+  scriptTitle?: string;
+  scriptId?: string;
 }
 
-export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
+export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "Storyboard", scriptId = "" }: Props) {
   const {
     state,
     addCard,
@@ -34,6 +36,7 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
 
   // Viewport State
   const boardRef = useRef<HTMLDivElement>(null);
+  const innerCanvasRef = useRef<HTMLDivElement>(null); // inner transform layer for export
   const zoomRef = useRef(1);
   const panRef = useRef({ x: 0, y: 0 });
   const [forceRender, setForceRender] = useState(0);
@@ -436,6 +439,7 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
           </div>
         )}
 
+
         <button
           onClick={handleAddCard}
           disabled={adding}
@@ -445,6 +449,8 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
           Add Shot
         </button>
       </div>
+
+      {/* Full-screen loading overlay */}
 
       {/* Infinite Canvas Viewport */}
       <div
@@ -477,7 +483,8 @@ export function StoryboardView({ storyboard, onStoryboardChange }: Props) {
 
         {/* Transform Layer for Pan & Zoom */}
         <div
-          className="absolute top-0 left-0 origin-top-left pointer-events-none"
+          ref={innerCanvasRef}
+          className="absolute top-0 left-0 origin-top-left pointer-events-none storyboard-canvas-layer"
           style={{
             transform: `translate(${panRef.current.x}px, ${panRef.current.y}px) scale(${zoomRef.current})`,
             width: "10000px",

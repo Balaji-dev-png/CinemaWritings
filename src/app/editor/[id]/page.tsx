@@ -21,8 +21,8 @@ import {
   importFromFountain,
   Script,
 } from "@/lib/storage";
-import { exportToPdf } from "@/lib/exportPdf";
 import { useTheme } from "next-themes";
+import { getAccessToken } from "@/lib/auth";
 import jsPDF from "jspdf";
 
 import {
@@ -408,99 +408,74 @@ export default function EditorPage() {
   };
 
   const handleExportPdf = async () => {
-    if (!script || !printRef.current) return;
+    if (!script) return;
     setIsExporting(true);
     setExportError("");
-    setShowExportMenu(false);
 
     try {
-      // @ts-ignore
-      const domtoimage = (await import("dom-to-image-more")).default;
-      const element = printRef.current;
-      const pages = element.querySelectorAll(".script-page");
+      const token = await getAccessToken();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+      const fallbackApiUrl = "http://127.0.0.1:8000/api";
+      
+      // Get current HTML from editor instance
+      const content = editorInstance?.getHTML() || script.content;
 
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "in",
-        format: "letter",
-      });
-
-      for (let i = 0; i < pages.length; i++) {
-        const page = pages[i] as HTMLElement;
-
-        const scale = 2;
-
-        // Inject temporary style to clean up elements for export
-        const style = document.createElement("style");
-        style.id = "pdf-export-style";
-        style.innerHTML = `
-          /* ── Strip all UI borders / outlines / shadows ── */
-          input, textarea, .ProseMirror, div, p,
-          p.scene-heading, p.action, p.character, p.dialogue,
-          p.parenthetical, p.transition, p.shot, p.extension {
-            border-color: transparent !important;
-            border: none !important;
-            outline: none !important;
-            box-shadow: none !important;
-            -webkit-box-shadow: none !important;
-          }
-
-          /* ── Hide UI-only elements ── */
-          .page-break-indicator, button, .export-hide {
-            display: none !important;
-          }
-
-          /* ── Force solid black text for title page fields ── */
-          .title-input, .title-written-by, .title-author, .title-author-block,
-          .title-page-content input, .title-page-content textarea,
-          input, textarea {
-            color: #000000 !important;
-            -webkit-text-fill-color: #000000 !important;
-            opacity: 1 !important;
-          }
-
-          /* ── Force solid black text for all screenplay elements ── */
-          .screenplay-canvas p,
-          .screenplay-canvas .ProseMirror p,
-          .ProseMirror p {
-            color: #000000 !important;
-            -webkit-text-fill-color: #000000 !important;
-            opacity: 1 !important;
-          }
-
-          /* ── Ensure dark-mode color overrides are stripped ── */
-          * {
-            --tw-text-opacity: 1 !important;
-          }
-        `;
-        page.appendChild(style);
-
-        const imgData = await domtoimage.toPng(page, {
-          quality: 1,
-          bgcolor: docBgColor || "#ffffff",
-          width: page.clientWidth * scale,
-          height: page.clientHeight * scale,
-          style: {
-            transform: `scale(${scale})`,
-            transformOrigin: "top left",
-            width: `${page.clientWidth}px`,
-            height: `${page.clientHeight}px`,
+      const performExport = async (url: string) => {
+        const exportUrl = `${url}/scripts/${script.id}/export/pdf/`;
+        return await fetch(exportUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
           },
+          body: JSON.stringify({
+            content,
+            title,
+            paper_color: docBgColor,
+            font_family: docFont,
+            font_size: docFontSize,
+            meta: metadata
+          })
         });
+      };
 
-        page.removeChild(style);
-
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, 0, 8.5, 11);
+      let response = await performExport(apiUrl).catch(() => null);
+      
+      // If localhost fails, try 127.0.0.1
+      if (!response || !response.ok) {
+        console.log("[PDF Export] Primary API failed, trying fallback...");
+        const fallbackRes = await performExport(fallbackApiUrl).catch(() => null);
+        if (fallbackRes) response = fallbackRes;
       }
 
-      pdf.save(`${title || "script"}.pdf`);
+      if (!response || !response.ok) {
+        let errorMsg = response ? `Export failed (${response.status})` : "Network Error: Could not reach the backend server.";
+        if (response) {
+          try {
+            const errData = await response.json();
+            errorMsg = errData.detail || errData.error || errorMsg;
+          } catch {}
+        }
+        throw new Error(errorMsg);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title || "script"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
     } catch (err: any) {
-      // Log internally (stripped in production by removeConsole)
       console.error("[PDF Export Error]:", err);
-      setExportError("Export failed. Please try again.");
+      setExportError(err.message || "Export failed. Please try again.");
     } finally {
       setIsExporting(false);
+      setShowExportMenu(false);
     }
   };
 
@@ -726,6 +701,42 @@ export default function EditorPage() {
                   </button>
                 </div>
               )}
+
+              {/* Export Dropdown */}
+              {showExportMenu && (
+                <div className="absolute top-10 right-0 z-50 bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-52 flex flex-col gap-1">
+                  <button
+                    onClick={handleExportPdf}
+                    disabled={isExporting}
+                    className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <span className="text-base">📄</span>{" "}
+                    {isExporting ? "Exporting..." : "Download PDF"}
+                  </button>
+                  <button
+                    onClick={handleExportFountain}
+                    className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all flex items-center gap-2"
+                  >
+                    <span className="text-base">🖋</span> Fountain (.fountain)
+                  </button>
+                  <button
+                    onClick={handleExportText}
+                    className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all flex items-center gap-2"
+                  >
+                    <span className="text-base">📝</span> Plain Text (.txt)
+                  </button>
+                  <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
+                  <button
+                    onClick={() => {
+                      setShowShortcuts(true);
+                      setShowExportMenu(false);
+                    }}
+                    className="text-left px-3 py-2 text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors flex items-center gap-2"
+                  >
+                    <Keyboard className="w-3 h-3" /> Shortcuts
+                  </button>
+                </div>
+              )}
             </div>
             <button
               onClick={handleImportFountain}
@@ -763,32 +774,6 @@ export default function EditorPage() {
               </button>
             )}
           </div>
-
-          {/* Export Dropdown (Moved inside) */}
-          {showExportMenu && (
-            <div className="absolute top-12 right-12 z-50 bg-white dark:bg-[#1a1a1a] p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-52 flex flex-col gap-1">
-              <button
-                onClick={handleExportPdf}
-                disabled={isExporting}
-                className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
-              >
-                <span className="text-base">📄</span>{" "}
-                {isExporting ? "Exporting..." : "Download PDF"}
-              </button>
-              <button
-                onClick={handleExportFountain}
-                className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all flex items-center gap-2"
-              >
-                <span className="text-base">🖋</span> Fountain (.fountain)
-              </button>
-              <button
-                onClick={handleExportText}
-                className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all flex items-center gap-2"
-              >
-                <span className="text-base">📝</span> Plain Text (.txt)
-              </button>
-            </div>
-          )}
 
           {/* Settings Dropdown (Moved inside) */}
           {showSettings && (
@@ -1015,6 +1000,7 @@ export default function EditorPage() {
           onClose={() => setShowVersions(false)}
         />
       )}
+      {/* Shortcuts Panel */}
       {showShortcuts && (
         <ShortcutsPanel onClose={() => setShowShortcuts(false)} />
       )}
