@@ -160,6 +160,7 @@ export default function DirectorsSuitePage() {
           });
         }
         setConnectSource(null);
+        setConnectMode(false);
       }
     },
     [connectMode, suite, connectSource]

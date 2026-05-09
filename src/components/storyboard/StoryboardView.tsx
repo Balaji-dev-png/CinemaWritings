@@ -360,6 +360,7 @@ export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "
         });
       }
       setConnectSource(null);
+      setConnectMode(false);
     }
   };
 
