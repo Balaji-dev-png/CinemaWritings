@@ -7,6 +7,7 @@ import { ArrowLeft, Film, Download, Loader2, LayoutGrid } from "lucide-react";
 import { getStoryboard, Storyboard } from "@/lib/storyboard-api";
 import { StoryboardView } from "@/components/storyboard/StoryboardView";
 import { isAuthenticated } from "@/lib/auth";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 
 export default function StoryboardPage() {
   const params = useParams();
@@ -16,6 +17,15 @@ export default function StoryboardPage() {
   const [storyboard, setStoryboard] = useState<Storyboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Instant navigation overlay
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [navMessage, setNavMessage] = useState("");
+  const navigateTo = (path: string, msg = "Loading...") => {
+    setNavMessage(msg);
+    setIsNavigating(true);
+    router.push(path);
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -35,10 +45,11 @@ export default function StoryboardPage() {
 
   return (
     <div className="h-screen flex flex-col bg-zinc-50 dark:bg-[#0d0d0d] text-zinc-900 dark:text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <LoadingOverlay isVisible={isNavigating} message={navMessage} />
       {/* Top Header */}
       <header className="flex items-center gap-4 px-6 py-3 shrink-0 bg-white dark:bg-[#111] border-b border-zinc-200 dark:border-[#222]" style={{ position: "sticky", top: 0, zIndex: 40 }}>
         <button
-          onClick={() => router.push(`/editor/${scriptId}`)}
+          onClick={() => navigateTo(`/editor/${scriptId}`, "Back to Editor...")}
           className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -47,7 +58,7 @@ export default function StoryboardPage() {
 
         <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800" />
         <button
-          onClick={() => router.push(`/directors-suite/${scriptId}`)}
+          onClick={() => navigateTo(`/directors-suite/${scriptId}`, "Opening Director's Suite...")}
           className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1"
         >
           <LayoutGrid className="w-3 h-3" /> Director&apos;s Suite
