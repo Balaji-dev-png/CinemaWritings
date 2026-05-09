@@ -1,7 +1,7 @@
 import { Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak, HeadingLevel } from "docx";
 
 // Layout in inches
-const LAYOUT = {
+const LAYOUT: Record<string, { left: number; right: number; align?: any }> = {
   "scene-heading": { left: 1.5, right: 1.0 },
   action: { left: 1.5, right: 1.0 },
   character: { left: 3.7, right: 1.0 },
