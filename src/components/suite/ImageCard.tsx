@@ -91,6 +91,14 @@ export function ImageCard({ element, onMove, onResize, onUpdate, onRemove, onCon
       </div>
 
       <div className="suite-resize-handle" onMouseDown={startResize} />
+
+      {/* Connect Mode Overlay */}
+      {connectMode && (
+        <div 
+          className="absolute inset-0 z-50 cursor-crosshair" 
+          onMouseDown={(e) => { e.stopPropagation(); onConnectClick?.(element.id); }} 
+        />
+      )}
     </div>
   );
 }
