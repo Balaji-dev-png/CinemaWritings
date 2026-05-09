@@ -36,7 +36,7 @@
 |---|---|
 | **Screenplay PDF** | **Server-side generation (WeasyPrint)** — Generates a high-resolution, WGA-standard PDF adhering to exact Hollywood margins (1.5" left bind). Captures the exact WYSIWYG state of your editor. |
 | **Fountain (.fountain)** | Standard Fountain plain-text format with title metadata header block |
-| **Plain Text (.txt)** | Human-readable export in Fountain syntax with metadata |
+| **Microsoft Word (.docx)** | Formatted export for Microsoft Word |
 
 ### Account & Security
 - **Cinematic Profile Dropdown** — Access your scripts and account settings via a sleek, dark-mode avatar menu.

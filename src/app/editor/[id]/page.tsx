@@ -23,7 +23,9 @@ import {
 } from "@/lib/storage";
 import { useTheme } from "next-themes";
 import { getAccessToken } from "@/lib/auth";
-import jsPDF from "jspdf";
+import { exportToPdf } from "@/lib/exportPdf";
+import { exportToDocx } from "@/lib/exportDocx";
+import mammoth from "mammoth";
 
 import {
   ArrowLeft,
@@ -403,18 +405,20 @@ export default function EditorPage() {
     setShowExportMenu(false);
   };
 
-  const handleExportText = () => {
+  const handleExportDocx = async () => {
     if (!script) return;
-    const content = editorInstance?.getHTML() || script.content;
-    const text = exportToFountain(content, metadata, title);
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${title || "script"}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setShowExportMenu(false);
+    setIsExporting(true);
+    setExportError("");
+    try {
+      const content = editorInstance?.getHTML() || script.content;
+      await exportToDocx(content, title, metadata);
+    } catch (err: any) {
+      console.error("[DOCX Export Error]:", err);
+      setExportError(err.message || "Export failed. Please try again.");
+    } finally {
+      setIsExporting(false);
+      setShowExportMenu(false);
+    }
   };
 
   const handleExportPdf = async () => {
@@ -423,63 +427,18 @@ export default function EditorPage() {
     setExportError("");
 
     try {
-      const token = await getAccessToken();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-      const fallbackApiUrl = "http://127.0.0.1:8000/api";
-      
       // Get current HTML from editor instance
       const content = editorInstance?.getHTML() || script.content;
-
-      const performExport = async (url: string) => {
-        const exportUrl = `${url}/scripts/${script.id}/export/pdf/`;
-        return await fetch(exportUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            content,
-            title,
-            paper_color: docBgColor,
-            font_family: docFont,
-            font_size: docFontSize,
-            meta: metadata
-          })
-        });
-      };
-
-      let response = await performExport(apiUrl).catch(() => null);
       
-      // If localhost fails, try 127.0.0.1
-      if (!response || !response.ok) {
-        console.log("[PDF Export] Primary API failed, trying fallback...");
-        const fallbackRes = await performExport(fallbackApiUrl).catch(() => null);
-        if (fallbackRes) response = fallbackRes;
-      }
-
-      if (!response || !response.ok) {
-        let errorMsg = response ? `Export failed (${response.status})` : "Network Error: Could not reach the backend server.";
-        if (response) {
-          try {
-            const errData = await response.json();
-            errorMsg = errData.detail || errData.error || errorMsg;
-          } catch {}
-        }
-        throw new Error(errorMsg);
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${title || "script"}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 100);
+      exportToPdf(content, {
+        title,
+        writtenByPrefix: metadata.writtenByPrefix,
+        author: metadata.author,
+        contact: metadata.contact,
+        logline: metadata.logline,
+        synopsis: metadata.synopsis,
+      }, docFontSize);
+      
     } catch (err: any) {
       console.error("[PDF Export Error]:", err);
       setExportError(err.message || "Export failed. Please try again.");
@@ -494,23 +453,28 @@ export default function EditorPage() {
     window.print();
   };
 
-  const handleImportFountain = () => {
+  const handleImport = () => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".fountain,.txt";
-    input.onchange = (e) => {
+    input.accept = ".fountain,.docx";
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const text = reader.result as string;
-        const html = importFromFountain(text);
-        updateScript(script!.id, { content: html });
-        if (editorInstance) {
-          editorInstance.commands.setContent(html);
-        }
-      };
-      reader.readAsText(file);
+      
+      let text = "";
+      if (file.name.endsWith(".docx")) {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        text = result.value;
+      } else {
+        text = await file.text();
+      }
+      
+      const html = importFromFountain(text);
+      updateScript(script!.id, { content: html });
+      if (editorInstance) {
+        editorInstance.commands.setContent(html);
+      }
     };
     input.click();
   };
@@ -730,10 +694,10 @@ export default function EditorPage() {
                     <span className="text-base">🖋</span> Fountain (.fountain)
                   </button>
                   <button
-                    onClick={handleExportText}
+                    onClick={handleExportDocx}
                     className="text-left px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all flex items-center gap-2"
                   >
-                    <span className="text-base">📝</span> Plain Text (.txt)
+                    <span className="text-base">📝</span> Microsoft Word (.docx)
                   </button>
                   <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1" />
                   <button
@@ -749,9 +713,9 @@ export default function EditorPage() {
               )}
             </div>
             <button
-              onClick={handleImportFountain}
+              onClick={handleImport}
               className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-              title="Import Fountain"
+              title="Import (.fountain, .docx)"
             >
               <Upload className="w-3.5 h-3.5" />
             </button>
