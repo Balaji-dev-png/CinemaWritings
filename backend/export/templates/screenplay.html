@@ -37,7 +37,11 @@
     {% for page in pages %}
     <div class="script-page">
         {% for element_type, content in page %}
+        {% if element_type == 'image' %}
+        {{ content|safe }}
+        {% else %}
         <p class="{{ element_type }}">{{ content|safe }}</p>
+        {% endif %}
         {% endfor %}
     </div>
     {% endfor %}
