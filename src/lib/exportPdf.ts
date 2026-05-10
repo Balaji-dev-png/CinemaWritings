@@ -70,70 +70,101 @@ function collectSegments(
   }
 }
 
-type ParsedEl = { type: string; segs: Seg[]; plainText: string };
+type ParsedEl = { 
+  type: string; 
+  segs: Seg[]; 
+  plainText: string;
+  imgSrc?: string;
+  imgWidth?: number;
+  imgHeight?: number;
+  align?: "left" | "center" | "right";
+};
 type ParsedPage = ParsedEl[];
+
+const getImageDimensions = (src: string): Promise<{w: number, h: number}> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.width, h: img.height });
+    img.onerror = () => resolve({ w: 0, h: 0 });
+    img.src = src;
+  });
+};
 
 /**
  * Parse TipTap HTML into pages of elements.
  * Detects <div data-type="pageNode"> wrappers for pagination.
  * If no wrappers found, returns all elements as a single page.
  */
-function parseScriptHTML(html: string): ParsedPage[] {
+async function parseScriptHTML(html: string): Promise<ParsedPage[]> {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
   const KNOWN = new Set(Object.keys(LAYOUT));
-
-  const extractElements = (container: Element): ParsedEl[] => {
-    const out: ParsedEl[] = [];
-    container.querySelectorAll(":scope > p, p").forEach((p) => {
-      // Skip paragraphs inside nested pageNode divs if we're at root level
-      if (
-        container.querySelector('[data-type="pageNode"]') &&
-        p.closest('[data-type="pageNode"]') !== container
-      ) {
-        return;
-      }
-      const type =
-        p.className.split(/\s+/).find((c) => KNOWN.has(c)) ?? "action";
-      const plainText = p.textContent?.trim() ?? "";
-      if (!plainText) return;
-      const segs: Seg[] = [];
-      collectSegments(p, false, false, false, undefined, segs);
-      out.push({ type, segs, plainText });
-    });
-    return out;
-  };
 
   // Check for pageNode wrappers
   const pageNodes = doc.querySelectorAll('[data-type="pageNode"]');
   if (pageNodes.length > 0) {
     const pages: ParsedPage[] = [];
-    pageNodes.forEach((pageDiv) => {
-      const elements: ParsedEl[] = [];
-      pageDiv.querySelectorAll("p").forEach((p) => {
-        const type =
-          p.className.split(/\s+/).find((c) => KNOWN.has(c)) ?? "action";
+    for (const pageDiv of Array.from(pageNodes)) {
+      const promises: Promise<ParsedEl | null>[] = [];
+      pageDiv.querySelectorAll("p, div.script-image-wrapper").forEach((el) => {
+        if (el.tagName.toLowerCase() === "div") {
+          const img = el.querySelector("img");
+          if (img && img.src) {
+            promises.push(
+              getImageDimensions(img.src).then(({ w, h }) => {
+                const align = el.className.includes("align-center") ? "center" : el.className.includes("align-right") ? "right" : "left";
+                const explicitWidthMatch = img.style.width.match(/(\d+)px/);
+                let targetWidth = explicitWidthMatch ? parseInt(explicitWidthMatch[1]) : 400;
+                let targetHeight = h > 0 && w > 0 ? (targetWidth * h) / w : (targetWidth * 0.75);
+                return { type: "image", segs: [], plainText: "", imgSrc: img.src, imgWidth: targetWidth, imgHeight: targetHeight, align };
+              })
+            );
+          }
+          return;
+        }
+
+        const p = el as HTMLParagraphElement;
+        const type = p.className.split(/\s+/).find((c) => KNOWN.has(c)) ?? "action";
         const plainText = p.textContent?.trim() ?? "";
         if (!plainText) return;
         const segs: Seg[] = [];
         collectSegments(p, false, false, false, undefined, segs);
-        elements.push({ type, segs, plainText });
+        promises.push(Promise.resolve({ type, segs, plainText }));
       });
+      const elements = (await Promise.all(promises)).filter((e): e is ParsedEl => e !== null);
       if (elements.length > 0) pages.push(elements);
-    });
+    }
     return pages.length > 0 ? pages : [[]];
   }
 
   // Fallback: no pageNode wrappers, treat everything as one page
-  const all: ParsedEl[] = [];
-  doc.querySelectorAll("p").forEach((p) => {
+  const promises: Promise<ParsedEl | null>[] = [];
+  doc.querySelectorAll("p, div.script-image-wrapper").forEach((el) => {
+    if (el.tagName.toLowerCase() === "div") {
+      const img = el.querySelector("img");
+      if (img && img.src) {
+        promises.push(
+          getImageDimensions(img.src).then(({ w, h }) => {
+            const align = el.className.includes("align-center") ? "center" : el.className.includes("align-right") ? "right" : "left";
+            const explicitWidthMatch = img.style.width.match(/(\d+)px/);
+            let targetWidth = explicitWidthMatch ? parseInt(explicitWidthMatch[1]) : 400;
+            let targetHeight = h > 0 && w > 0 ? (targetWidth * h) / w : (targetWidth * 0.75);
+            return { type: "image", segs: [], plainText: "", imgSrc: img.src, imgWidth: targetWidth, imgHeight: targetHeight, align };
+          })
+        );
+      }
+      return;
+    }
+
+    const p = el as HTMLParagraphElement;
     const type = p.className.split(/\s+/).find((c) => KNOWN.has(c)) ?? "action";
     const plainText = p.textContent?.trim() ?? "";
     if (!plainText) return;
     const segs: Seg[] = [];
     collectSegments(p, false, false, false, undefined, segs);
-    all.push({ type, segs, plainText });
+    promises.push(Promise.resolve({ type, segs, plainText }));
   });
+  const all = (await Promise.all(promises)).filter((e): e is ParsedEl => e !== null);
   return [all];
 }
 
@@ -272,7 +303,7 @@ export interface TitlePageMeta {
   synopsis?: string;
 }
 
-export function exportToPdf(
+export async function exportToPdf(
   html: string,
   meta: TitlePageMeta,
   globalFontSize: number = 12,
@@ -333,7 +364,7 @@ export function exportToPdf(
   }
 
   // ── Script Pages ──────────────────────────────────────────────────────
-  const pages = parseScriptHTML(html);
+  const pages = await parseScriptHTML(html);
 
   for (let pageIdx = 0; pageIdx < pages.length; pageIdx++) {
     doc.addPage();
@@ -342,6 +373,35 @@ export function exportToPdf(
 
     const elements = pages[pageIdx];
     for (const el of elements) {
+      if (el.type === "image" && el.imgSrc) {
+        const wInches = Math.min((el.imgWidth || 400) / 96, PW - ML - MR);
+        const hInches = wInches * ((el.imgHeight || 300) / (el.imgWidth || 400));
+        
+        y += 0.2; // Spacing before image
+        y = checkPage(doc, y);
+        if (y + hInches > PH - MB) {
+           doc.addPage();
+           y = MT;
+        }
+        let ix = ML;
+        if (el.align === "center") ix = (PW - wInches) / 2;
+        if (el.align === "right") ix = PW - MR - wInches;
+        
+        let format = "PNG";
+        if (el.imgSrc.startsWith("data:image/jpeg")) format = "JPEG";
+        if (el.imgSrc.startsWith("data:image/webp")) format = "WEBP";
+        
+        try {
+          doc.addImage(el.imgSrc, format, ix, y, wInches, hInches);
+        } catch(e) {
+          console.warn("Failed to render image in PDF", e);
+        }
+        
+        y += hInches + 0.2;
+        prevType = "image";
+        continue;
+      }
+
       const layout = LAYOUT[el.type] ?? LAYOUT["action"];
       const isUpper = [
         "scene-heading",

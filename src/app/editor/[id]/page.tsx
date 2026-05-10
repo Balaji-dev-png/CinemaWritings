@@ -430,7 +430,7 @@ export default function EditorPage() {
       // Get current HTML from editor instance
       const content = editorInstance?.getHTML() || script.content;
       
-      exportToPdf(content, {
+      await exportToPdf(content, {
         title,
         writtenByPrefix: metadata.writtenByPrefix,
         author: metadata.author,
