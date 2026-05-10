@@ -75,7 +75,7 @@ export function IdeaCard({
         top: element.y,
         width: element.width,
         height: element.height,
-        backgroundColor: bg,
+        background: bg,
         zIndex: 10,
         cursor: connectMode ? "crosshair" : "grab",
       }}
