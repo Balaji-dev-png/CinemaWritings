@@ -190,3 +190,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ─── WeasyPrint font directory ────────────────────────────────────────────
 WEASYPRINT_FONT_DIR = BASE_DIR / "export" / "fonts"
+
+# ─── File Upload Limits ───────────────────────────────────────────────────
+# Increase max memory size to 100MB to allow large base64 images in HTML payloads
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600
