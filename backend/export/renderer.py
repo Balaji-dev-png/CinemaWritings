@@ -243,6 +243,25 @@ span {{
 .script-page:last-child {{
     page-break-after: auto;
 }}
+
+/* Images inserted inline via the editor */
+.script-image {{
+    margin: 12pt 0;
+    line-height: 0;
+}}
+.script-image.align-center {{
+    text-align: center;
+}}
+.script-image.align-right {{
+    text-align: right;
+}}
+.script-image img {{
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+    border: none !important;
+    outline: none !important;
+}}
 """
 
 
@@ -265,6 +284,8 @@ def _parse_html_to_elements(html_content):
             super().__init__()
             self.in_p = False
             self.in_page_node = False
+            self.in_image_wrapper = False
+            self.image_align = 'left'
             self.p_class = "action"
             self.p_html_parts = []
 
@@ -279,6 +300,29 @@ def _parse_html_to_elements(html_content):
                     current_page = len(pages) - 1
                 return
 
+            # Detect image wrapper div (rendered by ResizableImage.renderHTML)
+            if tag == "div":
+                cls = attrs_dict.get("class", "")
+                if "script-image-wrapper" in cls:
+                    self.in_image_wrapper = True
+                    self.image_align = "center" if "align-center" in cls else "right" if "align-right" in cls else "left"
+                    return
+
+            # Capture <img> inside an image wrapper
+            if tag == "img" and self.in_image_wrapper:
+                src = attrs_dict.get("src", "")
+                style = attrs_dict.get("style", "")
+                width_match = re.search(r'width:\s*(\d+)px', style)
+                width = width_match.group(1) if width_match else "400"
+                if src:
+                    html_str = (
+                        f'<div class="script-image align-{self.image_align}">'
+                        f'<img src="{src}" style="width:{width}px;max-width:100%;height:auto;" />'
+                        f'</div>'
+                    )
+                    pages[current_page].append(('image', html_str))
+                return
+
             if tag == "p":
                 self.in_p = True
                 self.p_class = attrs_dict.get("class", "action")
@@ -288,9 +332,13 @@ def _parse_html_to_elements(html_content):
                 self.p_html_parts.append(f"<{tag}{attr_str}>")
 
         def handle_endtag(self, tag):
-            if tag == "div" and self.in_page_node:
-                self.in_page_node = False
-                return
+            if tag == "div":
+                if self.in_image_wrapper:
+                    self.in_image_wrapper = False
+                    return
+                if self.in_page_node:
+                    self.in_page_node = False
+                    return
             if tag == "p" and self.in_p:
                 self.in_p = False
                 content = "".join(self.p_html_parts).strip()
