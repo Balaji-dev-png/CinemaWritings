@@ -177,42 +177,27 @@ class ScriptViewSet(viewsets.ModelViewSet):
     )
     def export_pdf(self, request, pk=None):
         """
-        GET /api/scripts/{id}/export/pdf/ — Export from DB.
-        POST /api/scripts/{id}/export/pdf/ — Export with custom content/styles.
+        GET /api/scripts/{id}/export/pdf/ — Export from DB (fallback).
+        POST /api/scripts/{id}/export/pdf/ — WYSIWYG PDF export with raw HTML.
         """
         from django.http import Http404
         from .models import Script
-        from export.renderer import render_screenplay_pdf
+        from export.renderer import render_screenplay_pdf, render_screenplay_pdf_from_html
 
         try:
             script = self.get_object()
         except Http404:
             if request.method == "POST":
-                # If script is only in Supabase and not synced to Django yet,
-                # create a transient in-memory Script object for PDF rendering.
                 script = Script(id=pk)
             else:
                 raise
 
-        # If POST, allow overriding content and styling for immediate export
         if request.method == "POST":
-            script.content = request.data.get("content", script.content)
-            script.title = request.data.get("title", script.title)
-            script.paper_color = request.data.get("paper_color", script.paper_color)
-            script.font_family = request.data.get("font_family", script.font_family)
-            script.text_color = request.data.get("text_color", script.text_color)
-            script.font_size = request.data.get("font_size", script.font_size)
-            
-            # Metadata overrides
-            meta = request.data.get("meta", {})
-            if meta:
-                script.author = meta.get("author", script.author)
-                script.contact = meta.get("contact", script.contact)
-                script.logline = meta.get("logline", script.logline)
-                script.synopsis = meta.get("synopsis", script.synopsis)
-                script.written_by_prefix = meta.get("written_by_prefix", script.written_by_prefix)
+            body = request.data
+            pdf_bytes = render_screenplay_pdf_from_html(script, body)
+        else:
+            pdf_bytes = render_screenplay_pdf(script)
 
-        pdf_bytes = render_screenplay_pdf(script)
         filename = (script.title or "screenplay").replace(" ", "_")
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'

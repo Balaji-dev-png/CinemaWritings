@@ -404,3 +404,338 @@ def render_screenplay_pdf(script):
     return html.write_pdf(stylesheets=[css], font_config=font_config)
 
 
+
+def render_screenplay_pdf_from_html(script, body: dict) -> bytes:
+    """
+    WYSIWYG PDF export — uses actual TipTap HTML output so every
+    user edit (font size, color, letter spacing, alignment) is preserved exactly.
+    """
+    from weasyprint import CSS, HTML
+    from weasyprint.text.fonts import FontConfiguration
+    import datetime
+
+    # Pull values from POST body
+    title_page_html = body.get('title_page_html', '')
+    script_body_html = body.get('script_body_html', '')
+    font_family = body.get('font_family', 'Courier Prime')
+    font_size = body.get('font_size', 12)
+    paper_color = body.get('paper_color', '#ffffff')
+    text_color = body.get('text_color', '#000000')
+    title_page_bg = body.get('title_page_bg', '#1a1a1a')
+    title_color = body.get('title_color', '#c9a84c')
+
+    # Format date
+    today = datetime.date.today()
+    suffix = lambda n: 'th' if 11<=n%100<=13 else {1:'st',2:'nd',3:'rd'}.get(n%10,'th')
+    formatted_date = f"{today.strftime('%B')}-{today.day}{suffix(today.day)}-{today.year}"
+
+    # Build complete HTML document
+    html_string = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+</head>
+<body>
+
+<!-- TITLE PAGE -->
+<div class="title-page">
+    <div class="title-page-inner">
+        {title_page_html if title_page_html else _build_fallback_title_html(script, title_color)}
+    </div>
+    <div class="title-page-date">{formatted_date}</div>
+</div>
+
+<!-- SCRIPT BODY -->
+<div class="script-body">
+    {script_body_html if script_body_html else ''}
+</div>
+
+</body>
+</html>"""
+
+    css_string = _build_wysiwyg_css(
+        font_family=font_family,
+        font_size=font_size,
+        paper_color=paper_color,
+        text_color=text_color,
+        title_page_bg=title_page_bg,
+        title_color=title_color,
+    )
+
+    font_config = FontConfiguration()
+    html = HTML(string=html_string)
+    css = CSS(string=css_string, font_config=font_config)
+    return html.write_pdf(stylesheets=[css], font_config=font_config)
+
+
+def _build_fallback_title_html(script, title_color: str) -> str:
+    """Fallback if frontend sends no title_page_html."""
+    return f"""
+        <div class="fallback-title">{script.title or 'UNTITLED'}</div>
+        <div class="fallback-written-by">{script.written_by_prefix or 'written by'}</div>
+        <div class="fallback-author">{script.author or ''}</div>
+    """
+
+
+def _build_wysiwyg_css(
+    font_family: str,
+    font_size: int,
+    paper_color: str,
+    text_color: str,
+    title_page_bg: str,
+    title_color: str,
+) -> str:
+    return f"""
+/* ── Font Faces ── */
+@font-face {{
+    font-family: 'Courier Prime';
+    src: url('https://fonts.gstatic.com/s/courierprime/v9/u-4n0qW6p57vka8V2WnLpNeVfE8.woff2') format('woff2');
+    font-weight: normal;
+}}
+@font-face {{
+    font-family: 'Courier Prime';
+    src: url('https://fonts.gstatic.com/s/courierprime/v9/u-4k0qW6p57vka8V2WhD9eRfYfg.woff2') format('woff2');
+    font-weight: bold;
+}}
+@font-face {{
+    font-family: 'Courier Prime';
+    src: url('https://fonts.gstatic.com/s/courierprime/v9/u-450qW6p57vka8V2WnLpNhFjW5.woff2') format('woff2');
+    font-style: italic;
+}}
+
+/* ── Page Rules ── */
+@page {{
+    size: letter;
+    margin: 1in 1in 1in 1.5in;
+    background-color: {paper_color};
+    @top-right {{
+        content: counter(page) ".";
+        font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+        font-size: {font_size}pt;
+        vertical-align: bottom;
+        padding-bottom: 0.5in;
+        color: {text_color};
+    }}
+}}
+
+@page :first {{
+    background-color: {title_page_bg};
+    margin: 0;
+    @top-right {{ content: none; }}
+}}
+
+/* ── Global Reset ── */
+* {{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-sizing: border-box;
+}}
+
+body {{
+    font-family: '{font_family}', 'Courier Prime', 'Courier New', Courier, monospace;
+    font-size: {font_size}pt;
+    line-height: 1.4;
+    margin: 0;
+    padding: 0;
+}}
+
+/* ── Preserve ALL inline styles from TipTap ── */
+/* This is the key — never override inline styles */
+[style] {{
+    /* inline styles always win — do not override */
+}}
+
+span {{
+    /* preserve font-size, color, letter-spacing, etc from TipTap */
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}}
+
+/* ── Title Page ── */
+.title-page {{
+    page-break-after: always;
+    background-color: {title_page_bg};
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1in;
+}}
+
+.title-page-inner {{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.3in;
+    margin-top: 2in;
+}}
+
+/* Title text — gold, uppercase, underlined, letter-spaced */
+.title-page-inner .script-title,
+.fallback-title {{
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    font-size: 18pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-decoration: underline;
+    color: {title_color};
+    letter-spacing: 0.12em;
+    text-align: center;
+    margin-bottom: 0.4in;
+}}
+
+/* "written by" */
+.title-page-inner .written-by,
+.fallback-written-by {{
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    font-size: {font_size}pt;
+    color: #888888;
+    letter-spacing: 0.05em;
+    text-align: center;
+    margin-bottom: 0.1in;
+}}
+
+/* Author name */
+.title-page-inner .author-name,
+.fallback-author {{
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    font-size: {font_size}pt;
+    color: #aaaaaa;
+    letter-spacing: 0.05em;
+    text-align: center;
+}}
+
+/* Hide UI-only elements from PDF */
+.no-print,
+.show-logline-btn,
+[data-no-print],
+button {{
+    display: none !important;
+}}
+
+/* Date bottom left of title page */
+.title-page-date {{
+    position: absolute;
+    bottom: 0.5in;
+    left: 1in;
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    font-size: 9pt;
+    color: #555555;
+    letter-spacing: 0.05em;
+}}
+
+/* Contact info */
+.contact-block,
+.title-page-inner .contact {{
+    position: absolute;
+    bottom: 0.8in;
+    left: 1in;
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    font-size: 9pt;
+    color: #666666;
+    line-height: 1.6;
+    text-align: left;
+}}
+
+/* ── Script Body ── */
+.script-body {{
+    background-color: {paper_color};
+    color: {text_color};
+}}
+
+.script-body p {{
+    margin: 0;
+    padding: 0;
+    line-height: 1.4;
+    font-size: {font_size}pt;
+    orphans: 2;
+    widows: 2;
+    white-space: pre-wrap;
+}}
+
+/* ── WGA Element Styles ── */
+.script-body p.scene-heading,
+.script-body p.scene_heading {{
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-top: 1.2em;
+    margin-bottom: 0.4em;
+    page-break-after: avoid;
+}}
+
+.script-body p.action {{
+    margin-top: 0.8em;
+    margin-bottom: 0.8em;
+}}
+
+.script-body p.character {{
+    text-transform: uppercase;
+    margin-top: 1.2em;
+    margin-left: 2.1in;
+    page-break-after: avoid;
+}}
+
+.script-body p.parenthetical {{
+    margin-left: 1.5in;
+    max-width: 3.0in;
+    page-break-after: avoid;
+}}
+
+.script-body p.dialogue {{
+    margin-left: 1.0in;
+    margin-right: 1.0in;
+    margin-bottom: 0.6em;
+}}
+
+.script-body p.transition {{
+    text-transform: uppercase;
+    text-align: right;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}}
+
+.script-body p.shot {{
+    text-transform: uppercase;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}}
+
+/* ── Text Formatting — preserved from TipTap inline styles ── */
+strong, b {{ font-weight: bold; }}
+em, i {{ font-style: italic; }}
+u {{ text-decoration: underline; }}
+s {{ text-decoration: line-through; }}
+
+/* ── Images in script ── */
+.script-image-wrapper {{
+    margin: 12pt 0;
+    line-height: 0;
+}}
+.script-image-wrapper.align-center {{
+    text-align: center;
+}}
+.script-image-wrapper.align-right {{
+    text-align: right;
+}}
+.script-image-wrapper img {{
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+    border: none !important;
+}}
+
+/* ── Script Pages ── */
+.script-page {{
+    page-break-after: always;
+    background-color: {paper_color};
+}}
+.script-page:last-child {{
+    page-break-after: auto;
+}}
+"""

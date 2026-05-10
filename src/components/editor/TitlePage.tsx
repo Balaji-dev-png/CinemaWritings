@@ -33,7 +33,7 @@ export function TitlePage({
   const [showExtras, setShowExtras] = useState(false);
 
   return (
-    <div className="w-full flex justify-center mb-8 page-break">
+    <div className="w-full flex justify-center mb-8 page-break title-page-editor">
       <div
         className="script-page flex flex-col justify-between transition-all duration-300 relative border border-transparent dark:border-[#333] print:border-none"
         style={{
@@ -45,34 +45,37 @@ export function TitlePage({
       >
         {/* Title & Author Center Block */}
         <div className="flex-1 flex flex-col justify-center items-center h-full w-full max-w-2xl mx-auto space-y-4 md:space-y-10 pb-10 md:pb-32 title-page-content">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
-            placeholder="SCRIPT TITLE"
-            className="title-input w-full text-center text-xl md:text-2xl uppercase tracking-widest font-bold bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 underline decoration-1 underline-offset-4"
-          />
+          <div
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => onTitleChange(e.currentTarget.textContent || "")}
+            className="script-title w-full text-center text-xl md:text-2xl uppercase tracking-widest font-bold bg-transparent border-none focus:outline-none focus:ring-0 underline decoration-1 underline-offset-4"
+          >
+            {title || "SCRIPT TITLE"}
+          </div>
           <div className="title-author-block flex flex-col items-center space-y-2 w-full text-center">
-            <input
-              type="text"
-              value={metadata.writtenByPrefix}
-              onChange={(e) => onMetaChange({ writtenByPrefix: e.target.value })}
-              placeholder="written by"
-              className="title-written-by w-full text-center text-sm bg-transparent border-none focus:outline-none focus:ring-0 text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-300 dark:placeholder:text-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-            />
-            <input
-              type="text"
-              value={metadata.author}
-              onChange={(e) => onMetaChange({ author: e.target.value })}
-              placeholder="Author Name"
-              className="title-author w-full text-center bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
-            />
+            <div
+              contentEditable
+              suppressContentEditableWarning
+              onBlur={(e) => onMetaChange({ writtenByPrefix: e.currentTarget.textContent || "" })}
+              className="written-by w-full text-center text-sm bg-transparent border-none focus:outline-none focus:ring-0 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+            >
+              {metadata.writtenByPrefix || "written by"}
+            </div>
+            <div
+              contentEditable
+              suppressContentEditableWarning
+              onBlur={(e) => onMetaChange({ author: e.currentTarget.textContent || "" })}
+              className="author-name w-full text-center bg-transparent border-none focus:outline-none focus:ring-0"
+            >
+              {metadata.author || "Author Name"}
+            </div>
           </div>
 
           {/* Logline & Synopsis Toggle */}
           <button
             onClick={() => setShowExtras(!showExtras)}
-            className="text-[10px] uppercase tracking-widest text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors font-bold"
+            className="show-logline-btn no-print text-[10px] uppercase tracking-widest text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors font-bold"
           >
             {showExtras ? "Hide" : "Show"} Logline & Synopsis
           </button>
@@ -107,7 +110,7 @@ export function TitlePage({
             value={metadata.contact}
             onChange={(e) => onMetaChange({ contact: e.target.value })}
             placeholder={"Contact Information\nPhone\nEmail"}
-            className="w-full bg-transparent border-none focus:outline-none focus:ring-0 resize-none h-32 text-sm placeholder:text-zinc-300 dark:placeholder:text-zinc-700 leading-relaxed md:text-left text-center"
+            className="contact-block w-full bg-transparent border-none focus:outline-none focus:ring-0 resize-none h-32 text-sm placeholder:text-zinc-300 dark:placeholder:text-zinc-700 leading-relaxed md:text-left text-center"
           />
         </div>
 
