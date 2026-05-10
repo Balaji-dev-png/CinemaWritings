@@ -26,9 +26,31 @@ export const ResizableImage = Node.create({
     return {
       src: { default: null },
       alt: { default: "" },
-      width: { default: "400" },
-      height: { default: "auto" },
-      align: { default: "left" },
+      width: {
+        default: "400",
+        parseHTML: (element) => {
+          const w = element.getAttribute("width") || element.style.width;
+          return w ? w.replace("px", "") : "400";
+        },
+      },
+      height: {
+        default: "auto",
+        parseHTML: (element) => {
+          const h = element.getAttribute("height") || element.style.height;
+          return h ? h.replace("px", "") : "auto";
+        },
+      },
+      align: {
+        default: "left",
+        parseHTML: (element) => {
+          const wrapper = element.closest(".script-image-wrapper");
+          if (wrapper) {
+            if (wrapper.classList.contains("align-center")) return "center";
+            if (wrapper.classList.contains("align-right")) return "right";
+          }
+          return "left";
+        },
+      },
     };
   },
 

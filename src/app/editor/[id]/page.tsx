@@ -427,17 +427,48 @@ export default function EditorPage() {
     setExportError("");
 
     try {
-      // Get current HTML from editor instance
-      const content = editorInstance?.getHTML() || script.content;
+      const titlePageEl = document.querySelector('.title-page-editor') as HTMLElement;
+      const titlePageHTML = titlePageEl?.innerHTML || '';
+      const scriptBodyHTML = editorInstance?.getHTML() || script.content;
+
+      const token = await getAccessToken();
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
       
-      await exportToPdf(content, {
-        title,
-        writtenByPrefix: metadata.writtenByPrefix,
-        author: metadata.author,
-        contact: metadata.contact,
-        logline: metadata.logline,
-        synopsis: metadata.synopsis,
-      }, docFontSize);
+      const response = await fetch(`${API_BASE}/scripts/${script.id}/export/pdf/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          title_page_html: titlePageHTML,
+          script_body_html: scriptBodyHTML,
+          title: script.title,
+          author: metadata.author,
+          written_by_prefix: metadata.writtenByPrefix,
+          contact: metadata.contact,
+          logline: metadata.logline,
+          synopsis: metadata.synopsis,
+          font_family: docFont || 'Courier Prime',
+          font_size: docFontSize || 12,
+          paper_color: docBgColor || '#ffffff',
+          text_color: docTextColor || '#000000',
+          title_page_bg: '#1a1a1a',
+          title_color: '#c9a84c',
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF. Please try again.');
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(script.title || 'script').replace(/[^a-zA-Z0-9 ]/g, "").trim()}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
       
     } catch (err: any) {
       console.error("[PDF Export Error]:", err);
