@@ -40,7 +40,7 @@ export function fountainToHtml(text: string): string {
 
     // ── Scene heading (INT. / EXT. / INT./EXT. / I/E. / forced with .) ──
     if (
-      /^(?:[\d\w]+\.?\s*)?(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.)\s/i.test(trimmed) ||
+      /^(?:[A-Z0-9]+\.?\s*)?\b(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.)\s/i.test(trimmed) ||
       (trimmed.startsWith(".") && !trimmed.startsWith(".."))
     ) {
       const text = trimmed.startsWith(".") ? trimmed.slice(1) : trimmed;
@@ -260,7 +260,7 @@ export async function importFromPdf(arrayBuffer: ArrayBuffer): Promise<string> {
       let type = "action";
       
       // 1. Unambiguous Text Heuristics (Overrides physical placement)
-      if (/^(?:[\d\w]+\.?\s*)?(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.)/i.test(lineStr)) {
+      if (/^(?:[A-Z0-9]+\.?\s*)?\b(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.)/i.test(lineStr)) {
         type = "scene-heading";
       } else if (/(FADE IN|FADE OUT|CUT TO|DISSOLVE TO|SMASH CUT TO|MATCH CUT TO|WIPE TO|FADE TO):?$/i.test(lineStr) || lineStr.startsWith(">")) {
         type = "transition";
