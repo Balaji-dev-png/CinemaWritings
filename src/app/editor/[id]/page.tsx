@@ -846,27 +846,23 @@ export default function EditorPage() {
         {/* Center: Editor — isolation:isolate prevents Director's Suite cards bleeding in (Bug 4) */}
         <main ref={mainScrollRef} className="flex-1 overflow-y-auto no-scrollbar pb-32 relative pt-2 scroll-smooth" style={{ isolation: "isolate" }}>
           
-          {/* Floating Scroll Controls (Left of script) */}
+          {/* Floating Scroll Controls — fixed to viewport, always visible */}
           {!focusMode && (
-            <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-50">
-              <div className="sticky top-1/2 -translate-y-1/2 w-full max-w-[1000px] mx-auto flex justify-start px-2 sm:px-4">
-                <div className="pointer-events-auto flex flex-col gap-2">
-                  <button
-                    onClick={() => mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="p-2.5 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
-                    title="Scroll to Top"
-                  >
-                    <ChevronUp className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => mainScrollRef.current?.scrollTo({ top: mainScrollRef.current.scrollHeight, behavior: 'smooth' })}
-                    className="p-2.5 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
-                    title="Scroll to Bottom"
-                  >
-                    <ChevronDown className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
+            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-[200] flex flex-col gap-2">
+              <button
+                onClick={() => mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="p-2.5 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
+                title="Scroll to Top"
+              >
+                <ChevronUp className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => mainScrollRef.current?.scrollTo({ top: mainScrollRef.current.scrollHeight, behavior: 'smooth' })}
+                className="p-2.5 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
+                title="Scroll to Bottom"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
             </div>
           )}
 
