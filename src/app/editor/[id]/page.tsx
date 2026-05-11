@@ -872,7 +872,11 @@ export default function EditorPage() {
 
           <div
             className="max-w-4xl mx-auto px-4 sm:px-8 py-8 w-full transition-transform duration-100 origin-top"
-
+            style={{
+              transform: `scale(${zoom})`,
+              transformOrigin: "top center",
+            }}
+          >
             <div
               ref={printRef}
               className="w-full flex flex-col items-center printable-content"
