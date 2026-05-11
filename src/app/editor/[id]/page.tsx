@@ -125,20 +125,29 @@ export default function EditorPage() {
   const printRef = useRef<HTMLDivElement>(null);
   const [scrollBtnLeft, setScrollBtnLeft] = useState(8);
 
-  // Measure where the script's left edge is so we can pin the scroll buttons just beside it
+  // Measure the actual script page card to pin the scroll buttons just beside it
   useEffect(() => {
     const measure = () => {
-      if (printRef.current) {
-        const rect = printRef.current.getBoundingClientRect();
-        // 48 = button width (40px) + 8px gap
+      // Query the rendered .script-page element (the physical 8.5"×11" card)
+      const scriptPage = document.querySelector('.script-page') as HTMLElement | null;
+      const target = scriptPage ?? printRef.current;
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        // button is 40px wide, leave 8px gap → offset = 48px
         setScrollBtnLeft(Math.max(8, rect.left - 48));
       }
     };
+    // Measure immediately and again after the DOM has fully painted
     measure();
-    const timer = setTimeout(measure, 200); // re-measure after paint
+    const t1 = setTimeout(measure, 100);
+    const t2 = setTimeout(measure, 500);
     window.addEventListener('resize', measure);
-    return () => { window.removeEventListener('resize', measure); clearTimeout(timer); };
-  }, [showNav, zoom]); // re-measure when nav panel toggles or zoom changes
+    return () => {
+      window.removeEventListener('resize', measure);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [showNav, zoom]); // re-run when nav panel or zoom level changes
 
   // Zoom to cursor on scale change
   useEffect(() => {
