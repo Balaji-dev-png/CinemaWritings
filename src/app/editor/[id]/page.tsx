@@ -18,7 +18,6 @@ import {
   getScriptById,
   updateScript,
   exportToFountain,
-  importFromFountain,
   Script,
 } from "@/lib/storage";
 import { useTheme } from "next-themes";
@@ -46,7 +45,6 @@ import {
   Sun,
   Moon,
   LayoutGrid,
-  Upload,
   Sparkles,
   ZoomIn,
   ZoomOut,
@@ -54,6 +52,8 @@ import {
   Plus,
   Eraser,
   Layers,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 
 export default function EditorPage() {
@@ -120,6 +120,7 @@ export default function EditorPage() {
   const [showPgPopover, setShowPgPopover] = useState(false);
   const pgPopoverRef = useRef<HTMLDivElement>(null);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<HTMLElement>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -131,12 +132,28 @@ export default function EditorPage() {
   }, [zoom, editorInstance]);
 
   // Metadata state for sync
-  const [metadata, setMetadata] = useState({
+  const [metadata, setMetadata] = useState<{
+    author: string;
+    contact: string;
+    logline: string;
+    synopsis: string;
+    writtenByPrefix: string;
+    copyright?: string;
+    personalInfo?: {
+      phone: string;
+      email: string;
+      address: string;
+      website: string;
+      agency: string;
+    };
+  }>({
     author: "",
     contact: "",
     logline: "",
     synopsis: "",
     writtenByPrefix: "written by",
+    copyright: "",
+    personalInfo: { phone: "", email: "", address: "", website: "", agency: "" },
   });
 
   // Stats from editor
@@ -161,6 +178,8 @@ export default function EditorPage() {
                 logline: found.meta.logline || "",
                 synopsis: found.meta.synopsis || "",
                 writtenByPrefix: found.meta.writtenByPrefix || "written by",
+                copyright: (found.meta as any).copyright || "",
+                personalInfo: (found.meta as any).personalInfo || { phone: "", email: "", address: "", website: "", agency: "" },
               });
             }
             if (found.paperColor) setDocBgColor(found.paperColor);
@@ -427,49 +446,7 @@ export default function EditorPage() {
     setExportError("");
 
     try {
-      const titlePageEl = document.querySelector('.title-page-editor') as HTMLElement;
-      const titlePageHTML = titlePageEl?.innerHTML || '';
-      const scriptBodyHTML = editorInstance?.getHTML() || script.content;
-
-      const token = await getAccessToken();
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-      
-      const response = await fetch(`${API_BASE}/scripts/${script.id}/export/pdf/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          title_page_html: titlePageHTML,
-          script_body_html: scriptBodyHTML,
-          title: script.title,
-          author: metadata.author,
-          written_by_prefix: metadata.writtenByPrefix,
-          contact: metadata.contact,
-          logline: metadata.logline,
-          synopsis: metadata.synopsis,
-          font_family: docFont || 'Courier Prime',
-          font_size: docFontSize || 12,
-          paper_color: docBgColor || '#ffffff',
-          text_color: docTextColor || '#000000',
-          title_page_bg: '#1a1a1a',
-          title_color: '#c9a84c',
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF. Please try again.');
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${(script.title || 'script').replace(/[^a-zA-Z0-9 ]/g, "").trim()}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      
+      await exportToPdf(script.title);
     } catch (err: any) {
       console.error("[PDF Export Error]:", err);
       setExportError(err.message || "Export failed. Please try again.");
@@ -484,31 +461,6 @@ export default function EditorPage() {
     window.print();
   };
 
-  const handleImport = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".fountain,.docx";
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      
-      let text = "";
-      if (file.name.endsWith(".docx")) {
-        const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        text = result.value;
-      } else {
-        text = await file.text();
-      }
-      
-      const html = importFromFountain(text);
-      updateScript(script!.id, { content: html });
-      if (editorInstance) {
-        editorInstance.commands.setContent(html);
-      }
-    };
-    input.click();
-  };
 
   if (!script) {
     return (
@@ -743,14 +695,7 @@ export default function EditorPage() {
                 </div>
               )}
             </div>
-            <button
-              onClick={handleImport}
-              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-              title="Import (.fountain, .docx)"
-            >
-              <Upload className="w-3.5 h-3.5" />
-            </button>
-            <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-1" />
+
             <button
               onClick={() => setShowSettings(!showSettings)}
               className={`p-1.5 rounded-lg transition-all ${showSettings ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
@@ -898,8 +843,8 @@ export default function EditorPage() {
           </aside>
         )}
 
-        {/* Center: Editor */}
-        <main className="flex-1 overflow-y-auto no-scrollbar pb-32 relative pt-2">
+        {/* Center: Editor — isolation:isolate prevents Director's Suite cards bleeding in (Bug 4) */}
+        <main ref={mainScrollRef} className="flex-1 overflow-y-auto no-scrollbar pb-32 relative pt-2 scroll-smooth" style={{ isolation: "isolate" }}>
           <div
             className="max-w-4xl mx-auto px-4 sm:px-8 py-8 w-full transition-transform duration-100 origin-top"
             style={{
@@ -941,6 +886,26 @@ export default function EditorPage() {
             </div>
           </div>
         </main>
+
+        {/* Floating Scroll Controls */}
+        {!focusMode && (
+          <div className="absolute right-6 bottom-6 flex flex-col gap-2 z-50">
+            <button
+              onClick={() => mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="p-2.5 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
+              title="Scroll to Top"
+            >
+              <ChevronUp className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => mainScrollRef.current?.scrollTo({ top: mainScrollRef.current.scrollHeight, behavior: 'smooth' })}
+              className="p-2.5 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
+              title="Scroll to Bottom"
+            >
+              <ChevronDown className="w-5 h-5" />
+            </button>
+          </div>
+        )}
 
         {/* Right: Analytics Panel */}
         {showAnalytics && !focusMode && (

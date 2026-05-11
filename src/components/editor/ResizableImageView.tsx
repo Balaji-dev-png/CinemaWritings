@@ -93,9 +93,10 @@ export default function ResizableImageView({ node, updateAttributes, selected }:
           }}
         />
 
-        {/* ── Resize handle — bottom right ── */}
+        {/* ── Resize handle — bottom right — hidden in PDF ── */}
         {selected && (
           <div
+            data-no-print="true"
             onPointerDown={onResizePointerDown}
             title="Drag to resize"
             style={{
@@ -113,9 +114,10 @@ export default function ResizableImageView({ node, updateAttributes, selected }:
           />
         )}
 
-        {/* ── Floating controls (alignment + width) — shown when selected ── */}
+        {/* ── Floating controls — hidden in PDF ── */}
         {selected && (
           <div
+            data-no-print="true"
             style={{
               position: "absolute",
               top: -42,
