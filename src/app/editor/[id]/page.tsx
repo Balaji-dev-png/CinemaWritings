@@ -123,6 +123,22 @@ export default function EditorPage() {
   const mainScrollRef = useRef<HTMLElement>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
+  const [scrollBtnLeft, setScrollBtnLeft] = useState(8);
+
+  // Measure where the script's left edge is so we can pin the scroll buttons just beside it
+  useEffect(() => {
+    const measure = () => {
+      if (printRef.current) {
+        const rect = printRef.current.getBoundingClientRect();
+        // 48 = button width (40px) + 8px gap
+        setScrollBtnLeft(Math.max(8, rect.left - 48));
+      }
+    };
+    measure();
+    const timer = setTimeout(measure, 200); // re-measure after paint
+    window.addEventListener('resize', measure);
+    return () => { window.removeEventListener('resize', measure); clearTimeout(timer); };
+  }, [showNav, zoom]); // re-measure when nav panel toggles or zoom changes
 
   // Zoom to cursor on scale change
   useEffect(() => {
@@ -848,7 +864,10 @@ export default function EditorPage() {
           
           {/* Floating Scroll Controls — fixed to viewport, always visible */}
           {!focusMode && (
-            <div className="fixed left-4 top-1/2 -translate-y-1/2 z-[200] flex flex-col gap-2">
+            <div
+              className="fixed top-1/2 -translate-y-1/2 z-[200] flex flex-col gap-2 transition-[left] duration-300"
+              style={{ left: scrollBtnLeft }}
+            >
               <button
                 onClick={() => mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
                 className="p-2.5 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
