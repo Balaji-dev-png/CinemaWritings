@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { History as HistoryIcon, X, Plus, PenTool, Layers } from "lucide-react";
-import { getScripts, createScript, deleteScript, Script, HistoryEvent } from "@/lib/storage";
-import { isAuthenticated, logout } from "@/lib/auth";
+import { History as HistoryIcon, X, Plus, PenTool, Layers, Upload } from "lucide-react";
+import { getScripts, createScript, deleteScript, Script, HistoryEvent, updateScript } from "@/lib/storage";
+import { isAuthenticated } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { AccountMenu } from "@/components/ui/AccountMenu";
 import { useLoadingState } from "@/hooks/useLoadingState";
 import { Loader2 } from "lucide-react";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
+import { importScriptFile } from "@/lib/importScript";
 
 // Pastel gradient arrays matching the image's vibrant but soft card styles
 const PASTEL_GRADIENTS = [
@@ -95,6 +96,49 @@ export default function Dashboard() {
     }
   };
 
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = () => {
+    importInputRef.current?.click();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    startCreating([
+      "Reading your script...",
+      "Parsing content...",
+      "Creating script...",
+      "Almost ready..."
+    ]);
+
+    try {
+      // All parsing is client-side — PDF, FDX, Celtx, DOCX, Fountain, TXT
+      const html = await importScriptFile(file);
+
+      // Use filename (without extension) as the script title
+      const rawName = file.name.replace(/\.(pdf|fdx|celtx|docx|fountain|highland|txt|md|fadein)$/i, "").trim();
+      const title = rawName || "Imported Script";
+
+      // Single round-trip: create + save content
+      const newScript = await createScript(title, html);
+
+      router.push(`/editor/${newScript.id}`);
+    } catch (err: any) {
+      console.error("Import failed:", err);
+      stopCreating();
+      if (err.message === "SCANNED_PDF") {
+        setCreateError("This PDF appears to be a scanned image with no readable text. Scanned documents are not supported.");
+      } else if (err.message === "CORRUPTED_XML") {
+        setCreateError("This file appears to be corrupted or is not a valid screenplay XML format.");
+      } else {
+        setCreateError("Import failed. Please check the file and try again.");
+      }
+    }
+  };
+
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     await deleteScript(id);
@@ -159,18 +203,44 @@ export default function Dashboard() {
           className="flex justify-center mt-8 sm:mt-12 mb-8 sm:mb-16 relative z-10"
         >
           {authChecked && authenticated ? (
-            <button 
-              onClick={() => setShowNewScriptModal(true)}
-              className="group flex items-center gap-3 bg-[#1c1d20] dark:bg-zinc-100 hover:bg-black dark:hover:bg-white text-white dark:text-black px-8 py-4 rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95"
-            >
-              <div className="grid grid-cols-2 gap-0.5 opacity-80 group-hover:opacity-100">
-                <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
-                <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
-                <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
-                <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
-              </div>
-              <span className="font-medium mr-2">New Script</span>
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Hidden file input for import */}
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".fountain,.fdx,.celtx,.pdf,.docx,.txt,.highland,.fadein,.md"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+              {/* Import Script button */}
+              <button
+                onClick={handleImport}
+                disabled={isCreating}
+                className="group flex items-center gap-2 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 px-6 py-4 rounded-full shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                title="Import script — supports PDF, Final Draft (.fdx), Celtx, Fountain, DOCX, TXT"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="font-medium">Import Script</span>
+              </button>
+              {/* New Script button */}
+              <button
+                onClick={() => setShowNewScriptModal(true)}
+                disabled={isCreating}
+                className="group flex items-center gap-3 bg-[#1c1d20] dark:bg-zinc-100 hover:bg-black dark:hover:bg-white text-white dark:text-black px-8 py-4 rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              >
+                {isCreating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <div className="grid grid-cols-2 gap-0.5 opacity-80 group-hover:opacity-100">
+                    <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
+                    <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
+                    <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
+                    <span className="w-1.5 h-1.5 rounded-sm bg-white dark:bg-black" />
+                  </div>
+                )}
+                <span className="font-medium mr-2">{isCreating ? (createMsg || "Working...") : "New Script"}</span>
+              </button>
+            </div>
           ) : authChecked && !authenticated ? (
             <div className="flex gap-4">
               <button 

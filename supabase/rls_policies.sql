@@ -76,6 +76,11 @@ CREATE POLICY "Users can delete their own scripts"
   USING (auth.uid() = user_id);
 
 -- ─── 4. Post-Setup ────────────────────────────────────────────────────────
+-- Add personal_info column if it doesn't exist (safe to run multiple times)
+ALTER TABLE public.scripts ADD COLUMN IF NOT EXISTS personal_info jsonb DEFAULT '{}'::jsonb;
+-- Add copyright column if it doesn't exist
+ALTER TABLE public.scripts ADD COLUMN IF NOT EXISTS copyright text DEFAULT '';
+
 -- Force PostgREST to refresh the schema cache
 NOTIFY pgrst, 'reload schema';
 

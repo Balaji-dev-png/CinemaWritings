@@ -9,6 +9,9 @@
 ## Features
 
 ### Editor
+- **Universal Screenplay Import Engine** — Import PDF, FDX, Celtx, DOCX, and Fountain files instantaneously entirely on the client-side.
+  - **Semantic Spatial Mapping**: Uses X-axis coordinate heuristics for PDF parsing, perfectly replicating original formatting.
+  - **Smart Height Estimation**: Bypasses UI layout thrashing with pre-calculated, mathematically perfect pagination limits, guaranteeing zero-latency load times for massive documents.
 - **TipTap-powered rich editor** with native bold, italic, and underline support
 - **Screenplay element types** via keyboard shortcuts or the floating toolbar:
   - Scene Heading (`Ctrl+1`)
