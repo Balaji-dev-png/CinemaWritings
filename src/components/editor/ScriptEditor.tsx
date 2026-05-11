@@ -334,14 +334,20 @@ export const ScriptEditor = ({
     
     const toolbarWidth = toolbarOrientation === "horizontal" ? 300 : 60;
     
-    // Default: Pin to the right edge of the window
-    let x = canvasWidth - toolbarWidth - 16;
-    const y = 80;
-
-    // Boundary check: if it goes off-screen, pin to right edge
+    // Default: Pin to the right edge of the script page
+    const pageWidth = 816; // WGA Standard Width
+    const canvasWidth = window.innerWidth;
+    
+    // The script is centered. Its right edge is:
+    // center of screen + half of script width + 16px padding
+    let x = (canvasWidth / 2) + (pageWidth / 2) + 16;
+    
+    // If it goes off-screen, pin to the actual right edge of the window
     if (x + toolbarWidth > canvasWidth - 16) {
       x = canvasWidth - toolbarWidth - 16;
     }
+    
+    const y = 80;
 
     return { x, y };
   }, [toolbarOrientation]);
