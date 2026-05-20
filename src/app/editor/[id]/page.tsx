@@ -54,7 +54,24 @@ import {
   Layers,
   ChevronUp,
   ChevronDown,
+  Home,
 } from "lucide-react";
+
+const FaceWithCap = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Baseball Cap */}
+    <path d="M5 10h14v2H5z" />
+    <path d="M7 10V8a5 5 0 0 1 10 0v2" />
+    <path d="M19 10h3" /> {/* Brim */}
+    {/* Face */}
+    <path d="M7 12v2a5 5 0 0 0 10 0v-2" />
+    {/* Eyes */}
+    <circle cx="10" cy="14" r="1" fill="currentColor" stroke="none" />
+    <circle cx="14" cy="14" r="1" fill="currentColor" stroke="none" />
+    {/* Mouth */}
+    <path d="M11 17h2" />
+  </svg>
+);
 
 export default function EditorPage() {
   const params = useParams();
@@ -513,11 +530,11 @@ export default function EditorPage() {
         <header className="anim-slide-1 sticky top-0 flex items-center justify-start gap-8 px-4 py-3 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-200/60 dark:border-zinc-800 z-50 shrink-0 overflow-visible no-scrollbar">
           {/* 1. Dashboard Link */}
           <button
-            onClick={() => navigateTo("/", "Going back to dashboard...")}
+            onClick={() => navigateTo("/", "Going Home...")}
             className="flex items-center gap-1.5 px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all shrink-0"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="font-medium">Dashboard</span>
+            <Home className="w-3.5 h-3.5" />
+            <span className="font-medium">Home</span>
           </button>
 
           {/* 2. View Switchers */}
@@ -548,7 +565,7 @@ export default function EditorPage() {
               className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
               title="Director's Suite"
             >
-              <Sparkles className="w-3.5 h-3.5 group-hover:text-blue-400 transition-colors" />
+              <FaceWithCap className="w-4 h-4 group-hover:text-blue-400 transition-colors" />
             </button>
             <button
               onClick={() => navigateTo(`/storyboard/${params.id}`, "Opening Storyboard...")}

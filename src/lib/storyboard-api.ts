@@ -1,8 +1,26 @@
 /**
- * Storyboard API client — LocalStorage implementation for Netlify production
- * This prevents the 'Failed to load storyboard' error by storing data locally
- * until a Supabase schema is finalized for storyboards.
+ * Storyboard API client — Django backend implementation.
+ *
+ * All storyboard data is now persisted to the Django backend:
+ *   GET  /api/storyboards/{script_pk}/             → get or create storyboard
+ *   PATCH /api/storyboards/{script_pk}/            → update title / aspect_ratio
+ *   GET  /api/storyboards/{storyboard_pk}/cards/   → list cards
+ *   POST /api/storyboards/{storyboard_pk}/cards/   → create card
+ *   PATCH /api/storyboards/{storyboard_pk}/cards/{pk}/ → update card
+ *   DELETE /api/storyboards/{storyboard_pk}/cards/{pk}/ → delete card
+ *   POST /api/storyboards/{storyboard_pk}/cards/reorder/ → reorder
+ *   DELETE /api/storyboards/{storyboard_pk}/cards/bulk_delete/ → bulk delete
+ *
+ * NOTE: getStoryboard(scriptId) returns a Storyboard whose `id` is the
+ * Django storyboard UUID — NOT the scriptId. Callers must pass storyboard.id
+ * to all card-level operations.
  */
+
+import { getAccessToken, logout } from "./auth";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface Connector {
   id: string;
@@ -23,18 +41,19 @@ export interface SceneCard {
   created_at: string;
   updated_at: string;
   // Spatial properties for infinite canvas
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  aspect_ratio?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  aspect_ratio: string;
 }
 
 export interface Storyboard {
+  /** Django storyboard UUID — NOT the scriptId. Use this for card operations. */
   id: string;
   script_title: string;
   title: string;
-  aspect_ratio: string; // default global fallback
+  aspect_ratio: string;
   cards: SceneCard[];
   connectors?: Connector[];
   created_at: string;
@@ -77,111 +96,198 @@ export const CAMERA_MOVEMENTS: Record<string, string> = {
   whip: "Whip Pan",
 };
 
-const storageKey = (id: string) => `storyboard_${id}`;
+// ─── Fetch helper ────────────────────────────────────────────────────────────
 
+async function sbFetch<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = await getAccessToken();
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const url = `${API_BASE}${path}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+    ...(options.headers as Record<string, string>),
+  };
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401) {
+    throw new Error("Session expired or the server is unavailable.");
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "(no body)");
+    console.error(`[storyboard-api] ${options.method || "GET"} ${path} → ${res.status}:`, text);
+    throw new Error("Storyboard request failed.");
+  }
+
+  if (res.status === 204) return undefined as unknown as T;
+  return res.json();
+}
+
+// ─── Storyboard CRUD ─────────────────────────────────────────────────────────
+
+/**
+ * Get or create the storyboard for a script.
+ * Uses script_pk to look up (or auto-create) the storyboard.
+ * Returns the storyboard with its own Django UUID as `id`.
+ */
 export async function getStoryboard(scriptId: string): Promise<Storyboard> {
-  if (typeof window !== "undefined") {
-    const raw = localStorage.getItem(storageKey(scriptId));
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        parsed.cards = parsed.cards || [];
-        parsed.connectors = parsed.connectors || [];
-        return parsed;
-      } catch (e) {
-        console.error("Failed to parse storyboard from local storage", e);
-      }
-    }
-  }
-  
-  const initial: Storyboard = {
-    id: scriptId,
-    script_title: "Untitled",
-    title: "Storyboard",
-    aspect_ratio: "1.78:1",
-    cards: [],
+  const data = await sbFetch<any>(`/storyboards/${scriptId}/`);
+  return {
+    id: data.id,
+    script_title: data.script_title || "Untitled",
+    title: data.title || "Storyboard",
+    aspect_ratio: data.aspect_ratio || "1.78:1",
+    cards: (data.cards || []).map(normalizeCard),
     connectors: [],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: data.created_at,
+    updated_at: data.updated_at,
   };
-  
-  if (typeof window !== "undefined") {
-    localStorage.setItem(storageKey(scriptId), JSON.stringify(initial));
-  }
-  
-  return initial;
 }
 
-export async function updateStoryboard(scriptId: string, data: Partial<Storyboard>): Promise<Storyboard> {
-  const sb = await getStoryboard(scriptId);
-  const updated: Storyboard = { ...sb, ...data, updated_at: new Date().toISOString() };
-  if (typeof window !== "undefined") {
-    localStorage.setItem(storageKey(scriptId), JSON.stringify(updated));
+/**
+ * Update storyboard metadata (title, aspect_ratio).
+ * Uses the `scriptId` because the backend PATCH endpoint is keyed by script_pk.
+ */
+export async function updateStoryboard(
+  scriptId: string,
+  data: Partial<Storyboard>
+): Promise<Storyboard> {
+  const payload: Record<string, unknown> = {};
+  if (data.title !== undefined) payload.title = data.title;
+  if (data.aspect_ratio !== undefined) payload.aspect_ratio = data.aspect_ratio;
+  if (data.script_title !== undefined) {
+    // script_title is read-only on the backend; skip silently
   }
-  return updated;
-}
 
-export async function createSceneCard(storyboardId: string, data: Partial<SceneCard> = {}): Promise<SceneCard> {
-  const sb = await getStoryboard(storyboardId);
-  sb.cards = sb.cards || [];
-  const newCard: SceneCard = {
-    id: (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2, 9),
-    order: sb.cards.length,
-    shot_number: "",
-    scene_heading: "",
-    shot_type: "MS",
-    camera_movement: "static",
-    lens: "",
-    technical_notes: "",
-    image_url: "",
-    x: 0,
-    y: 0,
-    width: 320,
-    height: 180,
-    aspect_ratio: sb.aspect_ratio || "1.78:1",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    ...data,
+  const updated = await sbFetch<any>(`/storyboards/${scriptId}/`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+  return {
+    id: updated.id,
+    script_title: updated.script_title || "Untitled",
+    title: updated.title || "Storyboard",
+    aspect_ratio: updated.aspect_ratio || "1.78:1",
+    cards: (updated.cards || []).map(normalizeCard),
+    connectors: [],
+    created_at: updated.created_at,
+    updated_at: updated.updated_at,
   };
-  sb.cards.push(newCard);
-  await updateStoryboard(storyboardId, { cards: sb.cards });
-  return newCard;
 }
 
-export async function updateSceneCard(storyboardId: string, cardId: string, data: Partial<SceneCard>): Promise<SceneCard> {
-  const sb = await getStoryboard(storyboardId);
-  const idx = sb.cards.findIndex(c => c.id === cardId);
-  if (idx === -1) throw new Error("Card not found");
-  
-  sb.cards[idx] = { ...sb.cards[idx], ...data, updated_at: new Date().toISOString() };
-  await updateStoryboard(storyboardId, { cards: sb.cards });
-  return sb.cards[idx];
+// ─── Scene Card CRUD ─────────────────────────────────────────────────────────
+
+/**
+ * Create a new scene card in the storyboard.
+ * @param storyboardId — The Django storyboard UUID (storyboard.id)
+ */
+export async function createSceneCard(
+  storyboardId: string,
+  data: Partial<SceneCard> = {}
+): Promise<SceneCard> {
+  const payload = {
+    shot_number: data.shot_number ?? "",
+    scene_heading: data.scene_heading ?? "",
+    shot_type: data.shot_type ?? "MS",
+    camera_movement: data.camera_movement ?? "static",
+    lens: data.lens ?? "",
+    technical_notes: data.technical_notes ?? "",
+    image_url: data.image_url ?? "",
+    x: data.x ?? 0,
+    y: data.y ?? 0,
+    width: data.width ?? 320,
+    height: data.height ?? 500,
+    aspect_ratio: data.aspect_ratio ?? "1.78:1",
+  };
+  const card = await sbFetch<any>(`/storyboards/${storyboardId}/cards/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return normalizeCard(card);
 }
 
-export async function deleteSceneCard(storyboardId: string, cardId: string): Promise<void> {
-  const sb = await getStoryboard(storyboardId);
-  sb.cards = sb.cards.filter(c => c.id !== cardId);
-  await updateStoryboard(storyboardId, { cards: sb.cards });
+/**
+ * Update a scene card.
+ * @param storyboardId — The Django storyboard UUID (storyboard.id)
+ * @param cardId — The card UUID
+ */
+export async function updateSceneCard(
+  storyboardId: string,
+  cardId: string,
+  data: Partial<SceneCard>
+): Promise<SceneCard> {
+  const card = await sbFetch<any>(
+    `/storyboards/${storyboardId}/cards/${cardId}/`,
+    { method: "PATCH", body: JSON.stringify(data) }
+  );
+  return normalizeCard(card);
 }
 
-export async function reorderSceneCards(storyboardId: string, orderedIds: string[]): Promise<void> {
-  const sb = await getStoryboard(storyboardId);
-  const cardsMap = new Map(sb.cards.map(c => [c.id, c]));
-  
-  sb.cards = orderedIds.map((id, index) => {
-    const card = cardsMap.get(id);
-    if (card) {
-      card.order = index;
-      return card;
-    }
-    return null;
-  }).filter(Boolean) as SceneCard[];
-  
-  await updateStoryboard(storyboardId, { cards: sb.cards });
+/**
+ * Delete a single scene card.
+ */
+export async function deleteSceneCard(
+  storyboardId: string,
+  cardId: string
+): Promise<void> {
+  await sbFetch<void>(`/storyboards/${storyboardId}/cards/${cardId}/`, {
+    method: "DELETE",
+  });
 }
 
-export async function bulkDeleteSceneCards(storyboardId: string, ids: string[]): Promise<void> {
-  const sb = await getStoryboard(storyboardId);
-  sb.cards = sb.cards.filter(c => !ids.includes(c.id));
-  await updateStoryboard(storyboardId, { cards: sb.cards });
+/**
+ * Reorder cards by providing an ordered array of card UUIDs.
+ */
+export async function reorderSceneCards(
+  storyboardId: string,
+  orderedIds: string[]
+): Promise<void> {
+  await sbFetch<void>(`/storyboards/${storyboardId}/cards/reorder/`, {
+    method: "POST",
+    body: JSON.stringify({ order: orderedIds }),
+  });
+}
+
+/**
+ * Bulk delete scene cards by ID.
+ */
+export async function bulkDeleteSceneCards(
+  storyboardId: string,
+  ids: string[]
+): Promise<void> {
+  await sbFetch<void>(`/storyboards/${storyboardId}/cards/bulk_delete/`, {
+    method: "DELETE",
+    body: JSON.stringify({ ids }),
+  });
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function normalizeCard(card: any): SceneCard {
+  return {
+    id: card.id,
+    order: card.order ?? 0,
+    shot_number: card.shot_number ?? "",
+    scene_heading: card.scene_heading ?? "",
+    shot_type: card.shot_type ?? "MS",
+    camera_movement: card.camera_movement ?? "static",
+    lens: card.lens ?? "",
+    technical_notes: card.technical_notes ?? "",
+    image_url: card.image_url ?? "",
+    x: card.x ?? 0,
+    y: card.y ?? 0,
+    width: card.width ?? 320,
+    height: card.height ?? 500,
+    aspect_ratio: card.aspect_ratio ?? "1.78:1",
+    created_at: card.created_at ?? "",
+    updated_at: card.updated_at ?? "",
+  };
 }

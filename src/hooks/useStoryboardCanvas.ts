@@ -7,7 +7,7 @@ export interface StoryboardCanvasState {
   connectors: Connector[];
 }
 
-export function useStoryboardCanvas(storyboard: Storyboard) {
+export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
   const [state, setState] = useState<StoryboardCanvasState>({
     cards: storyboard.cards || [],
     connectors: storyboard.connectors || [],
@@ -29,15 +29,15 @@ export function useStoryboardCanvas(storyboard: Storyboard) {
         const next = updater(prev);
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
-          updateStoryboard(storyboard.id, {
+          updateStoryboard(scriptId, {
             cards: next.cards,
             connectors: next.connectors,
-          });
+          }).catch(console.error);
         }, 500);
         return next;
       });
     },
-    [storyboard.id]
+    [scriptId]
   );
 
   const addCard = useCallback(

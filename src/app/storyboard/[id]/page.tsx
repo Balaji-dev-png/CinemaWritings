@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Film, Download, Loader2, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Film, Download, Loader2, LayoutGrid, Home } from "lucide-react";
 import { getStoryboard, Storyboard } from "@/lib/storyboard-api";
 import { StoryboardView } from "@/components/storyboard/StoryboardView";
 import { isAuthenticated } from "@/lib/auth";
@@ -49,11 +49,21 @@ export default function StoryboardPage() {
       {/* Top Header */}
       <header className="flex items-center gap-4 px-6 py-3 shrink-0 bg-white dark:bg-[#111] border-b border-zinc-200 dark:border-[#222]" style={{ position: "sticky", top: 0, zIndex: 40 }}>
         <button
+          onClick={() => navigateTo(`/`, "Going Home...")}
+          className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors text-sm"
+        >
+          <Home className="w-4 h-4" />
+          Home
+        </button>
+
+        <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800" />
+        
+        <button
           onClick={() => navigateTo(`/editor/${scriptId}`, "Back to Editor...")}
           className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Editor
+          Editor
         </button>
 
         <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800" />
@@ -76,7 +86,7 @@ export default function StoryboardPage() {
               onChange={(e) => setStoryboard({ ...storyboard, script_title: e.target.value })}
               onBlur={async () => {
                 if (storyboard) {
-                  await import("@/lib/storyboard-api").then((m) => m.updateStoryboard(storyboard.id, { script_title: storyboard.script_title }));
+                  await import("@/lib/storyboard-api").then((m) => m.updateStoryboard(scriptId, { script_title: storyboard.script_title }));
                 }
               }}
               placeholder="Storyboard Name"

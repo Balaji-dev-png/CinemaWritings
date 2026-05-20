@@ -1,6 +1,22 @@
 "use client";
 import type { Stroke } from "@/hooks/useDrawing";
 
+const FaceWithCap = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Baseball Cap */}
+    <path d="M5 10h14v2H5z" />
+    <path d="M7 10V8a5 5 0 0 1 10 0v2" />
+    <path d="M19 10h3" /> {/* Brim */}
+    {/* Face */}
+    <path d="M7 12v2a5 5 0 0 0 10 0v-2" />
+    {/* Eyes */}
+    <circle cx="10" cy="14" r="1" fill="currentColor" stroke="none" />
+    <circle cx="14" cy="14" r="1" fill="currentColor" stroke="none" />
+    {/* Mouth */}
+    <path d="M11 17h2" />
+  </svg>
+);
+
 interface Props {
   onAddIdea: () => void;
   onAddShot: () => void;
@@ -44,8 +60,13 @@ export function SuiteToolbar({
     >
       {/* Logo / Title */}
       <div className="px-5 py-4 border-b border-zinc-200 dark:border-[#222]">
-        <div className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">Director&apos;s Suite</div>
-        <div className="text-sm font-bold text-zinc-900 dark:text-white truncate">{scriptTitle || "Untitled"}</div>
+        <div className="flex items-center gap-2 mb-1.5">
+          <div className="w-6 h-6 bg-black dark:bg-[#c9a84c] rounded flex items-center justify-center shrink-0">
+             <FaceWithCap className="w-4 h-4 text-white dark:text-black" />
+          </div>
+          <span className="font-bold text-sm tracking-widest uppercase text-zinc-900 dark:text-white">Director&apos;s Suite</span>
+        </div>
+        <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{scriptTitle || "Untitled"}</div>
       </div>
 
       {/* Add Elements */}

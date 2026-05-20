@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Key, CheckCircle, AlertCircle } from "lucide-react";
+import { X, Key, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { supabase } from "@/lib/supabase";
 
@@ -15,6 +15,9 @@ export const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProp
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [error, setError] = useState<{ current?: string; new?: string; confirm?: string; general?: string }>({});
   const [success, setSuccess] = useState(false);
@@ -134,45 +137,69 @@ export const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProp
                     </div>
                   )}
 
-                  <div>
+                  <div className="relative">
                     <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
                       Current Password
                     </label>
                     <input
-                      type="password"
+                      type={showCurrentPassword ? "text" : "password"}
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       disabled={isLoading}
-                      className={`w-full bg-[#0a0a0a] border ${error.current ? 'border-red-500' : 'border-[#2a2a2a]'} rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a84c] transition-colors`}
+                      className={`w-full bg-[#0a0a0a] border ${error.current ? 'border-red-500' : 'border-[#2a2a2a]'} rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a84c] transition-colors pr-10`}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-3 top-[32px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                     {error.current && <p className="text-xs text-red-400 mt-1.5">{error.current}</p>}
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
                       New Password
                     </label>
                     <input
-                      type="password"
+                      type={showNewPassword ? "text" : "password"}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       disabled={isLoading}
-                      className={`w-full bg-[#0a0a0a] border ${error.new ? 'border-red-500' : 'border-[#2a2a2a]'} rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a84c] transition-colors`}
+                      className={`w-full bg-[#0a0a0a] border ${error.new ? 'border-red-500' : 'border-[#2a2a2a]'} rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a84c] transition-colors pr-10`}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-[32px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                     {error.new && <p className="text-xs text-red-400 mt-1.5">{error.new}</p>}
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-1.5">
                       Confirm New Password
                     </label>
                     <input
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       disabled={isLoading}
-                      className={`w-full bg-[#0a0a0a] border ${error.confirm ? 'border-red-500' : 'border-[#2a2a2a]'} rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a84c] transition-colors`}
+                      className={`w-full bg-[#0a0a0a] border ${error.confirm ? 'border-red-500' : 'border-[#2a2a2a]'} rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a84c] transition-colors pr-10`}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-[32px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                     {error.confirm && <p className="text-xs text-red-400 mt-1.5">{error.confirm}</p>}
                   </div>
 

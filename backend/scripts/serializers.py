@@ -127,6 +127,9 @@ class ScriptDetailSerializer(serializers.ModelSerializer):
             "text_color",
             "font_size",
             "tags",
+            "workspace_edges",
+            "canvas_viewport",
+            "drawing_strokes",
             "created_at",
             "updated_at",
             "scenes",
@@ -191,6 +194,9 @@ class ScriptCreateSerializer(serializers.ModelSerializer):
             "text_color",
             "font_size",
             "tags",
+            "workspace_edges",
+            "canvas_viewport",
+            "drawing_strokes",
             "created_at",
             "updated_at",
         ]
@@ -228,6 +234,12 @@ class SceneCardSerializer(serializers.ModelSerializer):
             "lens",
             "technical_notes",
             "image_url",
+            # Infinite canvas spatial fields
+            "x",
+            "y",
+            "width",
+            "height",
+            "aspect_ratio",
             "created_at",
             "updated_at",
         ]
