@@ -1,6 +1,6 @@
 "use client";
 import { useState, useCallback, useEffect, useRef } from "react";
-import { apiGetWorkspace, apiSyncWorkspace } from "@/lib/api";
+import { supabaseGetWorkspace, supabaseSyncWorkspace } from "@/lib/suite-supabase";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -58,31 +58,31 @@ export function useSuiteState(scriptId: string) {
     mountedRef.current = true;
     setIsLoading(true);
 
-    apiGetWorkspace(scriptId)
+    supabaseGetWorkspace(scriptId)
       .then(({ assets, edges, viewport, drawing_strokes }) => {
         if (!mountedRef.current) return;
 
         // Reconstruct SuiteElements from WorkspaceAsset rows
         const elements: SuiteElement[] = assets.map((a: any) => ({
           id: a.asset_id || a.id,
-          type: (a.type || a.asset_type || "idea") as SuiteElement["type"],
+          type: (a.asset_type || "idea") as SuiteElement["type"],
           x: a.x ?? 0,
           y: a.y ?? 0,
           width: a.width ?? 240,
           height: a.height ?? 180,
-          data: a.content ?? a,
+          data: a.content ?? {},
         }));
 
         const nextState: SuiteState = {
           elements,
-          connectors: edges,
+          connectors: edges as any[],
           drawingDataUrl: "",
           shotCounter: elements.filter((e) => e.type === "shot").length,
         };
 
         stateRef.current = nextState;
         viewportRef.current = viewport;
-        strokesRef.current = drawing_strokes;
+        strokesRef.current = drawing_strokes as any[];
         setState(nextState);
         setIsLoading(false);
       })
@@ -90,8 +90,6 @@ export function useSuiteState(scriptId: string) {
         console.error("[useSuiteState] Failed to load workspace:", err);
         if (mountedRef.current) {
           setIsLoading(false);
-          // If it was an auth error, apiFetch would have already triggered logout.
-          // For other errors, we can just stop loading.
         }
       });
 
@@ -115,10 +113,10 @@ export function useSuiteState(scriptId: string) {
           height: el.height,
         }));
 
-        await apiSyncWorkspace(scriptId, {
-          assets: elements,
+        await supabaseSyncWorkspace(scriptId, {
+          assets: elements as any,
           edges: stateRef.current.connectors,
-          viewport: viewportRef.current || undefined,
+          viewport: (viewportRef.current as Record<string, unknown> | null) || null,
           drawing_strokes: strokesRef.current,
         });
       } catch (err) {
