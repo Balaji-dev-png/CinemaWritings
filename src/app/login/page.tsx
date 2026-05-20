@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { PenTool, ArrowRight, Clock } from "lucide-react";
+import { PenTool, ArrowRight, Clock, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
@@ -16,6 +16,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -150,18 +151,26 @@ export default function LoginPage() {
             />
           </div>
 
-          <div>
+          <div className="relative">
             <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2">Password</label>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
-              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all"
+              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all pr-12"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               disabled={isInCooldown}
               autoComplete="current-password"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-[38px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
 
           <button

@@ -41,6 +41,14 @@ class Script(models.Model):
     workspace_edges = models.JSONField(
         default=list, blank=True, help_text="Node connections for the Director's Suite"
     )
+    canvas_viewport = models.JSONField(
+        default=dict, blank=True,
+        help_text="Director's Suite viewport state: {zoom, pan: {x, y}}"
+    )
+    drawing_strokes = models.JSONField(
+        default=list, blank=True,
+        help_text="Director's Suite freehand drawing strokes"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -291,6 +299,12 @@ class SceneCard(models.Model):
     lens = models.CharField(max_length=50, default="", blank=True)
     technical_notes = models.TextField(default="", blank=True)
     image_url = models.URLField(max_length=2048, default="", blank=True)
+    # Infinite canvas spatial fields
+    x = models.FloatField(default=0)
+    y = models.FloatField(default=0)
+    width = models.FloatField(default=320)
+    height = models.FloatField(default=500)
+    aspect_ratio = models.CharField(max_length=20, default="1.78:1", blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

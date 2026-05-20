@@ -11,13 +11,34 @@ import { supabase } from "./supabase";
  * be spoofed client-side. Always call getUser() first.
  */
 export const getAccessToken = async (): Promise<string | null> => {
-  // getUser() validates with the Supabase server on every call
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) return null;
+  try {
+    // getUser() validates with the Supabase server on every call
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      if (error.message.includes("Refresh Token Not Found")) {
+        // Clear local state to stop the error noise
+        await supabase.auth.signOut({ scope: "local" });
+        return null;
+      }
+      // Fallback to session token if user validation fails due to network
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token ?? null;
+    }
+    
+    if (!user) {
+      // Fallback to session token if user is null
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token ?? null;
+    }
 
-  // Session token is safe to read after user is verified
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
+    // Session token is safe to read after user is verified
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  } catch (err) {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  }
 };
 
 export const clearTokens = async () => {
@@ -30,7 +51,11 @@ export const clearTokens = async () => {
  */
 export const isAuthenticated = async (): Promise<boolean> => {
   const { data: { user }, error } = await supabase.auth.getUser();
-  return !error && !!user;
+  if (!error && !!user) return true;
+  
+  // Fallback to session if network fails
+  const { data: { session } } = await supabase.auth.getSession();
+  return !!session;
 };
 
 export const logout = async () => {

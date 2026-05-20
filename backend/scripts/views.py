@@ -216,7 +216,7 @@ class ScriptViewSet(viewsets.ModelViewSet):
         """
         POST /api/scripts/{id}/workspace/sync/
         Batch sync workspace assets.
-        Body: { "assets": [...], "edges": [...], "viewport": {...} }
+        Body: { "assets": [...], "edges": [...], "viewport": {...}, "drawing_strokes": [...] }
         """
         script = self.get_object()
         assets_data = request.data.get("assets", [])
@@ -253,12 +253,34 @@ class ScriptViewSet(viewsets.ModelViewSet):
         # Remove assets that are no longer in the payload
         if asset_ids_in_payload:
             script.workspace_assets.exclude(asset_id__in=asset_ids_in_payload).delete()
-            
-        # Save edges to Script model
+        elif not assets_data:
+            # Empty array was explicitly sent — clear all assets
+            script.workspace_assets.all().delete()
+
+        # Collect fields to update on Script
+        script_update_fields = []
+
+        # Save edges (connectors)
         edges_data = request.data.get("edges")
         if edges_data is not None:
             script.workspace_edges = edges_data
-            script.save(update_fields=["workspace_edges", "updated_at"])
+            script_update_fields.append("workspace_edges")
+
+        # Save canvas viewport (zoom/pan)
+        viewport_data = request.data.get("viewport")
+        if viewport_data is not None:
+            script.canvas_viewport = viewport_data
+            script_update_fields.append("canvas_viewport")
+
+        # Save freehand drawing strokes
+        strokes_data = request.data.get("drawing_strokes")
+        if strokes_data is not None:
+            script.drawing_strokes = strokes_data
+            script_update_fields.append("drawing_strokes")
+
+        if script_update_fields:
+            script_update_fields.append("updated_at")
+            script.save(update_fields=script_update_fields)
         
         return Response({"status": "synced", "count": len(asset_ids_in_payload)}, status=status.HTTP_200_OK)
 

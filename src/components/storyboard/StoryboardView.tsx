@@ -26,9 +26,10 @@ export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "
     addConnector,
     removeConnector,
     autoLayout,
-  } = useStoryboardCanvas(storyboard);
+  } = useStoryboardCanvas(scriptId, storyboard);
 
   const [adding, setAdding] = useState(false);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [connectMode, setConnectMode] = useState(false);
   const [connectSource, setConnectSource] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
