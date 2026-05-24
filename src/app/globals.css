@@ -66,8 +66,8 @@ body {
 /* ─── Page Number Label ─── */
 .page-number-label {
   position: absolute;
-  bottom: 0.5in;
-  right: 0.75in;
+  top: 0.5in;
+  right: 1in;
   font-family: var(--font-courier);
   font-size: 10pt;
   color: #999;
