@@ -83,6 +83,7 @@ export function TitlePage({
           {/* Title — always gold on screen */}
           <div
             contentEditable
+            spellCheck={false}
             suppressContentEditableWarning
             onBlur={(e) => onTitleChange(e.currentTarget.textContent || "")}
             className="script-title w-full text-center text-xl md:text-2xl uppercase tracking-widest font-bold bg-transparent border-none focus:outline-none focus:ring-0 underline decoration-1 underline-offset-4"
@@ -94,6 +95,7 @@ export function TitlePage({
           <div className="title-author-block flex flex-col items-center space-y-2 w-full text-center">
             <div
               contentEditable
+              spellCheck={false}
               suppressContentEditableWarning
               onBlur={(e) => onMetaChange({ writtenByPrefix: e.currentTarget.textContent || "" })}
               className="written-by w-full text-center text-sm bg-transparent border-none focus:outline-none focus:ring-0 hover:bg-white/5 rounded transition-colors"
@@ -103,6 +105,7 @@ export function TitlePage({
             </div>
             <div
               contentEditable
+              spellCheck={false}
               suppressContentEditableWarning
               onBlur={(e) => {
                 const newAuthor = e.currentTarget.textContent || "";
@@ -222,6 +225,7 @@ export function TitlePage({
           <div className="relative group">
             <div
               contentEditable
+              spellCheck={false}
               suppressContentEditableWarning
               onBlur={(e) => {
                 const typed = e.currentTarget.textContent?.trim() || "";
