@@ -82,11 +82,19 @@ export const ResizableImage = Node.create({
     return {
       insertImage:
         (attrs) =>
-        ({ commands }) => {
-          return commands.insertContent({
-            type: this.name,
-            attrs,
-          });
+        ({ chain }) => {
+          return chain()
+            .insertContent([
+              {
+                type: this.name,
+                attrs,
+              },
+              {
+                type: "action",
+              },
+            ])
+            .focus()
+            .run();
         },
     };
   },
