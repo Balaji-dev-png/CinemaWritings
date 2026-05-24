@@ -55,6 +55,9 @@ import {
   ChevronUp,
   ChevronDown,
   Home,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react";
 
 const FaceWithCap = ({ className }: { className?: string }) => (
@@ -441,6 +444,37 @@ export default function EditorPage() {
     [script],
   );
 
+  const handleAlign = (alignment: "left" | "center" | "right") => {
+    // 1. Tiptap editor
+    if (editorInstance && editorInstance.isFocused) {
+      if (editorInstance.isActive({ textAlign: alignment })) {
+        editorInstance.chain().focus().unsetTextAlign().run();
+      } else {
+        editorInstance.chain().focus().setTextAlign(alignment).run();
+      }
+      return;
+    }
+
+    // 2. Title page
+    const activeEl = document.activeElement as HTMLElement;
+    if (activeEl && activeEl.getAttribute("data-align-key")) {
+      const alignKey = activeEl.getAttribute("data-align-key") as keyof typeof metadata;
+      
+      let defaultAlign = "center";
+      if (alignKey === "copyrightAlign") defaultAlign = "right";
+
+      const currentAlign = (metadata as any)[alignKey] || defaultAlign;
+      const newAlign = currentAlign === alignment ? defaultAlign : alignment;
+      
+      handleMetaChange({ [alignKey]: newAlign });
+      
+      // Attempt to keep focus on the element
+      setTimeout(() => {
+        activeEl.focus();
+      }, 0);
+    }
+  };
+
   const handleVersionRestore = async (newContent: string) => {
     setShowVersions(false);
     // Reload script data
@@ -609,6 +643,39 @@ export default function EditorPage() {
               >
                 AB
               </button>
+
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleAlign("left");
+                }}
+                className={`p-1.5 rounded-lg transition-all ${editorInstance?.isActive({ textAlign: "left" }) ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
+                title="Align Left"
+              >
+                <AlignLeft className="w-4 h-4" />
+              </button>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleAlign("center");
+                }}
+                className={`p-1.5 rounded-lg transition-all ${editorInstance?.isActive({ textAlign: "center" }) ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
+                title="Align Center"
+              >
+                <AlignCenter className="w-4 h-4" />
+              </button>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleAlign("right");
+                }}
+                className={`p-1.5 rounded-lg transition-all ${editorInstance?.isActive({ textAlign: "right" }) ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
+                title="Align Right"
+              >
+                <AlignRight className="w-4 h-4" />
+              </button>
+
+              <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-0.5" />
 
               <button
                 onMouseDown={(e) => {
