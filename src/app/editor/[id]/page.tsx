@@ -193,6 +193,10 @@ export default function EditorPage() {
       website: string;
       agency: string;
     };
+    titleAlign?: string;
+    authorAlign?: string;
+    writtenByAlign?: string;
+    copyrightAlign?: string;
   }>({
     author: "",
     contact: "",
