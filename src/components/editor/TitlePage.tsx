@@ -23,6 +23,10 @@ interface TitlePageProps {
     writtenByPrefix: string;
     personalInfo?: PersonalInfo;
     copyright?: string;
+    titleAlign?: string;
+    writtenByAlign?: string;
+    authorAlign?: string;
+    copyrightAlign?: string;
   };
   onTitleChange: (val: string) => void;
   onMetaChange: (meta: any) => void;
@@ -85,9 +89,10 @@ export function TitlePage({
             contentEditable
             spellCheck={false}
             suppressContentEditableWarning
+            data-align-key="titleAlign"
             onBlur={(e) => onTitleChange(e.currentTarget.textContent || "")}
-            className="script-title w-full text-center text-xl md:text-2xl uppercase tracking-widest font-bold bg-transparent border-none focus:outline-none focus:ring-0 underline decoration-1 underline-offset-4"
-            style={{ color: titleColor }}
+            className="script-title w-full text-xl md:text-2xl uppercase tracking-widest font-bold bg-transparent border-none focus:outline-none focus:ring-0 underline decoration-1 underline-offset-4"
+            style={{ color: titleColor, textAlign: (metadata.titleAlign as any) || "center" }}
           >
             {title || "SCRIPT TITLE"}
           </div>
@@ -97,9 +102,10 @@ export function TitlePage({
               contentEditable
               spellCheck={false}
               suppressContentEditableWarning
+              data-align-key="writtenByAlign"
               onBlur={(e) => onMetaChange({ writtenByPrefix: e.currentTarget.textContent || "" })}
-              className="written-by w-full text-center text-sm bg-transparent border-none focus:outline-none focus:ring-0 hover:bg-white/5 rounded transition-colors"
-              style={{ color: subtitleColor }}
+              className="written-by w-full text-sm bg-transparent border-none focus:outline-none focus:ring-0 hover:bg-white/5 rounded transition-colors"
+              style={{ color: subtitleColor, textAlign: (metadata.writtenByAlign as any) || "center" }}
             >
               {metadata.writtenByPrefix || "written by"}
             </div>
@@ -107,13 +113,13 @@ export function TitlePage({
               contentEditable
               spellCheck={false}
               suppressContentEditableWarning
+              data-align-key="authorAlign"
               onBlur={(e) => {
                 const newAuthor = e.currentTarget.textContent || "";
-                // Clear stored copyright so it auto-derives from the new author name
                 onMetaChange({ author: newAuthor, copyright: "" });
               }}
-              className="author-name w-full text-center bg-transparent border-none focus:outline-none focus:ring-0"
-              style={{ color: authorColor }}
+              className="author-name w-full bg-transparent border-none focus:outline-none focus:ring-0"
+              style={{ color: authorColor, textAlign: (metadata.authorAlign as any) || "center" }}
             >
               {metadata.author || "Author Name"}
             </div>
@@ -227,17 +233,18 @@ export function TitlePage({
               contentEditable
               spellCheck={false}
               suppressContentEditableWarning
+              data-align-key="copyrightAlign"
               onBlur={(e) => {
                 const typed = e.currentTarget.textContent?.trim() || "";
                 const auto = `© ${new Date().getFullYear()} ${metadata.author || "Your Name"}`;
-                // If user cleared it or it matches the auto value, store empty so it stays dynamic
                 onMetaChange({ copyright: typed === auto ? "" : typed });
               }}
-              className="copyright-block focus:outline-none rounded px-2 py-1 transition-all text-right min-w-[140px] hover:shadow-[0_0_0_1px_#555] focus:shadow-[0_0_0_1px_#666]"
+              className="copyright-block focus:outline-none rounded px-2 py-1 transition-all min-w-[140px] hover:shadow-[0_0_0_1px_#555] focus:shadow-[0_0_0_1px_#666]"
               style={{
                 fontSize: "9pt",
                 lineHeight: "1.8",
                 color: subtitleColor,
+                textAlign: (metadata.copyrightAlign as any) || "right",
               }}
             >
               {metadata.copyright || `© ${new Date().getFullYear()} ${metadata.author || "Your Name"}`}
