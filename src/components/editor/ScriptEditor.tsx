@@ -26,6 +26,7 @@ import { useAutocomplete, AutocompleteOption } from "@/hooks/useAutocomplete";
 import { AutocompleteOverlay } from "./extensions/nodes/AutocompleteOverlay";
 import { ElementMenu } from "./ElementMenu";
 import { Underline } from "@tiptap/extension-underline";
+import TextAlign from "@tiptap/extension-text-align";
 import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { FontFamily } from "@tiptap/extension-font-family";
@@ -48,6 +49,9 @@ import {
   Plus,
   Minus,
   Image as ImageIcon,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react";
 
 /* ─── Autocomplete / Suggestions Data ─── */
@@ -544,6 +548,20 @@ export const ScriptEditor = ({
       Extension,
       ScriptKeymap,
       ResizableImage,
+      TextAlign.configure({
+        types: [
+          "heading",
+          "paragraph",
+          "action",
+          "sceneHeading",
+          "character",
+          "dialogue",
+          "parenthetical",
+          "transition",
+          "shot",
+          "extension",
+        ],
+      }),
       Placeholder.configure({
         placeholder: ({ node }) => {
           const type = node.type.name;
@@ -1101,6 +1119,55 @@ export const ScriptEditor = ({
                 >
                   <UnderlineIcon className="w-4 h-4" />
                 </button>
+
+                <div
+                  className={`bg-zinc-200 dark:bg-zinc-700 shrink-0`}
+                  style={{
+                    width: toolbarOrientation === "vertical" ? "24px" : "1px",
+                    height: toolbarOrientation === "vertical" ? "1px" : "16px",
+                    margin: toolbarOrientation === "vertical" ? "4px auto" : "0 4px",
+                  }}
+                />
+
+                <button
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    editor.chain().focus().setTextAlign("left").run();
+                  }}
+                  className={`p-1.5 rounded-lg transition-all ${editor.isActive({ textAlign: "left" }) ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
+                  title="Align Left"
+                >
+                  <AlignLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    editor.chain().focus().setTextAlign("center").run();
+                  }}
+                  className={`p-1.5 rounded-lg transition-all ${editor.isActive({ textAlign: "center" }) ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
+                  title="Align Center"
+                >
+                  <AlignCenter className="w-4 h-4" />
+                </button>
+                <button
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    editor.chain().focus().setTextAlign("right").run();
+                  }}
+                  className={`p-1.5 rounded-lg transition-all ${editor.isActive({ textAlign: "right" }) ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
+                  title="Align Right"
+                >
+                  <AlignRight className="w-4 h-4" />
+                </button>
+
+                <div
+                  className={`bg-zinc-200 dark:bg-zinc-700 shrink-0`}
+                  style={{
+                    width: toolbarOrientation === "vertical" ? "24px" : "1px",
+                    height: toolbarOrientation === "vertical" ? "1px" : "16px",
+                    margin: toolbarOrientation === "vertical" ? "4px auto" : "0 4px",
+                  }}
+                />
 
                 {/* Image insert */}
                 <button
