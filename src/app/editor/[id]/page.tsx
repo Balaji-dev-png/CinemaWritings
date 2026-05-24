@@ -154,17 +154,19 @@ export default function EditorPage() {
         setScrollBtnLeft(Math.max(8, rect.left - 48));
       }
     };
-    // Measure immediately and again after the DOM has fully painted
+    // Measure at multiple intervals to catch initial load, font-load, and zoom changes
     measure();
     const t1 = setTimeout(measure, 100);
     const t2 = setTimeout(measure, 500);
+    const t3 = setTimeout(measure, 1000);
     window.addEventListener('resize', measure);
     return () => {
       window.removeEventListener('resize', measure);
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
     };
-  }, [showNav, zoom]); // re-run when nav panel or zoom level changes
+  }, [showNav, zoom, script, editorInstance]); // re-run when nav/zoom/content changes
 
   // Zoom to cursor on scale change
   useEffect(() => {
