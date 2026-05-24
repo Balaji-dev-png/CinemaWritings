@@ -97,8 +97,21 @@ const KNOWLEDGE_BASE: KBEntry[] = [
     actions: [{ label: "View on GitHub", path: "https://github.com/Balaji-dev-png/CinemaWritings" }],
   },
   {
+    keywords: ["copyright", "author name", "written by", "credit", "author credit", "name copyright"],
+    answer: "The **copyright line** on your title page is automatically generated from the **Author Name** you type in the \"Written by\" field.\n\n• Type your name in the author field on the title page\n• The copyright at the bottom-right updates instantly to **© [year] [Your Name]**\n• You can also click the copyright directly to type a custom value\n• Changing the author name always resets the copyright to match",
+  },
+  {
+    keywords: ["title page", "title", "metadata", "written by", "logline", "synopsis", "personal info", "contact"],
+    answer: "The **Title Page** is the first page of your screenplay and contains:\n\n• **Script Title** — click to edit inline\n• **Written by** prefix — editable (e.g. \"story by\", \"based on\")\n• **Author Name** — your name; also drives the copyright line\n• **Logline** — one-sentence story summary (collapsible)\n• **Synopsis** — longer overview (collapsible)\n• **Personal Information** — phone, email, address, website, agency (collapsible)\n• **Copyright** — auto-generated from author name, click to customize\n\nAll fields are saved automatically.",
+  },
+  {
+    keywords: ["sign up", "signup", "full name", "name", "register", "create account", "account name"],
+    answer: "When you **create a CinemaWritings account**, you provide:\n\n1. **Full Name** — used as your display name and in the account menu\n2. **Email** — your login email\n3. **Password** — minimum 8 characters\n\nYour name is stored securely and shown in your profile menu at the top right.",
+    actions: [{ label: "Create Account", path: "/signup" }],
+  },
+  {
     keywords: ["help", "how", "what", "feature", "features", "do", "can you", "guide", "tutorial"],
-    answer: "I'm your **CinemaWritings Lead Producer** — here to guide you through every feature!\n\nHere's what I know about:\n\n• **Screenplay Editor** — WGA format, auto-save, versions\n• **Director's Suite** — infinite canvas with Idea, Shot, Image, Link cards\n• **Storyboard** — drag-and-drop shot planning with aspect ratios\n• **Draw Mode** — freehand sketches on the canvas\n• **Connect Mode** — wire cards together\n• **Export** — PDF, Pitch Deck, Shot List\n• **Cinematography** — shot types, camera movements explained\n• **Account & Auth** — sign up, login, data privacy\n\nJust ask me anything!",
+    answer: "I'm your **CinemaWritings Lead Producer** — here to guide you through every feature!\n\nHere's what I know about:\n\n• **Screenplay Editor** — WGA format, auto-save, versions\n• **Title Page** — author name, copyright, logline, synopsis\n• **Director's Suite** — infinite canvas with Idea, Shot, Image, Link cards\n• **Storyboard** — drag-and-drop shot planning with aspect ratios\n• **Draw Mode** — freehand sketches on the canvas\n• **Connect Mode** — wire cards together\n• **Export** — PDF, Pitch Deck, Shot List\n• **Cinematography** — shot types, camera movements explained\n• **Account & Auth** — sign up with your name, login, data privacy\n\nJust ask me anything!",
   },
 ];
 
@@ -159,7 +172,7 @@ function ChatMessage({ msg, onNavigate }: { msg: Message; onNavigate: (path: str
   );
 }
 
-const QUICK_REPLIES = ["Screenplay format", "Storyboard", "Director's Suite", "Export PDF", "Draw mode", "Shot types", "Camera moves", "GitHub"];
+const QUICK_REPLIES = ["Screenplay format", "Title page", "Copyright", "Storyboard", "Director's Suite", "Export PDF", "Shot types", "GitHub"];
 
 export function ChatbotWidget() {
   const router = useRouter();
@@ -256,7 +269,7 @@ export function ChatbotWidget() {
         bottom: "5rem",
         left: isLeftAligned ? "1.5rem" : undefined,
         right: !isLeftAligned ? "1.5rem" : undefined,
-        zIndex: 60,
+        zIndex: 99999,
       }}
       className={`flex flex-col-reverse ${isLeftAligned ? "items-start" : "items-end"} gap-4`}
     >
