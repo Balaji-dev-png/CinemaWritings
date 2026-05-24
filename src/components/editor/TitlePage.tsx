@@ -104,7 +104,11 @@ export function TitlePage({
             <div
               contentEditable
               suppressContentEditableWarning
-              onBlur={(e) => onMetaChange({ author: e.currentTarget.textContent || "" })}
+              onBlur={(e) => {
+                const newAuthor = e.currentTarget.textContent || "";
+                // Clear stored copyright so it auto-derives from the new author name
+                onMetaChange({ author: newAuthor, copyright: "" });
+              }}
               className="author-name w-full text-center bg-transparent border-none focus:outline-none focus:ring-0"
               style={{ color: authorColor }}
             >
@@ -214,17 +218,22 @@ export function TitlePage({
             ) : null}
           </div>
 
-          {/* Copyright / date — editable inline, always visible in PDF if filled */}
+          {/* Copyright / date — auto-derived from author name unless manually overridden */}
           <div className="relative group">
             <div
               contentEditable
               suppressContentEditableWarning
-              onBlur={(e) => onMetaChange({ copyright: e.currentTarget.textContent || "" })}
+              onBlur={(e) => {
+                const typed = e.currentTarget.textContent?.trim() || "";
+                const auto = `© ${new Date().getFullYear()} ${metadata.author || "Your Name"}`;
+                // If user cleared it or it matches the auto value, store empty so it stays dynamic
+                onMetaChange({ copyright: typed === auto ? "" : typed });
+              }}
               className="copyright-block focus:outline-none rounded px-2 py-1 transition-all text-right min-w-[140px] hover:shadow-[0_0_0_1px_#555] focus:shadow-[0_0_0_1px_#666]"
               style={{
                 fontSize: "9pt",
                 lineHeight: "1.8",
-                color: metadata.copyright ? subtitleColor : "#555",
+                color: subtitleColor,
               }}
             >
               {metadata.copyright || `© ${new Date().getFullYear()} ${metadata.author || "Your Name"}`}

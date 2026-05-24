@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -21,6 +22,10 @@ export default function SignupPage() {
     setError("");
 
     // Client-side validation
+    if (!fullName.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
     if (password.length < 8) {
       setError("Password must be at least 8 characters long.");
       return;
@@ -32,6 +37,11 @@ export default function SignupPage() {
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName.trim(),
+          },
+        },
       });
 
       if (authError) throw authError;
@@ -84,6 +94,19 @@ export default function SignupPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2">Full Name</label>
+            <input
+              type="text"
+              required
+              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Your name (used for copyright)"
+              autoComplete="name"
+            />
+          </div>
+
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2">Email Address</label>
             <input
