@@ -1,11 +1,22 @@
 "use client";
-import { useState, useCallback, useEffect, useRef } from "react";
-import { Storyboard, SceneCard, Connector, updateStoryboard } from "@/lib/storyboard-api";
+import { useState, useCallback, useEffect } from "react";
+import {
+  Storyboard,
+  SceneCard,
+  Connector,
+  updateSceneCard,
+  deleteSceneCard,
+  bulkDeleteSceneCards,
+  reorderSceneCards,
+} from "@/lib/storyboard-api";
 
 export interface StoryboardCanvasState {
   cards: SceneCard[];
   connectors: Connector[];
 }
+
+// Per-card debounce timers so rapid edits don't flood the API
+const cardTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
 export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
   const [state, setState] = useState<StoryboardCanvasState>({
@@ -13,7 +24,7 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
     connectors: storyboard.connectors || [],
   });
 
-  // Sync when storyboard prop changes (e.g. from parent load)
+  // Sync local state when the parent storyboard prop refreshes (e.g. initial load)
   useEffect(() => {
     setState({
       cards: storyboard.cards || [],
@@ -21,113 +32,111 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
     });
   }, [storyboard]);
 
-  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // ── addCard: card is already created in Supabase by caller (StoryboardView);
+  //    we just insert it into local state.
+  const addCard = useCallback((card: SceneCard) => {
+    setState((prev) => ({ ...prev, cards: [...(prev.cards || []), card] }));
+  }, []);
 
-  const update = useCallback(
-    (updater: (prev: StoryboardCanvasState) => StoryboardCanvasState) => {
-      setState((prev) => {
-        const next = updater(prev);
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => {
-          updateStoryboard(scriptId, {
-            cards: next.cards,
-            connectors: next.connectors,
-          }).catch(console.error);
-        }, 500);
-        return next;
-      });
-    },
-    [scriptId]
-  );
-
-  const addCard = useCallback(
-    (card: SceneCard) => {
-      update((s) => ({ ...s, cards: [...(s.cards || []), card] }));
-    },
-    [update]
-  );
-
+  // ── updateCard: debounce DB write per card to avoid flooding on rapid typing
   const updateCard = useCallback(
     (id: string, patch: Partial<SceneCard>) => {
-      update((s) => ({
-        ...s,
-        cards: (s.cards || []).map((c) => (c.id === id ? { ...c, ...patch } : c)),
+      // Update local state immediately for a snappy UI
+      setState((prev) => ({
+        ...prev,
+        cards: (prev.cards || []).map((c) => (c.id === id ? { ...c, ...patch } : c)),
       }));
+
+      // Debounce the actual DB write
+      if (cardTimers[id]) clearTimeout(cardTimers[id]);
+      cardTimers[id] = setTimeout(() => {
+        updateSceneCard(storyboard.id, id, patch).catch(console.error);
+      }, 600);
     },
-    [update]
+    [storyboard.id]
   );
 
+  // ── removeCard: delete from Supabase and remove from local state
   const removeCard = useCallback(
     (id: string) => {
-      update((s) => ({
-        ...s,
-        cards: s.cards.filter((c) => c.id !== id),
-        connectors: s.connectors.filter(
+      setState((prev) => ({
+        ...prev,
+        cards: prev.cards.filter((c) => c.id !== id),
+        connectors: prev.connectors.filter(
           (conn) => conn.fromId !== id && conn.toId !== id
         ),
       }));
+      deleteSceneCard(storyboard.id, id).catch(console.error);
     },
-    [update]
+    [storyboard.id]
   );
 
+  // ── moveCard: position is a card field — debounce DB write
   const moveCard = useCallback(
     (id: string, x: number, y: number) => {
-      update((s) => ({
-        ...s,
-        cards: s.cards.map((c) => (c.id === id ? { ...c, x, y } : c)),
+      setState((prev) => ({
+        ...prev,
+        cards: prev.cards.map((c) => (c.id === id ? { ...c, x, y } : c)),
       }));
+
+      if (cardTimers[id]) clearTimeout(cardTimers[id]);
+      cardTimers[id] = setTimeout(() => {
+        updateSceneCard(storyboard.id, id, { x, y }).catch(console.error);
+      }, 600);
     },
-    [update]
+    [storyboard.id]
   );
 
-  const addConnector = useCallback(
-    (conn: Connector) => {
-      update((s) => ({ ...s, connectors: [...s.connectors, conn] }));
-    },
-    [update]
-  );
-
-  const removeConnector = useCallback(
-    (id: string) => {
-      update((s) => ({
-        ...s,
-        connectors: s.connectors.filter((c) => c.id !== id),
-      }));
-    },
-    [update]
-  );
-
+  // ── removeCards: bulk delete
   const removeCards = useCallback(
     (ids: string[]) => {
-      update((s) => ({
-        ...s,
-        cards: s.cards.filter((c) => !ids.includes(c.id)),
-        connectors: s.connectors.filter(
+      setState((prev) => ({
+        ...prev,
+        cards: prev.cards.filter((c) => !ids.includes(c.id)),
+        connectors: prev.connectors.filter(
           (conn) => !ids.includes(conn.fromId) && !ids.includes(conn.toId)
         ),
       }));
+      bulkDeleteSceneCards(storyboard.id, ids).catch(console.error);
     },
-    [update]
+    [storyboard.id]
   );
 
+  // ── removeAll: clear everything
   const removeAll = useCallback(() => {
     if (!window.confirm("Are you sure you want to delete all shots? This cannot be undone.")) return;
-    update((s) => ({
-      ...s,
-      cards: [],
-      connectors: [],
-    }));
-  }, [update]);
+    setState((prev) => {
+      const ids = prev.cards.map((c) => c.id);
+      if (ids.length > 0) {
+        bulkDeleteSceneCards(storyboard.id, ids).catch(console.error);
+      }
+      return { ...prev, cards: [], connectors: [] };
+    });
+  }, [storyboard.id]);
 
+  // ── Connectors: stored in canvas_state via the suite API (not scene_cards).
+  //    For storyboard we keep them local-only for now (they're decorative).
+  const addConnector = useCallback((conn: Connector) => {
+    setState((prev) => ({ ...prev, connectors: [...prev.connectors, conn] }));
+  }, []);
+
+  const removeConnector = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      connectors: prev.connectors.filter((c) => c.id !== id),
+    }));
+  }, []);
+
+  // ── Auto-Layout: reposition cards in a grid and persist new positions
   const autoLayout = useCallback(() => {
-    update((s) => {
-      const COLS = 4;
-      const GAP_X = 360;
-      const GAP_Y = 480; // increased for the larger cards
-      const START_X = 100;
-      const START_Y = 100;
-      
-      const newCards = [...s.cards]
+    const COLS = 4;
+    const GAP_X = 360;
+    const GAP_Y = 480;
+    const START_X = 100;
+    const START_Y = 100;
+
+    setState((prev) => {
+      const newCards = [...prev.cards]
         .sort((a, b) => a.order - b.order)
         .map((c, i) => {
           const row = Math.floor(i / COLS);
@@ -138,10 +147,15 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
             y: START_Y + row * GAP_Y,
           };
         });
-      
-      return { ...s, cards: newCards };
+
+      // Persist positions for each card
+      newCards.forEach((c) => {
+        updateSceneCard(storyboard.id, c.id, { x: c.x, y: c.y }).catch(console.error);
+      });
+
+      return { ...prev, cards: newCards };
     });
-  }, [update]);
+  }, [storyboard.id]);
 
   return {
     state,

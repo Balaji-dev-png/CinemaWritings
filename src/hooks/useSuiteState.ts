@@ -102,7 +102,6 @@ export function useSuiteState(scriptId: string) {
     syncTimerRef.current = setTimeout(async () => {
       try {
         const elements = stateRef.current.elements.map((el) => ({
-          ...el.data,
           id: el.id,
           asset_id: el.id,
           type: el.type,
@@ -111,6 +110,7 @@ export function useSuiteState(scriptId: string) {
           y: el.y,
           width: el.width,
           height: el.height,
+          content: el.data,
         }));
 
         await supabaseSyncWorkspace(scriptId, {
