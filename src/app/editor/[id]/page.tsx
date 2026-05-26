@@ -825,19 +825,17 @@ export default function EditorPage() {
             >
               <Keyboard className="w-3.5 h-3.5" />
             </button>
-            {mounted && (
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-                title={theme === "dark" ? "Light Mode" : "Dark Mode"}
-              >
-                {theme === "dark" ? (
-                  <Sun className="w-3.5 h-3.5" />
-                ) : (
-                  <Moon className="w-3.5 h-3.5" />
-                )}
-              </button>
-            )}
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+              title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-sky-500" />
+              )}
+            </button>
           </div>
 
           {/* Settings Dropdown (Moved inside) */}
