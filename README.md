@@ -6,9 +6,34 @@
 
 ---
 
+## Wireframes
+
+### Home / Dashboard
+![Dashboard wireframe](docs/wireframes/dashboard.png)
+
+---
+
+### Screenplay Editor
+![Editor wireframe](docs/wireframes/editor.png)
+
+---
+
+### Storyboard + Director's Suite
+![Storyboard and Director's Suite wireframe](docs/wireframes/storyboard_suite.png)
+
+---
+
+### Login + Sign Up
+![Auth pages wireframe](docs/wireframes/auth.png)
+
+---
+
 ## Features
 
 ### Editor
+- **Universal Screenplay Import Engine** — Import PDF, FDX, Celtx, DOCX, and Fountain files instantaneously entirely on the client-side.
+  - **Semantic Spatial Mapping**: Uses X-axis coordinate heuristics for PDF parsing, perfectly replicating original formatting.
+  - **Smart Height Estimation**: Bypasses UI layout thrashing with pre-calculated, mathematically perfect pagination limits, guaranteeing zero-latency load times for massive documents.
 - **TipTap-powered rich editor** with native bold, italic, and underline support
 - **Screenplay element types** via keyboard shortcuts or the floating toolbar:
   - Scene Heading (`Ctrl+1`)
@@ -23,8 +48,10 @@
 - **Focus Mode** — a cinematic, distraction-free writing environment with a film-grain overlay
 
 ### Title Page
-- Editable title, author, "written by" prefix, and contact block
+- Editable title, author ("Written by"), "written by" prefix, and contact block
+- **Dynamic Copyright** — the copyright line at the bottom-right of the title page is auto-generated from the author name field. Change the author → copyright updates instantly. Click directly on the copyright to type a custom value.
 - **Logline** and **Synopsis** fields (collapsible) — included in all exports
+- **Personal Information** — phone, email, address, website, agency (collapsible)
 
 ### Version History & Draft Comparison
 - **Save named drafts** at any point
@@ -34,11 +61,12 @@
 ### Exports
 | Format | Description |
 |---|---|
-| **Screenplay PDF** | **Server-side generation (WeasyPrint)** — Generates a high-resolution, WGA-standard PDF adhering to exact Hollywood margins (1.5" left bind). Captures the exact WYSIWYG state of your editor. |
+| **Screenplay PDF** | **Server-side generation (WeasyPrint)** — Generates a high-resolution, WGA-standard PDF adhering to exact Hollywood margins (1.5\" left bind). Captures the exact WYSIWYG state of your editor. |
 | **Fountain (.fountain)** | Standard Fountain plain-text format with title metadata header block |
 | **Microsoft Word (.docx)** | Formatted export for Microsoft Word |
 
 ### Account & Security
+- **Full Name on Signup** — provide your name when creating an account; it's stored securely in your Supabase profile and shown in the account menu.
 - **Cinematic Profile Dropdown** — Access your scripts and account settings via a sleek, dark-mode avatar menu.
 - **Live Script List** — Quickly jump into your 5 most recent scripts directly from the profile menu.
 - **Secure Password Updates** — In-app modal for updating account credentials via Supabase Auth.
@@ -62,9 +90,10 @@
 - **Connect Mode** — Visual wiring system to map shot-to-shot transitions and narrative flow.
 
 ### Context-Aware AI Assistant
-- **Global Chatbot** — The "Lead Producer" assistant lives in the corner of your screen
-- **Feature Knowledge Base** — Ask questions about screenplay formatting, camera movements, and navigation
-- **Contextual Responses** — The assistant knows what page you're on and offers direct navigation links
+- **Always-on-Top Chatbot** — The "Lead Producer" assistant is pinned above all UI elements (z-index 99999) and is draggable to any position on screen.
+- **Feature Knowledge Base** — Covers screenplay formatting, title page & copyright, camera movements, storyboard, Director's Suite, exports, and account features.
+- **Contextual Responses** — The assistant knows what page you're on and offers direct navigation links.
+- **Quick Reply Chips** — One-tap shortcuts for the most common topics (Screenplay format, Title page, Copyright, Storyboard, etc.)
 
 ### Multi-Document Dashboard
 - Create, organize, and delete multiple scripts
@@ -179,7 +208,6 @@ src/
 │       ├── ConnectorLayer.tsx          # SVG bezier connection wires
 │       ├── DrawingCanvas.tsx           # Freehand drawing canvas overlay
 │       ├── DrawingToolbar.tsx          # Floating drawing tools panel
-│       ├── ExportButton.tsx            # PDF export pipeline
 │       ├── IdeaCard.tsx                # Idea node card
 │       ├── ImageCard.tsx               # Moodboard image card
 │       ├── LinkCard.tsx                # Web link reference card

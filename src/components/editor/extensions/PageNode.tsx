@@ -111,7 +111,8 @@ const PageComponent = memo(function PageComponent(props: any) {
       
       // If mobile (height: auto), clientHeight will match scrollHeight and it won't trigger. 
       // This correctly disables automatic pagination on mobile viewports.
-      if (scrollHeight <= clientHeight) return;
+      // We also add a 2px safety margin to prevent subpixel zooming infinite loops.
+      if (scrollHeight <= clientHeight + 2) return;
 
       try {
         const pos = props.getPos();

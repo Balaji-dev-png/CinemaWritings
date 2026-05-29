@@ -5,6 +5,9 @@
 [build.environment]
   NEXT_USE_NETLIFY_EDGE = "true"
 
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
 # ─── Security Headers ─────────────────────────────────────────────────────
 # Applied to all routes. These complement the Next.js headers() config.
 [[headers]]

@@ -27,6 +27,10 @@ interface Props {
   panRef: React.MutableRefObject<{ x: number; y: number }>;
   /** Ref passed back to the parent to point at the inner transform layer */
   canvasRef?: React.RefObject<HTMLDivElement | null>;
+  /** Initial viewport state restored from backend */
+  initialViewport?: { zoom: number; pan: { x: number; y: number } } | null;
+  /** Called (debounced) when the viewport changes so the parent can sync to backend */
+  onViewportChange?: (vp: { zoom: number; pan: { x: number; y: number } }) => void;
 }
 
 interface CanvasState {
@@ -40,7 +44,8 @@ export const Board = forwardRef<HTMLDivElement, Props>(
       elements, connectors, drawMode, connectMode, connectSource, drawingCanvasRef,
       zoomRef, panRef, canvasRef: externalCanvasRef,
       onMoveElement, onResizeElement, onUpdateData, onRemoveElement,
-      onRemoveConnector, onConnectClick, scriptId
+      onRemoveConnector, onConnectClick, scriptId,
+      initialViewport, onViewportChange,
     },
     ref
   ) {
@@ -85,30 +90,20 @@ export const Board = forwardRef<HTMLDivElement, Props>(
       return () => window.removeEventListener("mousedown", handleClickOutside);
     }, [isZoomMenuOpen]);
 
-    // PERSISTENCE (Feature 7)
+    // PERSISTENCE — restore initial viewport from backend prop
     useEffect(() => {
-      const saved = localStorage.getItem(`canvas_state_${scriptId}`);
-      if (saved) {
-        try {
-          const { zoom, pan } = JSON.parse(saved);
-          zoomRef.current = zoom;
-          panRef.current = pan;
-          setCanvas({ zoom, pan });
-        } catch (e) {
-          console.error("Failed to restore canvas state", e);
-        }
-      }
-    }, [scriptId]);
+      if (!initialViewport) return;
+      const { zoom, pan } = initialViewport;
+      zoomRef.current = zoom;
+      panRef.current = pan;
+      setCanvas({ zoom, pan });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // run once on mount only
 
+    // Notify parent of viewport changes so it can sync to backend
     useEffect(() => {
-      const timer = setTimeout(() => {
-        localStorage.setItem(`canvas_state_${scriptId}`, JSON.stringify({
-          zoom: canvas.zoom,
-          pan: canvas.pan
-        }));
-      }, 300);
-      return () => clearTimeout(timer);
-    }, [canvas.zoom, canvas.pan, scriptId]);
+      onViewportChange?.({ zoom: canvas.zoom, pan: canvas.pan });
+    }, [canvas.zoom, canvas.pan, onViewportChange]);
 
     // ZOOM TOWARD CURSOR (Feature 1)
     const handleWheel = useCallback((e: WheelEvent) => {

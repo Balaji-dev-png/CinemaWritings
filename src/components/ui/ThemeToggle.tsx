@@ -10,35 +10,46 @@ export function ThemeToggle() {
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    setTimeout(() => setMounted(true), 0);
+    setMounted(true);
   }, []);
 
+  // Before mount, show a button that looks like the real one (no layout shift)
   if (!mounted) {
-    return <div className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-800" />;
+    return (
+      <div className="w-9 h-9 rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
+        <Sun className="w-4 h-4 text-zinc-500" />
+      </div>
+    );
   }
 
   const isDark = theme === "dark";
 
   return (
     <motion.button
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.08 }}
+      whileTap={{ scale: 0.93 }}
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="p-2 rounded-full bg-white/50 dark:bg-black/50 border border-zinc-200 dark:border-zinc-800 shadow-sm backdrop-blur-md transition-colors flex items-center justify-center relative overflow-hidden"
+      className="w-9 h-9 rounded-full border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 shadow-md backdrop-blur-md transition-colors flex items-center justify-center relative overflow-hidden cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-500"
       aria-label="Toggle theme"
+      title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
     >
       <motion.div
         initial={false}
         animate={{ y: isDark ? 30 : 0, opacity: isDark ? 0 : 1 }}
+        transition={{ duration: 0.2 }}
         className="absolute"
       >
-        <Sun className="w-5 h-5 text-zinc-800" />
+        {/* Sun — visible in light mode */}
+        <Sun className="w-4 h-4 text-amber-500" />
       </motion.div>
       <motion.div
         initial={false}
         animate={{ y: isDark ? 0 : -30, opacity: isDark ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
+        className="absolute"
       >
-        <Moon className="w-5 h-5 text-zinc-100" />
+        {/* Moon — visible in dark mode */}
+        <Moon className="w-4 h-4 text-sky-300" />
       </motion.div>
     </motion.button>
   );

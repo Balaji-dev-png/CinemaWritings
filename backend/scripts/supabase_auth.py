@@ -22,28 +22,12 @@ import logging
 import jwt
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 
-class SupabaseUser:
-    """
-    Lightweight user object that holds the Supabase user ID.
-    Compatible with Django REST Framework's permission system.
-    Avoids any Django DB lookup — auth is entirely stateless via JWT.
-    """
-
-    def __init__(self, user_id: str, email: str = ""):
-        self.id = user_id
-        self.pk = user_id  # DRF uses .pk for permission checks
-        self.email = email
-        self.is_authenticated = True  # Required by DRF permissions
-        self.is_active = True
-        self.is_anonymous = False
-        self.is_staff = False
-
-    def __str__(self):
-        return f"SupabaseUser({self.id})"
+from django.contrib.auth import get_user_model
 
 
 class SupabaseAuthentication(BaseAuthentication):
@@ -77,15 +61,22 @@ class SupabaseAuthentication(BaseAuthentication):
             return None
 
         try:
-            payload = jwt.decode(
-                token,
-                jwt_secret,
-                algorithms=["HS256"],
-                options={
-                    "verify_exp": True,
-                    "verify_aud": False,  # Supabase audience can vary
-                },
-            )
+            unverified_header = jwt.get_unverified_header(token)
+            logger.warning("JWT Header DEBUG: %s", unverified_header)
+            
+            if settings.DEBUG:
+                # Bypass signature and expiration verification for local development
+                payload = jwt.decode(token, options={"verify_signature": False})
+            else:
+                payload = jwt.decode(
+                    token,
+                    jwt_secret,
+                    algorithms=["HS256", "RS256", "ES256"],
+                    options={
+                        "verify_exp": True,
+                        "verify_aud": False,
+                    },
+                )
         except jwt.ExpiredSignatureError:
             logger.info("Supabase JWT expired.")
             return None
@@ -101,7 +92,11 @@ class SupabaseAuthentication(BaseAuthentication):
             return None
 
         email = payload.get("email", "")
-        user = SupabaseUser(user_id=user_id, email=email)
+        User = get_user_model()
+        user, _ = User.objects.get_or_create(
+            username=user_id,
+            defaults={'email': email}
+        )
         return (user, token)
 
     def authenticate_header(self, request):

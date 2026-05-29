@@ -17,6 +17,7 @@ export interface ScriptMeta {
   logline?: string;
   synopsis?: string;
   writtenByPrefix?: string;
+  copyright?: string;
 }
 
 export interface ScriptVersion {
@@ -108,7 +109,9 @@ export const getScriptById = async (
         logline: s.logline || "",
         synopsis: s.synopsis || "",
         writtenByPrefix: s.written_by_prefix || "written by",
-      },
+        personalInfo: s.personal_info || { phone: "", email: "", address: "", website: "", agency: "" },
+        copyright: s.copyright || "",
+      } as any,
       versions: (s.versions || []).map((v: any) => ({
         name: v.name,
         content: v.content_snapshot,
@@ -148,13 +151,14 @@ export const getScriptById = async (
 
 export const createScript = async (
   title: string = "Untitled Script",
+  contentOverride?: string
 ): Promise<Script> => {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("User not authenticated");
 
-  const content = `<p class="scene-heading">INT. NEW SCENE - DAY</p><p class="action"></p>`;
+  const content = contentOverride || `<p class="scene-heading">INT. NEW SCENE - DAY</p><p class="action"></p>`;
 
   const { data: s, error } = await supabase
     .from("scripts")
@@ -196,6 +200,10 @@ export const updateScript = async (id: string, updates: Partial<Script>) => {
       payload.synopsis = updates.meta.synopsis;
     if (updates.meta.writtenByPrefix !== undefined)
       payload.written_by_prefix = updates.meta.writtenByPrefix;
+    if ((updates.meta as any).personalInfo !== undefined)
+      payload.personal_info = (updates.meta as any).personalInfo;
+    if ((updates.meta as any).copyright !== undefined)
+      payload.copyright = (updates.meta as any).copyright;
   }
   if (updates.tags !== undefined) payload.tags = updates.tags;
   if (updates.paperColor !== undefined) payload.paper_color = updates.paperColor;

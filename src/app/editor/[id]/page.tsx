@@ -18,7 +18,6 @@ import {
   getScriptById,
   updateScript,
   exportToFountain,
-  importFromFountain,
   Script,
 } from "@/lib/storage";
 import { useTheme } from "next-themes";
@@ -46,7 +45,6 @@ import {
   Sun,
   Moon,
   LayoutGrid,
-  Upload,
   Sparkles,
   ZoomIn,
   ZoomOut,
@@ -54,7 +52,29 @@ import {
   Plus,
   Eraser,
   Layers,
+  ChevronUp,
+  ChevronDown,
+  Home,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react";
+
+const FaceWithCap = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {/* Baseball Cap */}
+    <path d="M5 10h14v2H5z" />
+    <path d="M7 10V8a5 5 0 0 1 10 0v2" />
+    <path d="M19 10h3" /> {/* Brim */}
+    {/* Face */}
+    <path d="M7 12v2a5 5 0 0 0 10 0v-2" />
+    {/* Eyes */}
+    <circle cx="10" cy="14" r="1" fill="currentColor" stroke="none" />
+    <circle cx="14" cy="14" r="1" fill="currentColor" stroke="none" />
+    {/* Mouth */}
+    <path d="M11 17h2" />
+  </svg>
+);
 
 export default function EditorPage() {
   const params = useParams();
@@ -120,8 +140,36 @@ export default function EditorPage() {
   const [showPgPopover, setShowPgPopover] = useState(false);
   const pgPopoverRef = useRef<HTMLDivElement>(null);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<HTMLElement>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
+  const [scrollBtnLeft, setScrollBtnLeft] = useState(8);
+
+  // Measure the actual script page card to pin the scroll buttons just beside it
+  useEffect(() => {
+    const measure = () => {
+      // Query the rendered .script-page element (the physical 8.5"×11" card)
+      const scriptPage = document.querySelector('.script-page') as HTMLElement | null;
+      const target = scriptPage ?? printRef.current;
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        // button is 40px wide, leave 8px gap → offset = 48px
+        setScrollBtnLeft(Math.max(8, rect.left - 48));
+      }
+    };
+    // Measure at multiple intervals to catch initial load, font-load, and zoom changes
+    measure();
+    const t1 = setTimeout(measure, 100);
+    const t2 = setTimeout(measure, 500);
+    const t3 = setTimeout(measure, 1000);
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [showNav, zoom, script, editorInstance]); // re-run when nav/zoom/content changes
 
   // Zoom to cursor on scale change
   useEffect(() => {
@@ -131,12 +179,32 @@ export default function EditorPage() {
   }, [zoom, editorInstance]);
 
   // Metadata state for sync
-  const [metadata, setMetadata] = useState({
+  const [metadata, setMetadata] = useState<{
+    author: string;
+    contact: string;
+    logline: string;
+    synopsis: string;
+    writtenByPrefix: string;
+    copyright?: string;
+    personalInfo?: {
+      phone: string;
+      email: string;
+      address: string;
+      website: string;
+      agency: string;
+    };
+    titleAlign?: string;
+    authorAlign?: string;
+    writtenByAlign?: string;
+    copyrightAlign?: string;
+  }>({
     author: "",
     contact: "",
     logline: "",
     synopsis: "",
     writtenByPrefix: "written by",
+    copyright: "",
+    personalInfo: { phone: "", email: "", address: "", website: "", agency: "" },
   });
 
   // Stats from editor
@@ -161,6 +229,8 @@ export default function EditorPage() {
                 logline: found.meta.logline || "",
                 synopsis: found.meta.synopsis || "",
                 writtenByPrefix: found.meta.writtenByPrefix || "written by",
+                copyright: (found.meta as any).copyright || "",
+                personalInfo: (found.meta as any).personalInfo || { phone: "", email: "", address: "", website: "", agency: "" },
               });
             }
             if (found.paperColor) setDocBgColor(found.paperColor);
@@ -378,6 +448,37 @@ export default function EditorPage() {
     [script],
   );
 
+  const handleAlign = (alignment: "left" | "center" | "right") => {
+    // 1. Tiptap editor
+    if (editorInstance && editorInstance.isFocused) {
+      if (editorInstance.isActive({ textAlign: alignment })) {
+        editorInstance.chain().focus().unsetTextAlign().run();
+      } else {
+        editorInstance.chain().focus().setTextAlign(alignment).run();
+      }
+      return;
+    }
+
+    // 2. Title page
+    const activeEl = document.activeElement as HTMLElement;
+    if (activeEl && activeEl.getAttribute("data-align-key")) {
+      const alignKey = activeEl.getAttribute("data-align-key") as keyof typeof metadata;
+      
+      let defaultAlign = "center";
+      if (alignKey === "copyrightAlign") defaultAlign = "right";
+
+      const currentAlign = (metadata as any)[alignKey] || defaultAlign;
+      const newAlign = currentAlign === alignment ? defaultAlign : alignment;
+      
+      handleMetaChange({ [alignKey]: newAlign });
+      
+      // Attempt to keep focus on the element
+      setTimeout(() => {
+        activeEl.focus();
+      }, 0);
+    }
+  };
+
   const handleVersionRestore = async (newContent: string) => {
     setShowVersions(false);
     // Reload script data
@@ -427,18 +528,7 @@ export default function EditorPage() {
     setExportError("");
 
     try {
-      // Get current HTML from editor instance
-      const content = editorInstance?.getHTML() || script.content;
-      
-      exportToPdf(content, {
-        title,
-        writtenByPrefix: metadata.writtenByPrefix,
-        author: metadata.author,
-        contact: metadata.contact,
-        logline: metadata.logline,
-        synopsis: metadata.synopsis,
-      }, docFontSize);
-      
+      await exportToPdf(script.title);
     } catch (err: any) {
       console.error("[PDF Export Error]:", err);
       setExportError(err.message || "Export failed. Please try again.");
@@ -453,31 +543,6 @@ export default function EditorPage() {
     window.print();
   };
 
-  const handleImport = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".fountain,.docx";
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      
-      let text = "";
-      if (file.name.endsWith(".docx")) {
-        const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        text = result.value;
-      } else {
-        text = await file.text();
-      }
-      
-      const html = importFromFountain(text);
-      updateScript(script!.id, { content: html });
-      if (editorInstance) {
-        editorInstance.commands.setContent(html);
-      }
-    };
-    input.click();
-  };
 
   if (!script) {
     return (
@@ -505,11 +570,11 @@ export default function EditorPage() {
         <header className="anim-slide-1 sticky top-0 flex items-center justify-start gap-8 px-4 py-3 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-200/60 dark:border-zinc-800 z-50 shrink-0 overflow-visible no-scrollbar">
           {/* 1. Dashboard Link */}
           <button
-            onClick={() => navigateTo("/", "Going back to dashboard...")}
+            onClick={() => navigateTo("/", "Going Home...")}
             className="flex items-center gap-1.5 px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all shrink-0"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="font-medium">Dashboard</span>
+            <Home className="w-3.5 h-3.5" />
+            <span className="font-medium">Home</span>
           </button>
 
           {/* 2. View Switchers */}
@@ -540,7 +605,7 @@ export default function EditorPage() {
               className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
               title="Director's Suite"
             >
-              <Sparkles className="w-3.5 h-3.5 group-hover:text-blue-400 transition-colors" />
+              <FaceWithCap className="w-4 h-4 group-hover:text-blue-400 transition-colors" />
             </button>
             <button
               onClick={() => navigateTo(`/storyboard/${params.id}`, "Opening Storyboard...")}
@@ -582,6 +647,39 @@ export default function EditorPage() {
               >
                 AB
               </button>
+
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleAlign("left");
+                }}
+                className={`p-1.5 rounded-lg transition-all ${editorInstance?.isActive({ textAlign: "left" }) ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
+                title="Align Left"
+              >
+                <AlignLeft className="w-4 h-4" />
+              </button>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleAlign("center");
+                }}
+                className={`p-1.5 rounded-lg transition-all ${editorInstance?.isActive({ textAlign: "center" }) ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
+                title="Align Center"
+              >
+                <AlignCenter className="w-4 h-4" />
+              </button>
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleAlign("right");
+                }}
+                className={`p-1.5 rounded-lg transition-all ${editorInstance?.isActive({ textAlign: "right" }) ? "bg-zinc-900 dark:bg-white text-white dark:text-black shadow-sm" : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
+                title="Align Right"
+              >
+                <AlignRight className="w-4 h-4" />
+              </button>
+
+              <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-0.5" />
 
               <button
                 onMouseDown={(e) => {
@@ -712,14 +810,7 @@ export default function EditorPage() {
                 </div>
               )}
             </div>
-            <button
-              onClick={handleImport}
-              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-              title="Import (.fountain, .docx)"
-            >
-              <Upload className="w-3.5 h-3.5" />
-            </button>
-            <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 mx-1" />
+
             <button
               onClick={() => setShowSettings(!showSettings)}
               className={`p-1.5 rounded-lg transition-all ${showSettings ? "bg-zinc-900 dark:bg-white text-white dark:text-black" : "text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
@@ -734,19 +825,17 @@ export default function EditorPage() {
             >
               <Keyboard className="w-3.5 h-3.5" />
             </button>
-            {mounted && (
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
-                title={theme === "dark" ? "Light Mode" : "Dark Mode"}
-              >
-                {theme === "dark" ? (
-                  <Sun className="w-3.5 h-3.5" />
-                ) : (
-                  <Moon className="w-3.5 h-3.5" />
-                )}
-              </button>
-            )}
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="p-1.5 rounded-lg text-zinc-500 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+              title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-sky-500" />
+              )}
+            </button>
           </div>
 
           {/* Settings Dropdown (Moved inside) */}
@@ -867,8 +956,32 @@ export default function EditorPage() {
           </aside>
         )}
 
-        {/* Center: Editor */}
-        <main className="flex-1 overflow-y-auto no-scrollbar pb-32 relative pt-2">
+        {/* Center: Editor — isolation:isolate prevents Director's Suite cards bleeding in (Bug 4) */}
+        <main ref={mainScrollRef} className="flex-1 overflow-y-auto no-scrollbar pb-32 relative pt-2 scroll-smooth" style={{ isolation: "isolate" }}>
+          
+          {/* Floating Scroll Controls — fixed to viewport, always visible */}
+          {!focusMode && (
+            <div
+              className="fixed top-1/2 -translate-y-1/2 z-[200] flex flex-col gap-2 transition-[left] duration-300"
+              style={{ left: scrollBtnLeft }}
+            >
+              <button
+                onClick={() => mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="p-2.5 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
+                title="Scroll to Top"
+              >
+                <ChevronUp className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => mainScrollRef.current?.scrollTo({ top: mainScrollRef.current.scrollHeight, behavior: 'smooth' })}
+                className="p-2.5 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md border border-zinc-200/50 dark:border-zinc-700/50 rounded-full shadow-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
+                title="Scroll to Bottom"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+
           <div
             className="max-w-4xl mx-auto px-4 sm:px-8 py-8 w-full transition-transform duration-100 origin-top"
             style={{

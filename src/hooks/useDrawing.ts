@@ -23,6 +23,10 @@ interface UseDrawingProps {
   initialDataUrl?: string;
   onStrokeComplete?: (dataUrl: string) => void;
   scriptId?: string;
+  /** Initial strokes loaded from backend (replaces localStorage) */
+  initialStrokes?: Stroke[];
+  /** Called after every stroke change so the parent can sync strokes to backend */
+  onStrokesChange?: (strokes: Stroke[]) => void;
 }
 
 function dist2(v: {x: number, y: number}, w: {x: number, y: number}) {
@@ -38,7 +42,8 @@ function distToSegmentSquared(p: {x: number, y: number}, v: {x: number, y: numbe
 
 export function useDrawing({
   canvasRef, viewportRef, zoomRef, panRef,
-  isDrawMode, initialDataUrl, onStrokeComplete, scriptId
+  isDrawMode, initialDataUrl, onStrokeComplete,
+  initialStrokes, onStrokesChange
 }: UseDrawingProps) {
   const [tool, setTool] = useState<DrawingOptions["tool"]>("pen");
   const [color, setColor] = useState("#c9a84c");
@@ -63,20 +68,18 @@ export function useDrawing({
   const rafId = useRef<number | null>(null);
   const isDirty = useRef(false);
 
-  // ── Persist ──────────────────────────────────────────────────────────────
+  // ── Load initial strokes from backend prop ────────────────────────────
   useEffect(() => {
-    if (!scriptId) return;
-    try {
-      const stored = localStorage.getItem(`cinema_strokes_${scriptId}`);
-      if (stored) strokes.current = JSON.parse(stored);
-    } catch { /* ignore */ }
-  }, [scriptId]);
+    if (initialStrokes && initialStrokes.length > 0) {
+      strokes.current = initialStrokes;
+      // Redraw will happen when canvas mounts via the redrawAll effect
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
 
   const persistStrokes = useCallback(() => {
-    if (scriptId) {
-      localStorage.setItem(`cinema_strokes_${scriptId}`, JSON.stringify(strokes.current));
-    }
-  }, [scriptId]);
+    onStrokesChange?.([...strokes.current]);
+  }, [onStrokesChange]);
 
   // ── Coordinate conversion ──────────────────────────────────────────────
   // Pure ref-based — never causes re-render

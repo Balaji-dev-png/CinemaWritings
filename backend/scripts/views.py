@@ -177,42 +177,27 @@ class ScriptViewSet(viewsets.ModelViewSet):
     )
     def export_pdf(self, request, pk=None):
         """
-        GET /api/scripts/{id}/export/pdf/ — Export from DB.
-        POST /api/scripts/{id}/export/pdf/ — Export with custom content/styles.
+        GET /api/scripts/{id}/export/pdf/ — Export from DB (fallback).
+        POST /api/scripts/{id}/export/pdf/ — WYSIWYG PDF export with raw HTML.
         """
         from django.http import Http404
         from .models import Script
-        from export.renderer import render_screenplay_pdf
+        from export.renderer import render_screenplay_pdf, render_screenplay_pdf_from_html
 
         try:
             script = self.get_object()
         except Http404:
             if request.method == "POST":
-                # If script is only in Supabase and not synced to Django yet,
-                # create a transient in-memory Script object for PDF rendering.
                 script = Script(id=pk)
             else:
                 raise
 
-        # If POST, allow overriding content and styling for immediate export
         if request.method == "POST":
-            script.content = request.data.get("content", script.content)
-            script.title = request.data.get("title", script.title)
-            script.paper_color = request.data.get("paper_color", script.paper_color)
-            script.font_family = request.data.get("font_family", script.font_family)
-            script.text_color = request.data.get("text_color", script.text_color)
-            script.font_size = request.data.get("font_size", script.font_size)
-            
-            # Metadata overrides
-            meta = request.data.get("meta", {})
-            if meta:
-                script.author = meta.get("author", script.author)
-                script.contact = meta.get("contact", script.contact)
-                script.logline = meta.get("logline", script.logline)
-                script.synopsis = meta.get("synopsis", script.synopsis)
-                script.written_by_prefix = meta.get("written_by_prefix", script.written_by_prefix)
+            body = request.data
+            pdf_bytes = render_screenplay_pdf_from_html(script, body)
+        else:
+            pdf_bytes = render_screenplay_pdf(script)
 
-        pdf_bytes = render_screenplay_pdf(script)
         filename = (script.title or "screenplay").replace(" ", "_")
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
@@ -231,7 +216,7 @@ class ScriptViewSet(viewsets.ModelViewSet):
         """
         POST /api/scripts/{id}/workspace/sync/
         Batch sync workspace assets.
-        Body: { "assets": [...], "edges": [...], "viewport": {...} }
+        Body: { "assets": [...], "edges": [...], "viewport": {...}, "drawing_strokes": [...] }
         """
         script = self.get_object()
         assets_data = request.data.get("assets", [])
@@ -268,96 +253,37 @@ class ScriptViewSet(viewsets.ModelViewSet):
         # Remove assets that are no longer in the payload
         if asset_ids_in_payload:
             script.workspace_assets.exclude(asset_id__in=asset_ids_in_payload).delete()
-            
-        # Save edges to Script model
+        elif not assets_data:
+            # Empty array was explicitly sent — clear all assets
+            script.workspace_assets.all().delete()
+
+        # Collect fields to update on Script
+        script_update_fields = []
+
+        # Save edges (connectors)
         edges_data = request.data.get("edges")
         if edges_data is not None:
             script.workspace_edges = edges_data
-            script.save(update_fields=["workspace_edges", "updated_at"])
+            script_update_fields.append("workspace_edges")
+
+        # Save canvas viewport (zoom/pan)
+        viewport_data = request.data.get("viewport")
+        if viewport_data is not None:
+            script.canvas_viewport = viewport_data
+            script_update_fields.append("canvas_viewport")
+
+        # Save freehand drawing strokes
+        strokes_data = request.data.get("drawing_strokes")
+        if strokes_data is not None:
+            script.drawing_strokes = strokes_data
+            script_update_fields.append("drawing_strokes")
+
+        if script_update_fields:
+            script_update_fields.append("updated_at")
+            script.save(update_fields=script_update_fields)
         
         return Response({"status": "synced", "count": len(asset_ids_in_payload)}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=["get", "post"], url_path="export/pitchdeck")
-    def export_pitchdeck(self, request, pk=None):
-        """
-        GET/POST /api/scripts/{id}/export/pitchdeck/
-        Generate and download a Director's Suite Pitch Deck PDF.
-
-        POST body (optional): { "workspace_state": { "elements": [...] } }
-        If no body, falls back to WorkspaceAsset model rows.
-        """
-        script = self.get_object()
-        from export.renderer import render_pitchdeck_pdf
-
-        workspace_state = None
-        if request.method == "POST" and request.data:
-            workspace_state = request.data.get("workspace_state")
-
-        pdf_bytes = render_pitchdeck_pdf(script, workspace_state=workspace_state)
-        filename = (script.title or "pitchdeck").replace(" ", "_")
-        response = HttpResponse(pdf_bytes, content_type="application/pdf")
-        response["Content-Disposition"] = f'attachment; filename="{filename}_pitchdeck.pdf"'
-        return response
-
-    @action(detail=True, methods=["get"], url_path="export/workspace-pdf")
-    def export_workspace_pdf(self, request, pk=None):
-        """
-        GET /api/scripts/{id}/export/workspace-pdf/
-        Generate a Director's Suite PDF using Puppeteer (headless Chromium).
-        Falls back to WeasyPrint pitchdeck if Puppeteer is unavailable.
-        """
-        import subprocess
-        import tempfile
-        import shutil
-
-        script = self.get_object()
-        filename = (script.title or "workspace").replace(" ", "_")
-
-        # Try Puppeteer first
-        node_bin = shutil.which("node")
-        if node_bin:
-            import os
-            script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            export_script = os.path.join(script_dir, "scripts", "export-workspace.js")
-
-            if os.path.exists(export_script):
-                try:
-                    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-                        tmp_path = tmp.name
-
-                    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-                    result = subprocess.run(
-                        [node_bin, export_script, str(pk), tmp_path],
-                        capture_output=True,
-                        timeout=60,
-                        env={**os.environ, "FRONTEND_URL": frontend_url},
-                    )
-
-                    if result.returncode == 0 and os.path.exists(tmp_path):
-                        with open(tmp_path, "rb") as f:
-                            pdf_bytes = f.read()
-                        os.unlink(tmp_path)
-
-                        response = HttpResponse(pdf_bytes, content_type="application/pdf")
-                        response["Content-Disposition"] = f'attachment; filename="{filename}_workspace.pdf"'
-                        return response
-                    else:
-                        # Log and fall through to WeasyPrint
-                        import logging
-                        logger = logging.getLogger(__name__)
-                        logger.warning(f"Puppeteer export failed: {result.stderr.decode()[:500]}")
-                        if os.path.exists(tmp_path):
-                            os.unlink(tmp_path)
-                except Exception as e:
-                    import logging
-                    logging.getLogger(__name__).warning(f"Puppeteer export error: {e}")
-
-        # Fallback: WeasyPrint pitchdeck
-        from export.renderer import render_pitchdeck_pdf
-        pdf_bytes = render_pitchdeck_pdf(script)
-        response = HttpResponse(pdf_bytes, content_type="application/pdf")
-        response["Content-Disposition"] = f'attachment; filename="{filename}_workspace.pdf"'
-        return response
 class SceneViewSet(viewsets.ModelViewSet):
     """CRUD for scenes within a script."""
     serializer_class = SceneSerializer
@@ -419,116 +345,7 @@ def search_scripts(request):
     return Response({"results": serializer.data})
 
 
-def _render_canvas_snapshot_pdf(image_base64: str, filename: str) -> HttpResponse:
-    """
-    Shared helper — converts a base64 canvas PNG into a Milanote-style
-    landscape A4 PDF: single page, canvas image centred on a dark background.
-    No title page. No reflow. Exactly what Milanote produces.
-    """
-    from weasyprint import HTML, CSS
-    from weasyprint.text.fonts import FontConfiguration
 
-    html_content = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body>
-  <div class="canvas-page">
-    <img src="{image_base64}" alt="Canvas" />
-  </div>
-</body>
-</html>"""
-
-    css_content = """
-@page {
-    size: A4 landscape;
-    margin: 0;
-    background-color: #0d0d0d;
-}
-
-body {
-    margin: 0;
-    padding: 0;
-    background-color: #0d0d0d;
-}
-
-.canvas-page {
-    width: 100%;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #0d0d0d;
-}
-
-.canvas-page img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    display: block;
-}
-"""
-
-    font_config = FontConfiguration()
-    html = HTML(string=html_content)
-    css = CSS(string=css_content, font_config=font_config)
-    pdf_bytes = html.write_pdf(stylesheets=[css], font_config=font_config)
-
-    response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    response["Access-Control-Allow-Origin"] = "*"
-    return response
-
-
-@api_view(["POST", "OPTIONS"])
-@permission_classes([permissions.IsAuthenticated])
-def export_workspace_pdf(request):
-    """
-    POST /api/export/workspace-pdf/
-    Milanote-style canvas snapshot PDF for the Director's Suite workspace.
-
-    Body: { "image_base64": "data:image/png;base64,...", "title": "...", "script_id": "..." }
-    Returns: application/pdf binary (landscape A4, canvas-only, no title page)
-    """
-    if request.method == "OPTIONS":
-        response = HttpResponse()
-        response["Access-Control-Allow-Origin"] = "*"
-        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        response["Access-Control-Allow-Headers"] = "Content-Type"
-        return response
-
-    image_base64 = request.data.get("image_base64", "")
-    if not image_base64:
-        return Response({"error": "image_base64 is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    raw_title = request.data.get("title", "workspace")
-    safe_name = raw_title.replace(" ", "_").replace("/", "-") or "workspace"
-    return _render_canvas_snapshot_pdf(image_base64, f"{safe_name}_workspace.pdf")
-
-
-@api_view(["POST", "OPTIONS"])
-@permission_classes([permissions.IsAuthenticated])
-def export_storyboard_pdf(request):
-    """
-    POST /api/export/storyboard-pdf/
-    Milanote-style canvas snapshot PDF for the Storyboard workspace.
-
-    Body: { "image_base64": "data:image/png;base64,...", "title": "...", "script_id": "..." }
-    Returns: application/pdf binary (landscape A4, canvas-only, no title page)
-    """
-    if request.method == "OPTIONS":
-        response = HttpResponse()
-        response["Access-Control-Allow-Origin"] = "*"
-        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        response["Access-Control-Allow-Headers"] = "Content-Type"
-        return response
-
-    image_base64 = request.data.get("image_base64", "")
-    if not image_base64:
-        return Response({"error": "image_base64 is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-    raw_title = request.data.get("title", "storyboard")
-    safe_name = raw_title.replace(" ", "_").replace("/", "-") or "storyboard"
-    return _render_canvas_snapshot_pdf(image_base64, f"{safe_name}_storyboard.pdf")
 
 
 # ─── Storyboard API ────────────────────────────────────────────────────────

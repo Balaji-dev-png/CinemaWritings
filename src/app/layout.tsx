@@ -24,6 +24,7 @@ const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfa
 const lora = Lora({ subsets: ["latin"], variable: "--font-lora" });
 const comicNeue = Comic_Neue({ weight: ["300", "400", "700"], subsets: ["latin"], variable: "--font-comic-neue" });
 
+import Script from "next/script";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ChatbotWidget } from "@/components/chat/ChatbotWidget";
@@ -45,6 +46,19 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col font-sans transition-colors duration-500 bg-zinc-50 dark:bg-black">
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-5Z7BE1JVD2"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-5Z7BE1JVD2');
+          `}
+        </Script>
         <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem disableTransitionOnChange>
             {children}
             <ChatbotWidget />

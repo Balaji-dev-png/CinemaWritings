@@ -9,10 +9,16 @@ Converts a Script model instance into a WGA-standard PDF with:
 """
 
 import io
+from datetime import date
 
 from django.template.loader import render_to_string
 from weasyprint import CSS, HTML
 from weasyprint.text.fonts import FontConfiguration
+
+
+def ordinal(n):
+    suffix = ['th','st','nd','rd','th','th','th','th','th','th']
+    return str(n) + (suffix[n % 10] if n % 10 < 4 and not (11 <= n % 100 <= 13) else 'th')
 
 
 # ─── WGA Standard Layout Constants ─────────────────────────────────────────
@@ -24,21 +30,31 @@ def get_dynamic_css(
     font_size=12,
 ):
     return f"""
+/* Script pages — always white */
 @page {{
     size: letter;
     margin: 1in 1in 1in 1.5in;
-    background-color: {paper_color};
+    background-color: #ffffff;
     @top-right {{
         content: counter(page) ".";
         font-family: '{font_family}', 'Courier Prime', Courier, monospace;
         font-size: {font_size}pt;
         vertical-align: bottom;
         padding-bottom: 0.5in;
+        color: #000000;
     }}
 }}
 
+/* Title page — dark background, no page number */
 @page :first {{
+    background-color: #1a1a1a;
     @top-right {{ content: none; }}
+}}
+
+/* Force print backgrounds — critical for dark title page */
+* {{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
 }}
 
 @font-face {{
@@ -53,64 +69,13 @@ def get_dynamic_css(
     font-weight: bold;
     font-style: normal;
 }}
-@font-face {{
-    font-family: 'Poppins';
-    src: url('https://fonts.gstatic.com/s/poppins/v20/pxiEyp8kv8JHgFVrJJfecg.woff2') format('woff2');
-}}
-@font-face {{
-    font-family: 'Poppins';
-    src: url('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLCz7Z1xlFQ.woff2') format('woff2');
-    font-weight: bold;
-}}
-@font-face {{
-    font-family: 'Inter';
-    src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff2') format('woff2');
-}}
-@font-face {{
-    font-family: 'Inter';
-    src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hjp-Ek-_EeA.woff2') format('woff2');
-    font-weight: bold;
-}}
-@font-face {{
-    font-family: 'Roboto';
-    src: url('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff2') format('woff2');
-}}
-@font-face {{
-    font-family: 'Roboto';
-    src: url('https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc4.woff2') format('woff2');
-    font-weight: bold;
-}}
-@font-face {{
-    font-family: 'Open Sans';
-    src: url('https://fonts.gstatic.com/s/opensans/v34/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-muw.woff2') format('woff2');
-}}
-@font-face {{
-    font-family: 'Lato';
-    src: url('https://fonts.gstatic.com/s/lato/v23/S6uyw4BMUTPHjx4wXg.woff2') format('woff2');
-}}
-@font-face {{
-    font-family: 'Montserrat';
-    src: url('https://fonts.gstatic.com/s/montserrat/v25/JTUSjIg1_i6t8kCHKm4df9GR7ZtCR7A.woff2') format('woff2');
-}}
-@font-face {{
-    font-family: 'Playfair Display';
-    src: url('https://fonts.gstatic.com/s/playfairdisplay/v30/nuFvD7K83om0HaPkAt4RYj6u776u776u776u.woff2') format('woff2');
-}}
-@font-face {{
-    font-family: 'Lora';
-    src: url('https://fonts.gstatic.com/s/lora/v32/0QI6MX1D_JOuMw3I.woff2') format('woff2');
-}}
-@font-face {{
-    font-family: 'Comic Neue';
-    src: url('https://fonts.gstatic.com/s/comicneue/v8/4UaHr6S_T60rk7re7_P7XOvD_w.woff2') format('woff2');
-}}
 
 body {{
     font-family: '{font_family}', 'Courier Prime', 'Courier New', Courier, monospace;
     font-size: {font_size}pt;
     line-height: 1.4;
     color: {text_color};
-    background-color: {paper_color};
+    background-color: #ffffff;
     margin: 0;
     padding: 0;
 }}
@@ -124,8 +89,10 @@ span {{
     outline: none !important; 
     box-shadow: none !important;
 }}
-.script-body * {{ border: none !important; outline: none !important; }}
-* {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+
+.no-print {{
+    display: none !important;
+}}
 
 /* ─── Title Page ─── */
 .title-page {{
@@ -134,6 +101,7 @@ span {{
     height: 9.0in;
     text-align: center;
     font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    background-color: #1a1a1a;
 }}
 
 .title-page .title-block {{
@@ -149,16 +117,37 @@ span {{
     text-transform: uppercase;
     text-decoration: underline;
     margin-bottom: 0.5in;
+    color: #c9a84c;  /* gold — matches screen */
+    letter-spacing: 0.05em;
 }}
 
 .title-page .written-by {{
     font-size: 1em;
     margin-bottom: 0.25in;
+    color: #888888;
 }}
 
 .title-page .author {{
     font-size: 1.1em;
-    font-weight: bold;
+    font-weight: normal;
+    color: #aaaaaa;
+}}
+
+.title-page .logline-block {{
+    position: absolute;
+    top: 5.5in;
+    width: 100%;
+    text-align: center;
+    padding: 0 1in;
+}}
+.title-page .logline {{
+    font-style: italic;
+    color: #888888;
+    margin-bottom: 0.2in;
+}}
+.title-page .synopsis {{
+    font-size: 0.9em;
+    color: #666666;
 }}
 
 .title-page .contact-block {{
@@ -167,10 +156,16 @@ span {{
     left: 0;
     text-align: left;
     font-size: {font_size}pt;
-    line-height: 1.4;
+    line-height: 1.6;
+    color: #666666;
 }}
 
-/* ─── Script Elements ─── */
+/* ─── Script Body ─── */
+.script-body {{
+    background-color: #ffffff;
+    color: #000000;
+}}
+
 .script-body p {{
     margin: 0;
     padding: 0;
@@ -248,6 +243,25 @@ span {{
 .script-page:last-child {{
     page-break-after: auto;
 }}
+
+/* Images inserted inline via the editor */
+.script-image {{
+    margin: 12pt 0;
+    line-height: 0;
+}}
+.script-image.align-center {{
+    text-align: center;
+}}
+.script-image.align-right {{
+    text-align: right;
+}}
+.script-image img {{
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+    border: none !important;
+    outline: none !important;
+}}
 """
 
 
@@ -270,6 +284,8 @@ def _parse_html_to_elements(html_content):
             super().__init__()
             self.in_p = False
             self.in_page_node = False
+            self.in_image_wrapper = False
+            self.image_align = 'left'
             self.p_class = "action"
             self.p_html_parts = []
 
@@ -284,6 +300,29 @@ def _parse_html_to_elements(html_content):
                     current_page = len(pages) - 1
                 return
 
+            # Detect image wrapper div (rendered by ResizableImage.renderHTML)
+            if tag == "div":
+                cls = attrs_dict.get("class", "")
+                if "script-image-wrapper" in cls:
+                    self.in_image_wrapper = True
+                    self.image_align = "center" if "align-center" in cls else "right" if "align-right" in cls else "left"
+                    return
+
+            # Capture <img> inside an image wrapper
+            if tag == "img" and self.in_image_wrapper:
+                src = attrs_dict.get("src", "")
+                style = attrs_dict.get("style", "")
+                width_match = re.search(r'width:\s*(\d+)px', style)
+                width = width_match.group(1) if width_match else "400"
+                if src:
+                    html_str = (
+                        f'<div class="script-image align-{self.image_align}">'
+                        f'<img src="{src}" style="width:{width}px;max-width:100%;height:auto;" />'
+                        f'</div>'
+                    )
+                    pages[current_page].append(('image', html_str))
+                return
+
             if tag == "p":
                 self.in_p = True
                 self.p_class = attrs_dict.get("class", "action")
@@ -293,9 +332,13 @@ def _parse_html_to_elements(html_content):
                 self.p_html_parts.append(f"<{tag}{attr_str}>")
 
         def handle_endtag(self, tag):
-            if tag == "div" and self.in_page_node:
-                self.in_page_node = False
-                return
+            if tag == "div":
+                if self.in_image_wrapper:
+                    self.in_image_wrapper = False
+                    return
+                if self.in_page_node:
+                    self.in_page_node = False
+                    return
             if tag == "p" and self.in_p:
                 self.in_p = False
                 content = "".join(self.p_html_parts).strip()
@@ -330,6 +373,9 @@ def render_screenplay_pdf(script):
 
     pages = _parse_html_to_elements(script.content)
 
+    today = date.today()
+    formatted_date = f"{today.strftime('%B')}-{ordinal(today.day)}-{today.year}"
+
     context = {
         "title": script.title or "UNTITLED",
         "written_by_prefix": script.written_by_prefix or "written by",
@@ -337,8 +383,10 @@ def render_screenplay_pdf(script):
         "contact": script.contact or "",
         "logline": script.logline or "",
         "synopsis": script.synopsis or "",
-        "current_date": script.updated_at.strftime("%B-%d-%Y") if hasattr(script, 'updated_at') and script.updated_at else "",
+        "current_date": formatted_date,
         "pages": pages,
+        "show_logline": bool(script.logline and script.logline.strip()),
+        "show_synopsis": bool(script.synopsis and script.synopsis.strip()),
     }
 
     html_string = render_to_string("screenplay.html", context)
@@ -356,382 +404,338 @@ def render_screenplay_pdf(script):
     return html.write_pdf(stylesheets=[css], font_config=font_config)
 
 
-# ─── Pitch Deck (Director's Suite) Export ────────────────────────────────────
 
-PITCHDECK_CSS = """
-@page {
-    size: letter landscape;
-    margin: 0.6in 0.75in;
-    @bottom-center {
-        content: none;
-    }
-}
+def render_screenplay_pdf_from_html(script, body: dict) -> bytes:
+    """
+    WYSIWYG PDF export — uses actual TipTap HTML output so every
+    user edit (font size, color, letter spacing, alignment) is preserved exactly.
+    """
+    from weasyprint import CSS, HTML
+    from weasyprint.text.fonts import FontConfiguration
+    import datetime
 
-@font-face {
+    # Pull values from POST body
+    title_page_html = body.get('title_page_html', '')
+    script_body_html = body.get('script_body_html', '')
+    font_family = body.get('font_family', 'Courier Prime')
+    font_size = body.get('font_size', 12)
+    paper_color = body.get('paper_color', '#ffffff')
+    text_color = body.get('text_color', '#000000')
+    title_page_bg = body.get('title_page_bg', '#1a1a1a')
+    title_color = body.get('title_color', '#c9a84c')
+
+    # Format date
+    today = datetime.date.today()
+    suffix = lambda n: 'th' if 11<=n%100<=13 else {1:'st',2:'nd',3:'rd'}.get(n%10,'th')
+    formatted_date = f"{today.strftime('%B')}-{today.day}{suffix(today.day)}-{today.year}"
+
+    # Build complete HTML document
+    html_string = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+</head>
+<body>
+
+<!-- TITLE PAGE -->
+<div class="title-page">
+    <div class="title-page-inner">
+        {title_page_html if title_page_html else _build_fallback_title_html(script, title_color)}
+    </div>
+    <div class="title-page-date">{formatted_date}</div>
+</div>
+
+<!-- SCRIPT BODY -->
+<div class="script-body">
+    {script_body_html if script_body_html else ''}
+</div>
+
+</body>
+</html>"""
+
+    css_string = _build_wysiwyg_css(
+        font_family=font_family,
+        font_size=font_size,
+        paper_color=paper_color,
+        text_color=text_color,
+        title_page_bg=title_page_bg,
+        title_color=title_color,
+    )
+
+    font_config = FontConfiguration()
+    html = HTML(string=html_string)
+    css = CSS(string=css_string, font_config=font_config)
+    return html.write_pdf(stylesheets=[css], font_config=font_config)
+
+
+def _build_fallback_title_html(script, title_color: str) -> str:
+    """Fallback if frontend sends no title_page_html."""
+    return f"""
+        <div class="fallback-title">{script.title or 'UNTITLED'}</div>
+        <div class="fallback-written-by">{script.written_by_prefix or 'written by'}</div>
+        <div class="fallback-author">{script.author or ''}</div>
+    """
+
+
+def _build_wysiwyg_css(
+    font_family: str,
+    font_size: int,
+    paper_color: str,
+    text_color: str,
+    title_page_bg: str,
+    title_color: str,
+) -> str:
+    return f"""
+/* ── Font Faces ── */
+@font-face {{
     font-family: 'Courier Prime';
     src: url('https://fonts.gstatic.com/s/courierprime/v9/u-4n0qW6p57vka8V2WnLpNeVfE8.woff2') format('woff2');
     font-weight: normal;
-    font-style: normal;
-}
-
-@font-face {
+}}
+@font-face {{
     font-family: 'Courier Prime';
     src: url('https://fonts.gstatic.com/s/courierprime/v9/u-4k0qW6p57vka8V2WhD9eRfYfg.woff2') format('woff2');
     font-weight: bold;
-    font-style: normal;
-}
+}}
+@font-face {{
+    font-family: 'Courier Prime';
+    src: url('https://fonts.gstatic.com/s/courierprime/v9/u-450qW6p57vka8V2WnLpNhFjW5.woff2') format('woff2');
+    font-style: italic;
+}}
 
-body {
-    font-family: 'Courier Prime', 'Courier New', Courier, monospace;
-    font-size: 10pt;
-    line-height: 1.3;
-    color: #1e293b;
-    background-color: #f8f9fa;
+/* ── Page Rules ── */
+@page {{
+    size: letter;
+    margin: 1in 1in 1in 1.5in;
+    background-color: {paper_color};
+    @top-right {{
+        content: counter(page) ".";
+        font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+        font-size: {font_size}pt;
+        vertical-align: bottom;
+        padding-bottom: 0.5in;
+        color: {text_color};
+    }}
+}}
+
+@page :first {{
+    background-color: {title_page_bg};
+    margin: 0;
+    @top-right {{ content: none; }}
+}}
+
+/* ── Global Reset ── */
+* {{
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-sizing: border-box;
+}}
+
+body {{
+    font-family: '{font_family}', 'Courier Prime', 'Courier New', Courier, monospace;
+    font-size: {font_size}pt;
+    line-height: 1.4;
     margin: 0;
     padding: 0;
-}
+}}
 
-/* ─── Deck Page ─── */
-.deck-page {
+/* ── Preserve ALL inline styles from TipTap ── */
+/* This is the key — never override inline styles */
+[style] {{
+    /* inline styles always win — do not override */
+}}
+
+span {{
+    /* preserve font-size, color, letter-spacing, etc from TipTap */
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}}
+
+/* ── Title Page ── */
+.title-page {{
     page-break-after: always;
-    height: 6.3in;
+    background-color: {title_page_bg};
+    width: 100%;
+    min-height: 100vh;
     position: relative;
-}
-.deck-page:last-child {
-    page-break-after: auto;
-}
-
-/* Header */
-.page-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.3in;
-    border-bottom: 1px solid #cbd5e1;
-    padding-bottom: 0.1in;
-}
-.page-header .project-title {
-    font-weight: bold;
-    font-size: 10pt;
-    color: #64748b;
-    letter-spacing: 0.05em;
-}
-.page-header .page-label {
-    font-size: 8pt;
-    color: #3b82f6;
-    font-weight: bold;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-}
-
-/* ─── Card Grid: 2×2 ─── */
-.card-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25in;
-}
-
-.card {
-    width: 4.6in;
-    min-height: 2.4in;
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: row;
-    page-break-inside: avoid;
-}
-
-/* Image area */
-.card-image {
-    width: 1.6in;
-    min-height: 2.4in;
-    background-color: #f1f5f9;
-    flex-shrink: 0;
-    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
-}
-.card-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-.card-image-placeholder {
+    padding: 1in;
+}}
+
+.title-page-inner {{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    color: #94a3b8;
-}
-.placeholder-icon {
-    font-size: 28pt;
-}
+    gap: 0.3in;
+    margin-top: 2in;
+}}
 
-/* Card body */
-.card-body {
-    flex: 1;
-    padding: 0.15in 0.2in;
-}
-
-.card-type-badge {
-    display: inline-block;
-    font-size: 7pt;
+/* Title text — gold, uppercase, underlined, letter-spaced */
+.title-page-inner .script-title,
+.fallback-title {{
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    font-size: 18pt;
     font-weight: bold;
-    letter-spacing: 0.1em;
-    padding: 2px 8px;
-    border-radius: 4px;
-    margin-bottom: 6px;
-}
+    text-transform: uppercase;
+    text-decoration: underline;
+    color: {title_color};
+    letter-spacing: 0.12em;
+    text-align: center;
+    margin-bottom: 0.4in;
+}}
 
-.card-title {
-    font-size: 11pt;
-    font-weight: bold;
-    color: #0f172a;
-    margin: 0 0 6px 0;
-}
+/* "written by" */
+.title-page-inner .written-by,
+.fallback-written-by {{
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    font-size: {font_size}pt;
+    color: #888888;
+    letter-spacing: 0.05em;
+    text-align: center;
+    margin-bottom: 0.1in;
+}}
 
-.card-meta-row {
-    display: flex;
-    gap: 0.1in;
-    margin-bottom: 3px;
-}
-.meta-label {
-    font-size: 7pt;
-    color: #64748b;
-    font-weight: bold;
-    letter-spacing: 0.08em;
-    min-width: 0.7in;
-}
-.meta-value {
-    font-size: 9pt;
-    color: #334155;
-}
+/* Author name */
+.title-page-inner .author-name,
+.fallback-author {{
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    font-size: {font_size}pt;
+    color: #aaaaaa;
+    letter-spacing: 0.05em;
+    text-align: center;
+}}
 
-.card-notes {
-    font-size: 8.5pt;
-    color: #475569;
-    margin-top: 6px;
-    line-height: 1.3;
-}
+/* Hide UI-only elements from PDF */
+.no-print,
+.show-logline-btn,
+[data-no-print],
+button {{
+    display: none !important;
+}}
 
-/* Footer */
-.page-footer {
+/* Date bottom left of title page */
+.title-page-date {{
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-between;
-    font-size: 7pt;
-    color: #94a3b8;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 4px;
-}
+    bottom: 0.5in;
+    left: 1in;
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    font-size: 9pt;
+    color: #555555;
+    letter-spacing: 0.05em;
+}}
+
+/* Contact info */
+.contact-block,
+.title-page-inner .contact {{
+    position: absolute;
+    bottom: 0.8in;
+    left: 1in;
+    font-family: '{font_family}', 'Courier Prime', Courier, monospace;
+    font-size: 9pt;
+    color: #666666;
+    line-height: 1.6;
+    text-align: left;
+}}
+
+/* ── Script Body ── */
+.script-body {{
+    background-color: {paper_color};
+    color: {text_color};
+}}
+
+.script-body p {{
+    margin: 0;
+    padding: 0;
+    line-height: 1.4;
+    font-size: {font_size}pt;
+    orphans: 2;
+    widows: 2;
+    white-space: pre-wrap;
+}}
+
+/* ── WGA Element Styles ── */
+.script-body p.scene-heading,
+.script-body p.scene_heading {{
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-top: 1.2em;
+    margin-bottom: 0.4em;
+    page-break-after: avoid;
+}}
+
+.script-body p.action {{
+    margin-top: 0.8em;
+    margin-bottom: 0.8em;
+}}
+
+.script-body p.character {{
+    text-transform: uppercase;
+    margin-top: 1.2em;
+    margin-left: 2.1in;
+    page-break-after: avoid;
+}}
+
+.script-body p.parenthetical {{
+    margin-left: 1.5in;
+    max-width: 3.0in;
+    page-break-after: avoid;
+}}
+
+.script-body p.dialogue {{
+    margin-left: 1.0in;
+    margin-right: 1.0in;
+    margin-bottom: 0.6em;
+}}
+
+.script-body p.transition {{
+    text-transform: uppercase;
+    text-align: right;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}}
+
+.script-body p.shot {{
+    text-transform: uppercase;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}}
+
+/* ── Text Formatting — preserved from TipTap inline styles ── */
+strong, b {{ font-weight: bold; }}
+em, i {{ font-style: italic; }}
+u {{ text-decoration: underline; }}
+s {{ text-decoration: line-through; }}
+
+/* ── Images in script ── */
+.script-image-wrapper {{
+    margin: 12pt 0;
+    line-height: 0;
+}}
+.script-image-wrapper.align-center {{
+    text-align: center;
+}}
+.script-image-wrapper.align-right {{
+    text-align: right;
+}}
+.script-image-wrapper img {{
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+    border: none !important;
+}}
+
+/* ── Script Pages ── */
+.script-page {{
+    page-break-after: always;
+    background-color: {paper_color};
+}}
+.script-page:last-child {{
+    page-break-after: auto;
+}}
 """
-
-# Shot type metadata map (mirrors frontend SHOT_TYPES)
-SHOT_TYPE_MAP = {
-    # Distance
-    "ews": {"label": "Extreme Wide Shot (EWS)", "icon": "🌍", "color": "#64748b"},
-    "ws": {"label": "Wide Shot (WS)", "icon": "🏔", "color": "#64748b"},
-    "fs": {"label": "Full Shot (FS)", "icon": "🧍", "color": "#64748b"},
-    "mws": {"label": "Medium Wide Shot (MWS)", "icon": "🤠", "color": "#8b5cf6"},
-    "ms": {"label": "Medium Shot (MS)", "icon": "👤", "color": "#8b5cf6"},
-    "mcu": {"label": "Medium Close-Up (MCU)", "icon": "🗣", "color": "#8b5cf6"},
-    "cu": {"label": "Close-Up (CU)", "icon": "👁", "color": "#ef4444"},
-    "ecu": {"label": "Extreme Close-Up (ECU)", "icon": "🔍", "color": "#ef4444"},
-    "insert": {"label": "Insert Shot", "icon": "📌", "color": "#f59e0b"},
-    # Angle
-    "eye-level": {"label": "Eye Level", "icon": "👀", "color": "#10b981"},
-    "low-angle": {"label": "Low Angle", "icon": "⬆️", "color": "#10b981"},
-    "high-angle": {"label": "High Angle", "icon": "⬇️", "color": "#10b981"},
-    "birds-eye": {"label": "Bird's Eye / Top Down", "icon": "🦅", "color": "#14b8a6"},
-    "dutch-angle": {"label": "Dutch Angle / Canted", "icon": "↗️", "color": "#e11d48"},
-    "worms-eye": {"label": "Worm's Eye", "icon": "🐛", "color": "#10b981"},
-    # Movement
-    "static": {"label": "Static Shot", "icon": "⏸️", "color": "#3b82f6"},
-    "pan": {"label": "Pan", "icon": "↔️", "color": "#3b82f6"},
-    "tilt": {"label": "Tilt", "icon": "↕️", "color": "#3b82f6"},
-    "dolly": {"label": "Dolly / Tracking", "icon": "🚂", "color": "#3b82f6"},
-    "dolly-zoom": {"label": "Dolly Zoom (Vertigo)", "icon": "😵‍💫", "color": "#8b5cf6"},
-    "zoom": {"label": "Zoom", "icon": "🔎", "color": "#3b82f6"},
-    "handheld": {"label": "Handheld", "icon": "🫨", "color": "#f59e0b"},
-    "steadicam": {"label": "Steadicam", "icon": "🛹", "color": "#3b82f6"},
-    "crane": {"label": "Crane / Jib", "icon": "🏗", "color": "#8b5cf6"},
-    "aerial": {"label": "Aerial Shot", "icon": "🚁", "color": "#3b82f6"},
-    "arc": {"label": "Arc Shot", "icon": "🔄", "color": "#3b82f6"},
-    "whip-pan": {"label": "Whip Pan", "icon": "💨", "color": "#e11d48"},
-    # Relationship
-    "two-shot": {"label": "Two Shot (2S)", "icon": "👥", "color": "#ec4899"},
-    "three-shot": {"label": "Three Shot", "icon": "👪", "color": "#ec4899"},
-    "ots": {"label": "Over-the-Shoulder (OTS)", "icon": "👤👤", "color": "#ec4899"},
-    "pov": {"label": "Point of View (POV)", "icon": "🎥", "color": "#ec4899"},
-    "reaction": {"label": "Reaction Shot", "icon": "😲", "color": "#ec4899"},
-    "cutaway": {"label": "Cutaway", "icon": "✂️", "color": "#ec4899"},
-    # Special
-    "freeze-frame": {"label": "Freeze Frame", "icon": "🧊", "color": "#a855f7"},
-    "split-screen": {"label": "Split Screen", "icon": "🪟", "color": "#a855f7"},
-    "rack-focus": {"label": "Rack Focus", "icon": "🔬", "color": "#a855f7"},
-    "deep-focus": {"label": "Deep Focus", "icon": "🏞", "color": "#a855f7"},
-    "shallow-focus": {"label": "Shallow Focus", "icon": "🎯", "color": "#a855f7"},
-    "single": {"label": "Single", "icon": "🧍‍♂️", "color": "#ec4899"},
-}
-
-IDEA_COLORS = {
-    "blue": "#3b82f6",
-    "purple": "#8b5cf6",
-    "green": "#10b981",
-    "amber": "#f59e0b",
-    "red": "#ef4444",
-    "pink": "#ec4899",
-}
-
-
-def _workspace_elements_to_cards(elements):
-    """
-    Convert workspace element dicts (from canvas JSON state) into
-    card dicts suitable for the pitchdeck.html template.
-    """
-    cards = []
-    for el in elements:
-        el_type = el.get("type", "")
-        if el_type == "shot":
-            shot_info = SHOT_TYPE_MAP.get(el.get("shotType", ""), {})
-            cards.append(
-                {
-                    "type_label": shot_info.get("label", el.get("shotType", "Shot")),
-                    "icon": shot_info.get("icon", "🎬"),
-                    "color": el.get("color", shot_info.get("color", "#3b82f6")),
-                    "title": el.get("sceneRef", ""),
-                    "scene_ref": el.get("sceneRef", ""),
-                    "description": el.get("description", ""),
-                    "duration": el.get("duration", ""),
-                    "lens": el.get("lens", ""),
-                    "movement": el.get("movement", ""),
-                    "notes": el.get("notes", ""),
-                    "image_url": el.get("imageUrl", ""),
-                }
-            )
-        elif el_type == "idea":
-            cards.append(
-                {
-                    "type_label": "Idea",
-                    "icon": "💡",
-                    "color": IDEA_COLORS.get(
-                        el.get("color", ""), el.get("color", "#f59e0b")
-                    ),
-                    "title": el.get("title", ""),
-                    "description": "",
-                    "content": el.get("content", ""),
-                    "image_url": "",
-                }
-            )
-        elif el_type == "sticky":
-            cards.append(
-                {
-                    "type_label": "Note",
-                    "icon": "📝",
-                    "color": "#fbbf24",
-                    "title": "",
-                    "description": "",
-                    "content": el.get("content", ""),
-                    "image_url": "",
-                }
-            )
-        elif el_type == "image":
-            cards.append(
-                {
-                    "type_label": "Reference",
-                    "icon": "🖼",
-                    "color": "#6366f1",
-                    "title": el.get("alt", "Image"),
-                    "description": "",
-                    "image_url": el.get("src", ""),
-                }
-            )
-        elif el_type == "text":
-            content = el.get("content", "").strip()
-            if content:
-                cards.append(
-                    {
-                        "type_label": "Text",
-                        "icon": "📄",
-                        "color": "#64748b",
-                        "title": "",
-                        "description": "",
-                        "content": content,
-                        "image_url": "",
-                    }
-                )
-    return cards
-
-
-def render_pitchdeck_pdf(script, workspace_state=None):
-    """
-    Render a Director's Suite Pitch Deck PDF.
-
-    Args:
-        script: Script model instance
-        workspace_state: dict with 'elements' key (from canvas JSON state).
-                        If None, attempts to load from WorkspaceAsset model.
-
-    Returns:
-        PDF bytes
-    """
-    from django.template.loader import render_to_string
-    from weasyprint import CSS, HTML
-    from weasyprint.text.fonts import FontConfiguration
-
-    # Gather cards from workspace state
-    if workspace_state and workspace_state.get("elements"):
-        # Sort by z-index ascending
-        elements = sorted(workspace_state["elements"], key=lambda e: e.get("zIndex", 0))
-        cards = _workspace_elements_to_cards(elements)
-    else:
-        # Fallback: load from WorkspaceAsset model rows
-        from scripts.models import WorkspaceAsset
-
-        assets = WorkspaceAsset.objects.filter(script=script).order_by("z_index")
-        cards = []
-        for asset in assets:
-            c = asset.content or {}
-            shot_info = SHOT_TYPE_MAP.get(c.get("shotType", ""), {})
-            cards.append(
-                {
-                    "type_label": shot_info.get(
-                        "label", c.get("type_label", asset.asset_type)
-                    ),
-                    "icon": shot_info.get("icon", c.get("icon", "🎬")),
-                    "color": c.get("color", shot_info.get("color", "#3b82f6")),
-                    "title": c.get("title", c.get("sceneRef", "")),
-                    "scene_ref": c.get("sceneRef", ""),
-                    "description": c.get("description", ""),
-                    "duration": c.get("duration", ""),
-                    "lens": c.get("lens", ""),
-                    "movement": c.get("movement", ""),
-                    "notes": c.get("notes", ""),
-                    "image_url": c.get("imageUrl", c.get("image_url", "")),
-                    "content": c.get("content", ""),
-                }
-            )
-
-    # Chunk into pages of 4 cards (2×2 grid)
-    CARDS_PER_PAGE = 4
-    card_pages = [
-        cards[i : i + CARDS_PER_PAGE]
-        for i in range(0, max(len(cards), 1), CARDS_PER_PAGE)
-    ]
-    if not cards:
-        card_pages = [[]]
-
-    context = {
-        "title": script.title or "UNTITLED",
-        "card_pages": card_pages,
-    }
-
-    html_string = render_to_string("pitchdeck.html", context)
-    font_config = FontConfiguration()
-    html = HTML(string=html_string)
-    css = CSS(string=PITCHDECK_CSS, font_config=font_config)
-
-    return html.write_pdf(stylesheets=[css], font_config=font_config)

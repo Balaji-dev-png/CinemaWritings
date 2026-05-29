@@ -14,11 +14,12 @@ const cspDirectives = [
   "font-src 'self' data: https://fonts.gstatic.com",
   // Allow data URIs and blobs for PDF/canvas export, all HTTPS images
   "img-src 'self' data: blob: https:",
-  // Allow WebSocket and HTTPS connections to Supabase and Django API
+  // Allow WebSocket and HTTPS connections to Supabase, Django API, and unpkg (for PDF.js cmaps/fonts)
   [
     "connect-src 'self'",
     "https://*.supabase.co",
     "wss://*.supabase.co",
+    "https://unpkg.com",
     isDev ? "http://localhost:8000 ws://localhost:8000 http://127.0.0.1:8000 ws://127.0.0.1:8000" : "",
     process.env.NEXT_PUBLIC_API_URL ?? "",
   ]

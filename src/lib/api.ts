@@ -87,10 +87,12 @@ async function apiFetch<T>(
 ): Promise<T> {
   const url = `${API_BASE}${path}`;
   const token = await getAccessToken();
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
+
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -101,8 +103,9 @@ async function apiFetch<T>(
   });
 
   if (response.status === 401) {
-    logout();
-    throw new Error("Your session has expired. Please log in again.");
+    // If the backend rejects the token, do not forcefully log out the user,
+    // as this breaks local-only workflows when Supabase is down.
+    throw new Error("Your session has expired or the server is unavailable.");
   }
 
   if (!response.ok) {
@@ -252,8 +255,7 @@ export async function apiExportPdf(scriptId: string): Promise<void> {
   });
 
   if (response.status === 401) {
-    logout();
-    throw new Error("Your session has expired. Please log in again.");
+    throw new Error("Your session has expired or the server is unavailable.");
   }
 
   if (!response.ok) {
@@ -267,6 +269,56 @@ export async function apiExportPdf(scriptId: string): Promise<void> {
   a.download = "screenplay.pdf";
   a.click();
   URL.revokeObjectURL(blobUrl);
+}
+
+// ─── Workspace Sync (Director's Suite) ───────────────────────────────────
+
+export interface ApiWorkspaceData {
+  assets: any[];
+  edges: any[];
+  viewport: { zoom: number; pan: { x: number; y: number } } | null;
+  drawing_strokes: any[];
+}
+
+/**
+ * Fetches all data for the Director's Suite workspace:
+ * - Assets (WorkspaceAsset rows)
+ * - Edges (connectors stored on Script)
+ * - Viewport (stored on Script)
+ * - Drawing strokes (stored on Script)
+ */
+export async function apiGetWorkspace(scriptId: string): Promise<ApiWorkspaceData> {
+  const [assets, script] = await Promise.all([
+    apiFetch<any[]>(`/scripts/${scriptId}/workspace/`),
+    apiFetch<any>(`/scripts/${scriptId}/`),
+  ]);
+
+  return {
+    assets: assets || [],
+    edges: script.workspace_edges || [],
+    viewport: (script.canvas_viewport && Object.keys(script.canvas_viewport).length > 0)
+      ? script.canvas_viewport
+      : null,
+    drawing_strokes: script.drawing_strokes || [],
+  };
+}
+
+/**
+ * Batch updates the entire workspace state in one call.
+ */
+export async function apiSyncWorkspace(
+  scriptId: string,
+  payload: {
+    assets?: any[];
+    edges?: any[];
+    viewport?: any;
+    drawing_strokes?: any[];
+  }
+): Promise<{ status: string; count: number }> {
+  return apiFetch(`/scripts/${scriptId}/workspace/sync/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 // ─── Backend availability check ───────────────────────────────────────────

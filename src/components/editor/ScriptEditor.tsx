@@ -20,11 +20,13 @@ import { ScriptKeymap } from "./extensions/KeymapLogic";
 import { PageNode } from "./extensions/PageNode";
 import { ScriptDocument } from "./extensions/ScriptDocument";
 import { FontSize } from "./extensions/FontSize";
+import { ResizableImage } from "./extensions/ResizableImage";
 import { updateScript, recordHistory } from "@/lib/storage";
 import { useAutocomplete, AutocompleteOption } from "@/hooks/useAutocomplete";
 import { AutocompleteOverlay } from "./extensions/nodes/AutocompleteOverlay";
 import { ElementMenu } from "./ElementMenu";
 import { Underline } from "@tiptap/extension-underline";
+import TextAlign from "@tiptap/extension-text-align";
 import { Color } from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { FontFamily } from "@tiptap/extension-font-family";
@@ -46,6 +48,10 @@ import {
   ArrowUpDown,
   Plus,
   Minus,
+  Image as ImageIcon,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react";
 
 /* ─── Autocomplete / Suggestions Data ─── */
@@ -332,14 +338,17 @@ export const ScriptEditor = ({
     
     const toolbarWidth = toolbarOrientation === "horizontal" ? 300 : 60;
     
-    // Default: Pin to the right edge of the window
-    let x = canvasWidth - toolbarWidth - 16;
-    const y = 80;
-
-    // Boundary check: if it goes off-screen, pin to right edge
+    // Default: Pin to the right edge of the script page
+    // The script is centered. Its right edge is:
+    // center of screen + half of script width + 16px padding
+    let x = (canvasWidth / 2) + (pageWidth / 2) + 16;
+    
+    // If it goes off-screen, pin to the actual right edge of the window
     if (x + toolbarWidth > canvasWidth - 16) {
       x = canvasWidth - toolbarWidth - 16;
     }
+    
+    const y = 80;
 
     return { x, y };
   }, [toolbarOrientation]);
@@ -538,6 +547,21 @@ export const ScriptEditor = ({
       Shot,
       Extension,
       ScriptKeymap,
+      ResizableImage,
+      TextAlign.configure({
+        types: [
+          "heading",
+          "paragraph",
+          "action",
+          "sceneHeading",
+          "character",
+          "dialogue",
+          "parenthetical",
+          "transition",
+          "shot",
+          "extension",
+        ],
+      }),
       Placeholder.configure({
         placeholder: ({ node }) => {
           const type = node.type.name;
@@ -712,6 +736,26 @@ export const ScriptEditor = ({
         }
         return false;
       },
+      handlePaste: (_view, event) => {
+        const items = event.clipboardData
+          ? Array.from(event.clipboardData.items)
+          : [];
+        const imageItem = items.find((item) => item.type.startsWith("image/"));
+        if (!imageItem) return false;
+        event.preventDefault();
+        const file = imageItem.getAsFile();
+        if (!file) return false;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result as string;
+          editorRef.current?.commands.insertImage({
+            src: base64,
+            alt: "pasted-image",
+          });
+        };
+        reader.readAsDataURL(file);
+        return true; // prevent default TipTap paste
+      },
     },
     immediatelyRender: false,
   });
@@ -798,6 +842,55 @@ export const ScriptEditor = ({
     view.dispatch(tr);
     editor.commands.focus();
   }, [editor]);
+
+  /* ── Image helpers ── */
+  const fileToBase64 = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const insertImageFromFile = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) return;
+      if (file.size > 10 * 1024 * 1024) {
+        alert("Image must be under 10 MB.");
+        return;
+      }
+      const base64 = await fileToBase64(file);
+      editorRef.current?.commands.insertImage({ src: base64, alt: file.name });
+    },
+    [fileToBase64]
+  );
+
+  const handleEditorDrop = useCallback(
+    async (e: React.DragEvent<HTMLDivElement>) => {
+      const files = Array.from(e.dataTransfer.files).filter((f) =>
+        f.type.startsWith("image/")
+      );
+      if (files.length === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      for (const file of files) {
+        await insertImageFromFile(file);
+      }
+    },
+    [insertImageFromFile]
+  );
+
+  const handleImagePickerClick = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,image/webp,image/gif";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) await insertImageFromFile(file);
+    };
+    input.click();
+  }, [insertImageFromFile]);
 
   if (!editor) return null;
 
@@ -1026,6 +1119,18 @@ export const ScriptEditor = ({
                 >
                   <UnderlineIcon className="w-4 h-4" />
                 </button>
+
+                {/* Image insert */}
+                <button
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleImagePickerClick();
+                  }}
+                  className="p-1.5 rounded-lg transition-all text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  title="Insert Image (or drag &amp; drop / Ctrl+V)"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                </button>
               </div>
 
               <div
@@ -1072,9 +1177,14 @@ export const ScriptEditor = ({
         )}
 
       {/* ─── Paper Container ─── */}
-      <div 
+      <div
         ref={editorCanvasRef}
         className="w-full flex flex-col items-center relative"
+        onDrop={handleEditorDrop}
+        onDragOver={(e) => {
+          /* Allow drop only when files are present */
+          if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+        }}
       >
         <EditorContent
           editor={editor}

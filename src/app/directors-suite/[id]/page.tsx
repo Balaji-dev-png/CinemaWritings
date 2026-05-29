@@ -1,7 +1,8 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSuiteState, SuiteElement } from "@/hooks/useSuiteState";
+import { useSuiteState, SuiteElement, ViewportState } from "@/hooks/useSuiteState";
+import { Stroke } from "@/hooks/useDrawing";
 import { useDrawing } from "@/hooks/useDrawing";
 import { SuiteToolbar } from "@/components/suite/SuiteToolbar";
 import { Board } from "@/components/suite/Board";
@@ -10,7 +11,7 @@ import { useLoadingState } from "@/hooks/useLoadingState";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import "@/styles/suite.css";
 
-import { Layers } from "lucide-react";
+import { Layers, Home } from "lucide-react";
 import { DrawingToolbar } from "@/components/suite/DrawingToolbar";
 
 function uid() {
@@ -37,7 +38,7 @@ export default function DirectorsSuitePage() {
   };
 
   const boardRef = useRef<HTMLDivElement>(null);
-  const innerCanvasRef = useRef<HTMLDivElement>(null); // inner transform layer for export
+  const innerCanvasRef = useRef<HTMLDivElement>(null);
   const drawingCanvasRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef(1);
   const panRef = useRef({ x: 0, y: 0 });
@@ -47,7 +48,7 @@ export default function DirectorsSuitePage() {
   // View state
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Load script title
+  // Load script title (from Supabase, independent of suite workspace)
   const [scriptLoaded, setScriptLoaded] = useState(false);
   useEffect(() => {
     if (!scriptId) return;
@@ -72,17 +73,27 @@ export default function DirectorsSuitePage() {
     setProgress(85);
   }, [startLoading]);
 
+  // Gate the loading overlay on BOTH script metadata AND workspace data
   useEffect(() => {
-    if (scriptLoaded) {
+    if (scriptLoaded && !suite.isLoading) {
       setProgress(100);
       const timer = setTimeout(() => {
         stopLoading();
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [scriptLoaded, stopLoading]);
+  }, [scriptLoaded, suite.isLoading, stopLoading]);
 
-  // Drawing hook
+  // ── Viewport change handler (from Board → suite → backend) ──
+  const handleViewportChange = useCallback(
+    (vp: ViewportState) => {
+      suite.updateViewport(vp);
+    },
+    [suite]
+  );
+
+  // ── Drawing hook ──
+  // initialStrokes is available after suite load completes
   const drawing = useDrawing({
     canvasRef: drawingCanvasRef,
     viewportRef: boardRef,
@@ -90,8 +101,9 @@ export default function DirectorsSuitePage() {
     panRef,
     isDrawMode: drawMode,
     initialDataUrl: suite.state.drawingDataUrl,
+    initialStrokes: suite.initialStrokes as Stroke[],
     onStrokeComplete: suite.setDrawingDataUrl,
-    scriptId,
+    onStrokesChange: suite.updateStrokes,
   });
 
   // ── Add element helpers ──
@@ -168,11 +180,11 @@ export default function DirectorsSuitePage() {
 
   return (
     <div className="h-screen flex flex-col bg-zinc-50 dark:bg-[#0d0d0d] text-zinc-900 dark:text-white">
-      <LoadingOverlay 
-        isVisible={isLoading || isNavigating} 
-        message={isNavigating ? navMessage : message} 
+      <LoadingOverlay
+        isVisible={isLoading || isNavigating}
+        message={isNavigating ? navMessage : message}
         showProgressBar={!isNavigating}
-        progressPercent={progress} 
+        progressPercent={progress}
       />
       {/* Top bar */}
       <header
@@ -180,10 +192,17 @@ export default function DirectorsSuitePage() {
       >
         <div className="flex items-center gap-4">
           <button
+            onClick={() => navigateTo(`/`, "Going Home...")}
+            className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1"
+          >
+            <Home className="w-3 h-3" /> Home
+          </button>
+          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+          <button
             onClick={() => navigateTo(`/editor/${scriptId}`, "Back to Editor...")}
             className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
-            ← Back to Editor
+            ← Editor
           </button>
           <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
           <button
@@ -204,7 +223,6 @@ export default function DirectorsSuitePage() {
             {scriptTitle}
           </span>
         </div>
-
       </header>
 
       {/* Main workspace */}
@@ -228,7 +246,6 @@ export default function DirectorsSuitePage() {
           }}
           scriptTitle={scriptTitle}
           isOpen={sidebarOpen}
-          // Obsolete drawing tools from SuiteToolbar were removed
           drawTool={"pen"}
           onSetDrawTool={() => {}}
           drawColor={"#000"}
@@ -257,6 +274,8 @@ export default function DirectorsSuitePage() {
           onRemoveConnector={suite.removeConnector}
           onConnectClick={handleConnectClick}
           scriptId={scriptId}
+          initialViewport={suite.initialViewport}
+          onViewportChange={handleViewportChange}
         />
 
         {/* Floating Drawing Toolbar */}
