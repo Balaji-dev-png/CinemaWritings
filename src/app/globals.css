@@ -524,6 +524,15 @@ body {
   font-family: 'Inter', sans-serif !important;
 }
 
+/* Global pointer cursor for all interactive button elements */
+button,
+[role="button"],
+label[for],
+select,
+summary {
+  cursor: pointer;
+}
+
 /* Canvas smooth cursor transitions */
 .canvas-crosshair { cursor: crosshair; }
 .canvas-grab { cursor: grab; }
