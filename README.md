@@ -23,10 +23,6 @@
 
 ---
 
-### Login + Sign Up
-![Auth pages wireframe](docs/wireframes/auth.png)
-
----
 
 ## Features
 
