@@ -17,7 +17,7 @@ export function ThemeToggle() {
   if (!mounted) {
     return (
       <div className="w-9 h-9 rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
-        <Sun className="w-4 h-4 text-zinc-500" />
+        <Sun className="w-4 h-4 text-zinc-800 dark:text-white" />
       </div>
     );
   }
@@ -40,7 +40,7 @@ export function ThemeToggle() {
         className="absolute"
       >
         {/* Sun — visible in light mode */}
-        <Sun className="w-4 h-4 text-amber-500" />
+        <Sun className="w-4 h-4 text-zinc-800" />
       </motion.div>
       <motion.div
         initial={false}
@@ -49,7 +49,7 @@ export function ThemeToggle() {
         className="absolute"
       >
         {/* Moon — visible in dark mode */}
-        <Moon className="w-4 h-4 text-sky-300" />
+        <Moon className="w-4 h-4 text-white" />
       </motion.div>
     </motion.button>
   );

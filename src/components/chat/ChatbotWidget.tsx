@@ -187,6 +187,7 @@ export function ChatbotWidget() {
     actions: [{ label: "Show all features", path: "__help" }],
   }]);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const widgetRef = useRef<HTMLDivElement>(null);
 
   const pageContext = pathname?.includes("storyboard") ? "Storyboard"
     : pathname?.includes("director") ? "Director's Suite"
@@ -196,6 +197,18 @@ export function ChatbotWidget() {
   useEffect(() => {
     if (open && !minimized) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open, minimized]);
+
+  // Close bot when clicking outside
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (widgetRef.current && !widgetRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
 
   const resolveActionPath = useCallback((path: string) => {
     if (path === "__help") return path;
@@ -262,6 +275,7 @@ export function ChatbotWidget() {
 
   return (
     <motion.div
+      ref={widgetRef}
       drag
       dragMomentum={false}
       style={{
@@ -291,8 +305,8 @@ export function ChatbotWidget() {
       >
         <AnimatePresence mode="wait">
           {open
-            ? <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}><X className="w-5 h-5 text-black" /></motion.div>
-            : <motion.div key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}><Film className="w-5 h-5 text-black" /></motion.div>
+            ? <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}><X className="w-5 h-5 text-black dark:text-white" /></motion.div>
+            : <motion.div key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }}><Film className="w-5 h-5 text-black dark:text-white" /></motion.div>
           }
         </AnimatePresence>
       </motion.button>
