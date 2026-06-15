@@ -41,7 +41,7 @@
   - Shot (`Ctrl+7`)
 - **Smart autocomplete** for character names, scene prefixes (`INT.` / `EXT.`), and standard transitions
 - **`Ctrl+Space`** — opens the element selector menu at the cursor
-- **Focus Mode** — a cinematic, distraction-free writing environment with a film-grain overlay
+- **Focus Mode** — a cinematic, distraction-free writing environment with a film-grain overlay and an **animated flickering candle** that lights up in the bottom-right corner when focus mode is active
 
 ### Title Page
 - Editable title, author ("Written by"), "written by" prefix, and contact block
@@ -96,6 +96,23 @@
 - Securely stored in the cloud via Django backend
 - Script history timeline per document
 - Pastel gradient card system with dark mode
+- **Notes shortcut on each script card** — jump directly to per-script notes from the dashboard
+
+### Notes Editor
+- **Per-Script Notes** — Each script has its own personal notepad accessible from the Editor, Director's Suite, Storyboard, and Dashboard
+- **Global Notes** — A standalone `My Notes` page accessible from the home dashboard for notes not tied to any script
+- **Django-backed persistence** — Notes are stored securely on the backend, private per user
+- **Auto-save** — Changes are saved automatically with an 800ms debounce
+- **Pin notes** — Pin important notes to keep them at the top of the sidebar
+- **Color themes** — Choose from 6 cinematic note colors (Ink, Forest, Navy, Wine, Amber, Slate)
+- **Search** — Full-text search across note titles and content
+- **Navigation** — Seamless back-navigation to Editor / Director's Suite / Storyboard from within the Notes page
+
+### Rich Text Notebook
+- **Universal Dashboard Notebook** — A Tiptap-powered rich text document accessible directly from the dashboard.
+- **Django Cloud Sync** — Auto-saves to your secure Django backend.
+- **Drag & Drop Media** — Drag and drop images directly into your notebook. Images are securely uploaded and stored in Django's Media Storage.
+- **Interactive Task Cards** — Turn simple checkboxes into interactive Task Cards with custom titles, descriptions, and dynamic "To Do", "In Progress", or "Done" statuses directly inside the rich text canvas.
 
 ---
 
@@ -189,7 +206,11 @@ src/
 │   ├── login/                          # Supabase Auth Login
 │   ├── signup/                         # Supabase Auth Signup
 │   ├── editor/[id]/page.tsx            # Screenplay editor page
-│   └── directors-suite/[id]/page.tsx  # Director's Suite workspace
+│   ├── directors-suite/[id]/page.tsx  # Director's Suite workspace
+│   ├── storyboard/[id]/page.tsx       # Visual storyboard canvas
+│   └── notes/
+│       ├── page.tsx                    # Global notes (all scripts)
+│       └── [id]/page.tsx               # Per-script notes editor
 │
 ├── components/
 │   ├── editor/
@@ -215,6 +236,9 @@ src/
 │   ├── useDraggable.ts                 # Real-time cursor tracking & drag hook
 │   ├── useStoryboardCanvas.ts          # Storyboard state & persistence
 │   └── useSuiteState.ts               # Canvas state & persistence
+│
+├── lib/
+│   └── api.ts                          # Django REST client (includes Notes CRUD)
 │
 └── styles/
     └── suite.css                       # Director's Suite design system

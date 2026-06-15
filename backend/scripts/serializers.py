@@ -7,7 +7,18 @@ Script also includes versions and history in detail view.
 
 from rest_framework import serializers
 
-from .models import Element, HistoryEvent, Scene, Script, ScriptVersion, WorkspaceAsset, Storyboard, SceneCard
+from .models import (
+    Element,
+    HistoryEvent,
+    Scene,
+    Script,
+    ScriptVersion,
+    WorkspaceAsset,
+    Storyboard,
+    SceneCard,
+    Note,
+    TextFile,
+)
 
 
 class WorkspaceAssetSerializer(serializers.ModelSerializer):
@@ -264,3 +275,41 @@ class StoryboardSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class NoteSerializer(serializers.ModelSerializer):
+    """Serializer for user notes (global or script-linked)."""
+
+    script_id = serializers.UUIDField(source="script.id", read_only=True, allow_null=True)
+
+    class Meta:
+        model = Note
+        fields = [
+            "id",
+            "script_id",
+            "title",
+            "content",
+            "color",
+            "pinned",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class TextFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TextFile
+        fields = [
+            "id",
+            "name",
+            "content",
+            "language",
+            "encoding",
+            "line_endings",
+            "pinned",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+

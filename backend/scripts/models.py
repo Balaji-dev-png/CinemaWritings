@@ -73,7 +73,23 @@ class Scene(models.Model):
         unique_together = [("script", "order")]
 
     def __str__(self):
-        return f"{self.order}: {self.slugline}"
+        return f"Note: {self.title} by {self.owner.username}"
+
+
+class TextFile(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="text_files")
+    name = models.CharField(max_length=255, default="Untitled")
+    content = models.TextField(blank=True, default="")
+    language = models.CharField(max_length=50, default="plaintext")
+    encoding = models.CharField(max_length=20, default="UTF-8")
+    line_endings = models.CharField(max_length=10, default="LF")
+    pinned = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.language})"
 
 
 class Element(models.Model):
@@ -315,3 +331,33 @@ class SceneCard(models.Model):
 
     def __str__(self):
         return f"Shot {self.shot_number or self.order} — {self.scene_heading[:40]}"
+
+
+class Note(models.Model):
+    """Personal note linked optionally to a script. Private per user."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="notes"
+    )
+    # Optional link to a script — null means it's a standalone/global note
+    script = models.ForeignKey(
+        Script,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="notes",
+    )
+    title = models.CharField(max_length=255, default="Untitled Note")
+    content = models.TextField(blank=True, default="")
+    color = models.CharField(max_length=30, default="#1a1a1a")
+    pinned = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-pinned", "-updated_at"]
+
+    def __str__(self):
+        return self.title
+

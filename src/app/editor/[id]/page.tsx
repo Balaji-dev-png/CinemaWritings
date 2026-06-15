@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Editor } from "@tiptap/react";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useMotionTemplate, AnimatePresence } from "framer-motion";
 import { ScriptEditor } from "@/components/editor/ScriptEditor";
 import { TitlePage } from "@/components/editor/TitlePage";
 import { SceneNavigator } from "@/components/editor/SceneNavigator";
@@ -58,6 +58,7 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  FileCode,
 } from "lucide-react";
 
 const FaceWithCap = ({ className }: { className?: string }) => (
@@ -75,6 +76,94 @@ const FaceWithCap = ({ className }: { className?: string }) => (
     <path d="M11 17h2" />
   </svg>
 );
+
+// ── Animated Candle for Focus Mode ──────────────────────────────────────────
+function CandleFlame() {
+  return (
+    <>
+      <style>{`
+        @keyframes flicker {
+          0%,100% { transform: scaleX(1) scaleY(1) translateY(0); }
+          20%      { transform: scaleX(0.85) scaleY(1.1) translateY(-1px); }
+          40%      { transform: scaleX(1.1) scaleY(0.9) translateY(1px); }
+          60%      { transform: scaleX(0.9) scaleY(1.05) translateY(-0.5px); }
+          80%      { transform: scaleX(1.05) scaleY(0.95) translateY(0.5px); }
+        }
+        @keyframes flickerGlow {
+          0%,100% { opacity: 0.55; transform: scale(1); }
+          25%     { opacity: 0.7; transform: scale(1.1); }
+          50%     { opacity: 0.45; transform: scale(0.95); }
+          75%     { opacity: 0.65; transform: scale(1.08); }
+        }
+        @keyframes waxDrip {
+          0%    { stroke-dashoffset: 0; opacity: 0.6; }
+          100%  { stroke-dashoffset: -20; opacity: 0; }
+        }
+        .candle-flame { animation: flicker 1.8s ease-in-out infinite; transform-origin: center bottom; }
+        .candle-glow  { animation: flickerGlow 1.8s ease-in-out infinite; }
+      `}</style>
+
+      {/* Ambient glow radial gradient */}
+      <div
+        className="candle-glow"
+        style={{
+          position: "fixed",
+          bottom: 60,
+          right: 60,
+          width: 160,
+          height: 160,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,180,50,0.18) 0%, rgba(255,120,10,0.08) 50%, transparent 75%)",
+          pointerEvents: "none",
+          zIndex: 30,
+          transform: "translate(50%, 50%)",
+        }}
+      />
+
+      <svg
+        viewBox="0 0 40 80"
+        width={48}
+        height={96}
+        style={{ overflow: "visible" }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Candle body */}
+        <rect x="12" y="36" width="16" height="38" rx="3" fill="#f5e6c8" stroke="#d4b896" strokeWidth="0.5" />
+        {/* Wax melted top cap */}
+        <ellipse cx="20" cy="36" rx="8" ry="2.5" fill="#f0d8a8" />
+        {/* Wax drip left */}
+        <path d="M14 36 Q12 42 13 48" stroke="#f0d8a8" strokeWidth="2" fill="none" strokeLinecap="round"
+          style={{ strokeDasharray: 20, animation: "waxDrip 4s ease-in infinite" }} />
+        {/* Wax drip right */}
+        <path d="M26 36 Q28 41 27 47" stroke="#f0d8a8" strokeWidth="1.5" fill="none" strokeLinecap="round"
+          style={{ strokeDasharray: 20, animationDelay: "1.5s", animation: "waxDrip 5s ease-in infinite" }} />
+        {/* Wick */}
+        <line x1="20" y1="36" x2="20" y2="30" stroke="#3a2a1a" strokeWidth="1.2" strokeLinecap="round" />
+        {/* Wick glow */}
+        <circle cx="20" cy="30" r="1.5" fill="#ff9800" opacity="0.9" />
+        {/* Flame outer (orange) */}
+        <g className="candle-flame">
+          <path d="M20 29 C16 22 14 16 20 10 C26 16 24 22 20 29Z" fill="url(#flameGrad)" opacity="0.95" />
+          {/* Inner flame core (white-yellow) */}
+          <path d="M20 27 C18 22 17 18 20 14 C23 18 22 22 20 27Z" fill="url(#coreGrad)" opacity="0.9" />
+        </g>
+        {/* Gradient defs */}
+        <defs>
+          <radialGradient id="flameGrad" cx="50%" cy="80%" r="60%">
+            <stop offset="0%" stopColor="#fff176" />
+            <stop offset="40%" stopColor="#ff9800" />
+            <stop offset="100%" stopColor="#e64a19" stopOpacity="0.6" />
+          </radialGradient>
+          <radialGradient id="coreGrad" cx="50%" cy="85%" r="50%">
+            <stop offset="0%" stopColor="#fffde7" />
+            <stop offset="60%" stopColor="#fff176" />
+            <stop offset="100%" stopColor="#ffd54f" stopOpacity="0.8" />
+          </radialGradient>
+        </defs>
+      </svg>
+    </>
+  );
+}
 
 export default function EditorPage() {
   const params = useParams();
@@ -125,6 +214,9 @@ export default function EditorPage() {
   const [showVersions, setShowVersions] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const candleX = useMotionValue(0);
+  const candleY = useMotionValue(0);
+  const candleGradient = useMotionTemplate`radial-gradient(1000px circle at calc(100% - 48px + ${candleX}px) calc(100% - 58px + ${candleY}px), transparent 0%, rgba(0,0,0,0.85) 100%)`;
   const [showCorkboard, setShowCorkboard] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
@@ -614,6 +706,14 @@ export default function EditorPage() {
             >
               <Layers className="w-3.5 h-3.5 group-hover:text-purple-400 transition-colors" />
             </button>
+            <button
+              onClick={() => navigateTo("/text-editor", "Opening Text Editor...")}
+              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
+              title="Text Editor"
+            >
+              <FileCode className="w-3.5 h-3.5 group-hover:text-emerald-400 transition-colors" />
+            </button>
+
           </div>
 
           {/* 3. Project Title */}
@@ -831,9 +931,9 @@ export default function EditorPage() {
               title={theme === "dark" ? "Light Mode" : "Dark Mode"}
             >
               {theme === "dark" ? (
-                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                <Sun className="w-3.5 h-3.5 text-black dark:text-black" />
               ) : (
-                <Moon className="w-3.5 h-3.5 text-sky-500" />
+                <Moon className="w-3.5 h-3.5 text-black dark:text-black" />
               )}
             </button>
           </div>
@@ -1077,6 +1177,46 @@ export default function EditorPage() {
           Exit Focus
         </button>
       )}
+
+      {/* ─── Focus Mode Cinematic Lighting & Candle ─── */}
+      <AnimatePresence>
+        {focusMode && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1 }}
+              className="fixed inset-0 pointer-events-none z-30"
+              style={{ background: candleGradient }}
+            />
+            <motion.div
+              drag
+              dragMomentum={false}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="fixed z-40 cursor-grab active:cursor-grabbing"
+              style={{
+                position: "fixed",
+                bottom: 28,
+                right: 28,
+                x: candleX,
+                y: candleY,
+              }}
+            >
+              <div className="relative group">
+                <CandleFlame />
+                {/* Small tooltip to indicate it's draggable */}
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white/70 text-[10px] px-2 py-0.5 rounded whitespace-nowrap pointer-events-none">
+                  Drag me
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ─── Modals ─── */}
       {showVersions && (

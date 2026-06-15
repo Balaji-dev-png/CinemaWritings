@@ -133,10 +133,15 @@ async function apiFetch<T>(
 // ─── Script CRUD ──────────────────────────────────────────────────────────
 
 export async function apiGetScripts(): Promise<ApiScriptListItem[]> {
-  const data = await apiFetch<
-    { results: ApiScriptListItem[] } | ApiScriptListItem[]
-  >("/scripts/");
-  return Array.isArray(data) ? data : data.results;
+  try {
+    const data = await apiFetch<any>("/scripts/");
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    return [];
+  } catch (e) {
+    console.error("apiGetScripts error:", e);
+    return [];
+  }
 }
 
 export async function apiGetScript(id: string): Promise<ApiScript> {
@@ -226,7 +231,15 @@ export async function apiRestoreVersion(
 export async function apiGetHistory(
   scriptId: string,
 ): Promise<ApiHistoryEvent[]> {
-  return apiFetch<ApiHistoryEvent[]>(`/scripts/${scriptId}/history/`);
+  try {
+    const data = await apiFetch<any>(`/scripts/${scriptId}/history/`);
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    return [];
+  } catch (e) {
+    console.error("apiGetHistory error:", e);
+    return [];
+  }
 }
 
 // ─── Search ───────────────────────────────────────────────────────────────
@@ -333,4 +346,135 @@ export async function isBackendAvailable(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ─── Notes API ────────────────────────────────────────────────────────────
+
+export interface ApiNote {
+  id: string;
+  script_id: string | null;
+  title: string;
+  content: string;
+  color: string;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** List notes. Pass scriptId to get per-script notes, omit for all notes. */
+export async function apiGetNotes(scriptId?: string): Promise<ApiNote[]> {
+  const params = scriptId ? `?script=${scriptId}` : "";
+  const data = await apiFetch<{ results: ApiNote[] } | ApiNote[]>(`/notes/${params}`);
+  return (Array.isArray(data) ? data : data?.results) || [];
+}
+
+/** List global notes (not linked to any script). */
+export async function apiGetGlobalNotes(): Promise<ApiNote[]> {
+  const data = await apiFetch<{ results: ApiNote[] } | ApiNote[]>(`/notes/?global=1`);
+  return Array.isArray(data) ? data : data.results;
+}
+
+export async function apiCreateNote(data: {
+  title?: string;
+  content?: string;
+  color?: string;
+  pinned?: boolean;
+  script_id?: string | null;
+}): Promise<ApiNote> {
+  return apiFetch<ApiNote>("/notes/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateNote(
+  id: string,
+  data: Partial<ApiNote>,
+): Promise<ApiNote> {
+  return apiFetch<ApiNote>(`/notes/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteNote(id: string): Promise<void> {
+  return apiFetch<void>(`/notes/${id}/`, {
+    method: "DELETE",
+  });
+}
+
+// ─── Text Files ────────────────────────────────────────────────────────────
+
+export interface ApiTextFile {
+  id: string;
+  name: string;
+  content: string;
+  language: string;
+  encoding: string;
+  line_endings: string;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function apiGetTextFiles(pinned?: boolean): Promise<ApiTextFile[]> {
+  const query = pinned !== undefined ? `?pinned=${pinned}` : "";
+  try {
+    const data = await apiFetch<any>(`/text-files/${query}`);
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    return [];
+  } catch (e) {
+    console.error("apiGetTextFiles error:", e);
+    return [];
+  }
+}
+
+export async function apiGetTextFile(id: string): Promise<ApiTextFile> {
+  return apiFetch<ApiTextFile>(`/text-files/${id}/`);
+}
+
+export async function apiCreateTextFile(data: Partial<ApiTextFile>): Promise<ApiTextFile> {
+  return apiFetch<ApiTextFile>("/text-files/", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiUpdateTextFile(id: string, data: Partial<ApiTextFile>): Promise<ApiTextFile> {
+  return apiFetch<ApiTextFile>(`/text-files/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiDeleteTextFile(id: string): Promise<void> {
+  return apiFetch<void>(`/text-files/${id}/`, {
+    method: "DELETE",
+  });
+}
+
+export async function apiUploadImage(file: File): Promise<{ url: string }> {
+  const url = `${API_BASE}/upload-image/`;
+  const token = await getAccessToken();
+
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to upload image");
+  }
+
+  return response.json();
 }

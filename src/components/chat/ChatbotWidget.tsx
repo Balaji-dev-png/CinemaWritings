@@ -111,9 +111,19 @@ const KNOWLEDGE_BASE: KBEntry[] = [
   },
   {
     keywords: ["help", "how", "what", "feature", "features", "do", "can you", "guide", "tutorial"],
-    answer: "I'm your **CinemaWritings Lead Producer** — here to guide you through every feature!\n\nHere's what I know about:\n\n• **Screenplay Editor** — WGA format, auto-save, versions, alignment controls, image insertion\n• **Title Page** — author name, copyright, logline, synopsis, alignment\n• **Director's Suite** — infinite canvas with Idea, Shot, Image, Link cards\n• **Storyboard** — drag-and-drop shot planning with aspect ratios\n• **Draw Mode** — freehand sketches on the canvas\n• **Connect Mode** — wire cards together\n• **Export** — PDF, Pitch Deck, Shot List\n• **Cinematography** — shot types, camera movements explained\n• **Account & Auth** — sign up with your name, login, data privacy\n\nJust ask me anything!",
+    answer: "I'm your **CinemaWritings Lead Producer** — here to guide you through every feature!\n\nHere's what I know about:\n\n• **Screenplay Editor** — WGA format, auto-save, versions, alignment controls\n• **Title Page** — author name, copyright, logline, synopsis\n• **Notes Editor** — per-script & global notes with auto-save and color themes\n• **Director's Suite** — infinite canvas with Idea, Shot, Image, Link cards\n• **Storyboard** — drag-and-drop shot planning\n• **Draw Mode** — freehand sketches on the canvas\n• **Connect Mode** — wire cards together\n• **Export** — PDF, Pitch Deck, Shot List\n• **Cinematography** — shot types, camera movements explained\n• **Account & Auth** — sign up, login, data privacy\n\nJust ask me anything!",
+  },
+  {
+    keywords: ["notes", "note editor", "notepad", "write notes", "note taking", "my notes", "per-script notes", "global notes", "note color", "pin note"],
+    answer: "**Notes Editor** lets you keep a personal notepad alongside your screenplay:\n\n• **Open per-script notes** — click the **Book icon** (📖) in the Editor, Director's Suite, or Storyboard header — takes you to notes for that specific script\n• **Open global notes** — click **My Notes** button on the Dashboard home page\n• **Create** — click 'New Note' in the sidebar\n• **Auto-save** — changes save automatically every 800ms\n• **Pin notes** — click the pin icon to keep important notes at the top\n• **Colors** — choose from 6 themes: Ink, Forest, Navy, Wine, Amber, Slate\n• **Search** — filter notes by title or content\n• **Django-backed** — all notes are private and stored securely on the backend",
+    actions: [{ label: "My Notes", path: "/notes" }],
+  },
+  {
+    keywords: ["focus mode", "focus", "distraction free", "candle", "flame", "candle flame", "writing mode", "fullscreen"],
+    answer: "**Focus Mode** creates a cinematic, distraction-free writing space:\n\n• Press the **Eye icon** in the editor header, or use **Ctrl+Shift+F** to toggle\n• The toolbar and sidebars disappear — only your script remains\n• A **🕯 flickering candle** appears in the bottom-right corner to set the mood\n• The candle has a realistic animated flame with ambient glow and wax drips\n• Press **Exit Focus** (top-right) or **Ctrl+Shift+F** to return to normal",
   },
 ];
+
 
 interface Message {
   id: string;
@@ -172,7 +182,7 @@ function ChatMessage({ msg, onNavigate }: { msg: Message; onNavigate: (path: str
   );
 }
 
-const QUICK_REPLIES = ["Screenplay format", "Title page", "Copyright", "Storyboard", "Director's Suite", "Export PDF", "Shot types", "GitHub"];
+const QUICK_REPLIES = ["Screenplay format", "Title page", "Notes", "Focus Mode", "Storyboard", "Director's Suite", "Export PDF", "Shot types"];
 
 export function ChatbotWidget() {
   const router = useRouter();
@@ -191,6 +201,7 @@ export function ChatbotWidget() {
 
   const pageContext = pathname?.includes("storyboard") ? "Storyboard"
     : pathname?.includes("director") ? "Director's Suite"
+    : pathname?.includes("notes") ? "Notes"
     : pathname?.includes("editor") ? "Editor"
     : "Dashboard";
 
@@ -206,8 +217,8 @@ export function ChatbotWidget() {
         setOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside, true);
+    return () => document.removeEventListener("mousedown", handleClickOutside, true);
   }, [open]);
 
   const resolveActionPath = useCallback((path: string) => {
@@ -217,7 +228,7 @@ export function ChatbotWidget() {
     // Extract ID if we are on any script page
     let currentId = null;
     if (pathname) {
-      const match = pathname.match(/\/(?:editor|directors-suite|storyboard)\/([^\/]+)/);
+      const match = pathname.match(/\/(?:editor|directors-suite|storyboard|notes)\/([^\/]+)/);
       if (match) currentId = match[1];
     }
     
@@ -225,6 +236,7 @@ export function ChatbotWidget() {
       if (path === "/directors-suite") return `/directors-suite/${currentId}`;
       if (path === "/storyboard") return `/storyboard/${currentId}`;
       if (path === "/editor") return `/editor/${currentId}`;
+      if (path === "/notes") return `/notes/${currentId}`;
     }
     
     return path;

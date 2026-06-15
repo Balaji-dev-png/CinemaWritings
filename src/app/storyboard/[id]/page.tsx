@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Film, Download, Loader2, LayoutGrid, Home } from "lucide-react";
+import { ArrowLeft, Film, Download, Loader2, LayoutGrid, Home, BookOpen, FileCode } from "lucide-react";
 import { getStoryboard, Storyboard } from "@/lib/storyboard-api";
 import { StoryboardView } from "@/components/storyboard/StoryboardView";
 import { isAuthenticated } from "@/lib/auth";
@@ -72,6 +72,14 @@ export default function StoryboardPage() {
           className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1"
         >
           <LayoutGrid className="w-3 h-3" /> Director&apos;s Suite
+        </button>
+
+
+        <button
+          onClick={() => navigateTo("/text-editor", "Opening Text Editor...")}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white dark:bg-[#1a1d24] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-md hover:bg-slate-50 dark:hover:bg-[#22252e] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm"
+        >
+          <FileCode className="w-3 h-3" /> Code
         </button>
 
         <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800" />

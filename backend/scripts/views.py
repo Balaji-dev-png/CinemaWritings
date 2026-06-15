@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 import reversion
 
-from .models import Script, Scene, Element, ScriptVersion, HistoryEvent, WorkspaceAsset, Storyboard, SceneCard
+from .models import Script, Scene, Element, ScriptVersion, HistoryEvent, WorkspaceAsset, Storyboard, SceneCard, Note, TextFile
 from .serializers import (
     ScriptListSerializer,
     ScriptDetailSerializer,
@@ -22,6 +22,8 @@ from .serializers import (
     WorkspaceAssetSerializer,
     StoryboardSerializer,
     SceneCardSerializer,
+    NoteSerializer,
+    TextFileSerializer,
 )
 
 
@@ -456,3 +458,87 @@ class SceneCardViewSet(viewsets.ModelViewSet):
             storyboard__script__owner=request.user
         ).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class NoteViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for personal notes.
+    GET    /api/notes/              — list all notes (optionally filter ?script=<id>)
+    POST   /api/notes/              — create note
+    GET    /api/notes/{id}/         — retrieve note
+    PATCH  /api/notes/{id}/         — partial update
+    DELETE /api/notes/{id}/         — delete note
+    """
+    serializer_class = NoteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Note.objects.filter(owner=self.request.user)
+        script_id = self.request.query_params.get("script")
+        if script_id:
+            qs = qs.filter(script__id=script_id)
+        else:
+            # ?global=1 returns only notes without a script
+            if self.request.query_params.get("global"):
+                qs = qs.filter(script__isnull=True)
+        return qs
+
+    def perform_create(self, serializer):
+        script_id = self.request.data.get("script_id")
+        script = None
+        if script_id:
+            try:
+                script = Script.objects.get(id=script_id, owner=self.request.user)
+            except Script.DoesNotExist:
+                pass
+        serializer.save(owner=self.request.user, script=script)
+
+    def perform_update(self, serializer):
+        # Allow re-linking to a different script on update
+        script_id = self.request.data.get("script_id")
+        if script_id is not None:
+            if script_id == "" or script_id is None:
+                serializer.save(script=None)
+            else:
+                try:
+                    script = Script.objects.get(id=script_id, owner=self.request.user)
+                    serializer.save(script=script)
+                except Script.DoesNotExist:
+                    serializer.save()
+        else:
+            serializer.save()
+
+
+class TextFileViewSet(viewsets.ModelViewSet):
+    """
+    CRUD API for TextFile.
+    Filters:
+      - ?pinned=true|false
+    """
+    serializer_class = TextFileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = TextFile.objects.filter(owner=self.request.user)
+        pinned = self.request.query_params.get("pinned")
+        if pinned is not None:
+            queryset = queryset.filter(pinned=(pinned.lower() == "true"))
+        return queryset.order_by("-updated_at")
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+@api_view(['POST'])
+def upload_image(request):
+    """
+    Handle generic image uploads (e.g. for rich text editors).
+    """
+    file_obj = request.FILES.get('image')
+    if not file_obj:
+        return Response({'error': 'No image provided.'}, status=400)
+    
+    from django.core.files.storage import default_storage
+    file_name = default_storage.save(file_obj.name, file_obj)
+    file_url = default_storage.url(file_name)
+    
+    return Response({'url': request.build_absolute_uri(file_url)}, status=201)

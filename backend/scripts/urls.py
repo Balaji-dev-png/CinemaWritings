@@ -7,6 +7,8 @@ from . import views, auth
 
 router = DefaultRouter()
 router.register(r"scripts", views.ScriptViewSet, basename="script")
+router.register(r"notes", views.NoteViewSet, basename="note")
+router.register(r"text-files", views.TextFileViewSet, basename="text-file")
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -40,4 +42,5 @@ urlpatterns = [
     path("storyboards/<uuid:storyboard_pk>/cards/reorder/", views.SceneCardViewSet.as_view({"post": "reorder"}), name="scenecard-reorder"),
     path("storyboards/<uuid:storyboard_pk>/cards/bulk_delete/", views.SceneCardViewSet.as_view({"delete": "bulk_delete"}), name="scenecard-bulk-delete"),
     path("storyboards/<uuid:storyboard_pk>/cards/<uuid:pk>/", views.SceneCardViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}), name="scenecard-detail"),
+    path("upload-image/", views.upload_image, name="upload-image"),
 ]
