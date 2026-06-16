@@ -75,12 +75,7 @@ export default function StoryboardPage() {
         </button>
 
 
-        <button
-          onClick={() => navigateTo("/text-editor", "Opening Text Editor...")}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white dark:bg-[#1a1d24] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 rounded-md hover:bg-slate-50 dark:hover:bg-[#22252e] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm"
-        >
-          <FileCode className="w-3 h-3" /> Code
-        </button>
+
 
         <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800" />
 

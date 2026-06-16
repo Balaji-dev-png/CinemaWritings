@@ -706,13 +706,7 @@ export default function EditorPage() {
             >
               <Layers className="w-3.5 h-3.5 group-hover:text-purple-400 transition-colors" />
             </button>
-            <button
-              onClick={() => navigateTo("/text-editor", "Opening Text Editor...")}
-              className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
-              title="Text Editor"
-            >
-              <FileCode className="w-3.5 h-3.5 group-hover:text-emerald-400 transition-colors" />
-            </button>
+
 
           </div>
 

@@ -212,12 +212,7 @@ export default function DirectorsSuitePage() {
             <Layers className="w-3 h-3" /> Storyboard
           </button>
 
-          <button
-            onClick={() => navigateTo("/text-editor", "Opening Text Editor...")}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-slate-400 hover:text-white bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700/50 rounded-md transition-all shadow-sm"
-          >
-            <FileCode className="w-3 h-3" /> Code
-          </button>
+
           <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
           <button
             onClick={() => setSidebarOpen((v) => !v)}

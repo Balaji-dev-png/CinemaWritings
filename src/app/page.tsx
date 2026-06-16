@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { History as HistoryIcon, X, Plus, PenTool, Layers, Upload, BookOpen, Notebook } from "lucide-react";
+import { History as HistoryIcon, X, Plus, PenTool, Layers, Upload, BookOpen } from "lucide-react";
 import { getScripts, createScript, deleteScript, Script, HistoryEvent, updateScript } from "@/lib/storage";
 import { isAuthenticated } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
@@ -212,17 +212,7 @@ export default function Dashboard() {
                 className="hidden"
                 onChange={handleImportFile}
               />
-              {/* Notebook button */}
-              <button
-                onClick={() => router.push("/text-editor")}
-                disabled={isCreating}
-                className="group flex items-center gap-2 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 px-6 py-4 rounded-full shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
-                title="Open Notebook"
-              >
-                <Notebook className="w-4 h-4" />
-                <span className="font-medium">Notebook</span>
-              </button>
-              {/* New Script button */}
+
               <button
                 onClick={() => setShowNewScriptModal(true)}
                 disabled={isCreating}
