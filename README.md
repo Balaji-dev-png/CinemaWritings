@@ -108,11 +108,6 @@
 - **Search** — Full-text search across note titles and content
 - **Navigation** — Seamless back-navigation to Editor / Director's Suite / Storyboard from within the Notes page
 
-### Rich Text Notebook
-- **Universal Dashboard Notebook** — A Tiptap-powered rich text document accessible directly from the dashboard.
-- **Django Cloud Sync** — Auto-saves to your secure Django backend.
-- **Drag & Drop Media** — Drag and drop images directly into your notebook. Images are securely uploaded and stored in Django's Media Storage.
-- **Interactive Task Cards** — Turn simple checkboxes into interactive Task Cards with custom titles, descriptions, and dynamic "To Do", "In Progress", or "Done" statuses directly inside the rich text canvas.
 
 ---
 
