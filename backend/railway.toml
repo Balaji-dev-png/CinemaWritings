@@ -1,0 +1,6 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "daphne -b 0.0.0.0 -p $PORT cinemawritings.asgi:application"
+releaseCommand = "python manage.py migrate"
