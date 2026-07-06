@@ -4,25 +4,6 @@
 
 **Live:** [https://cinemawritings.netlify.app](https://cinemawritings.netlify.app)
 
----
-
-## Wireframes
-
-### Home / Dashboard
-![Dashboard wireframe](docs/wireframes/dashboard.png)
-
----
-
-### Screenplay Editor
-![Editor wireframe](docs/wireframes/editor.png)
-
----
-
-### Storyboard + Director's Suite
-![Storyboard and Director's Suite wireframe](docs/wireframes/storyboard_suite.png)
-
----
-
 
 ## Features
 
