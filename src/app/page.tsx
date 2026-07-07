@@ -57,9 +57,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const isAuth = await isAuthenticated();
-      setAuthenticated(isAuth);
-      setAuthChecked(true);
+      let isAuth = false;
+      try {
+        isAuth = await isAuthenticated();
+        setAuthenticated(isAuth);
+      } catch (e) {
+        console.error("Auth check failed:", e);
+        setAuthenticated(false);
+      } finally {
+        setAuthChecked(true);
+      }
+
       if (isAuth) {
         try {
           const fetched = await getScripts();

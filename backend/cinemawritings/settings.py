@@ -30,7 +30,7 @@ SECRET_KEY = os.environ.get(
 
 # Default to False — must explicitly opt in to debug mode
 DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("true", "1", "yes")
-
+DJANGO_DEBUG=True
 ALLOWED_HOSTS = os.getenv(
     "DJANGO_ALLOWED_HOSTS",
     "localhost,127.0.0.1"
