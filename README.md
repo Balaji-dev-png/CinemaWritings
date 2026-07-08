@@ -255,3 +255,7 @@ src/
 ## License
 
 MIT
+
+### Recent Updates
+- **Enhanced Script Editor Layout:** Implemented native CSS zoom for flawless UI scaling without layout breakage on zoom-out.
+- **Improved UI Stacking:** Refined z-index stacking context for the draggable formatting toolbar to seamlessly sit beneath the navigation headers.
