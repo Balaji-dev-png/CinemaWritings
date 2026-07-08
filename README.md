@@ -38,7 +38,7 @@
 ### Exports
 | Format | Description |
 |---|---|
-| **Screenplay PDF** | **Server-side generation (WeasyPrint)** — Generates a high-resolution, WGA-standard PDF adhering to exact Hollywood margins (1.5\" left bind). Captures the exact WYSIWYG state of your editor. |
+| **Screenplay PDF** | **Client-side generation (jsPDF)** — Generates a high-resolution, WGA-standard PDF adhering to exact Hollywood margins (1.5" left bind). Captures the exact WYSIWYG state of your editor. |
 | **Fountain (.fountain)** | Standard Fountain plain-text format with title metadata header block |
 | **Microsoft Word (.docx)** | Formatted export for Microsoft Word |
 
@@ -74,7 +74,7 @@
 
 ### Multi-Document Dashboard
 - Create, organize, and delete multiple scripts
-- Securely stored in the cloud via Django backend
+- Securely stored in the cloud via Supabase
 - Script history timeline per document
 - Pastel gradient card system with dark mode
 - **Notes shortcut on each script card** — jump directly to per-script notes from the dashboard
@@ -82,7 +82,7 @@
 ### Notes Editor
 - **Per-Script Notes** — Each script has its own personal notepad accessible from the Editor, Director's Suite, Storyboard, and Dashboard
 - **Global Notes** — A standalone `My Notes` page accessible from the home dashboard for notes not tied to any script
-- **Django-backed persistence** — Notes are stored securely on the backend, private per user
+- **Supabase-backed persistence** — Notes are stored securely on the backend, private per user
 - **Auto-save** — Changes are saved automatically with an 800ms debounce
 - **Pin notes** — Pin important notes to keep them at the top of the sidebar
 - **Color themes** — Choose from 6 cinematic note colors (Ink, Forest, Navy, Wine, Amber, Slate)
@@ -139,9 +139,9 @@ A full-featured, Milanote-style **infinite canvas workspace** for pre-production
 |---|---|
 | Framework | Next.js 16.2 (Turbopack) |
 | Editor Core | TipTap / ProseMirror |
-| Backend Core | Django REST Framework (Python) |
-| DB / Storage | PostgreSQL (via Django ORM) + Supabase Auth |
-| PDF Generation | WeasyPrint (Server-side) / jsPDF + dom-to-image-more (Client-side) |
+| Backend Core | Supabase |
+| DB / Storage | PostgreSQL (via Supabase) + Supabase Auth |
+| PDF Generation | jsPDF + dom-to-image-more (Client-side) |
 | Styling | Tailwind CSS v4 + Custom CSS |
 | Icons | Lucide React |
 | Deployment | Netlify (Frontend) |
@@ -150,18 +150,7 @@ A full-featured, Milanote-style **infinite canvas workspace** for pre-production
 
 ## Getting Started
 
-### 1. Backend Setup (Django)
-Navigate to the `backend` directory, install requirements, and run migrations:
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
-```
-
-### 2. Frontend Setup (Next.js)
+### Local Setup
 Open a new terminal in the root directory:
 ```bash
 # Install dependencies
@@ -214,7 +203,9 @@ src/
 │   └── useSuiteState.ts               # Canvas state & persistence
 │
 ├── lib/
-│   └── api.ts                          # Django REST client (includes Notes CRUD)
+│   ├── api.ts                          # Legacy API client
+│   ├── storage.ts                      # Supabase persistence layer for scripts
+│   └── suite-supabase.ts               # Supabase persistence layer for Director's Suite
 │
 └── styles/
     └── suite.css                       # Director's Suite design system
