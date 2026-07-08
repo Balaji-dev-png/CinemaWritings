@@ -992,7 +992,7 @@ export const ScriptEditor = ({
               top: 0,
               transform: `translate(${toolbarPos.x}px, ${toolbarPos.y}px)`,
               willChange: "transform",
-              zIndex: 100,
+              zIndex: 40,
               display: "flex",
               flexDirection: toolbarOrientation === "vertical" ? "column" : "row",
               alignItems: "center",

@@ -1077,10 +1077,9 @@ export default function EditorPage() {
           )}
 
           <div
-            className="max-w-4xl mx-auto px-4 sm:px-8 py-8 w-full transition-transform duration-100 origin-top"
+            className="max-w-4xl mx-auto px-4 sm:px-8 py-8 w-full transition-all duration-100 origin-top"
             style={{
-              transform: `scale(${zoom})`,
-              transformOrigin: "top center",
+              zoom: zoom,
             }}
           >
             <div
