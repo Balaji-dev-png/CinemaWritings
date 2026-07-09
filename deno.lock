@@ -55,6 +55,7 @@
         "npm:pdfjs-dist@^5.7.284",
         "npm:puppeteer@^24.42.0",
         "npm:react-dom@19.2.4",
+        "npm:react-hot-toast@^2.6.0",
         "npm:react@19.2.4",
         "npm:tailwindcss@4",
         "npm:tippy.js@^6.3.7",

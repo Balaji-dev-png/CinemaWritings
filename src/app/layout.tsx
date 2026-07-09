@@ -5,6 +5,7 @@ import Script from "next/script";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ChatbotWidget } from "@/components/chat/ChatbotWidget";
+import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
   title: "CinemaWritings - Screenplay Editor",
@@ -44,6 +45,7 @@ export default function RootLayout({
         <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem disableTransitionOnChange>
             {children}
             <ChatbotWidget />
+            <Toaster position="bottom-right" />
           </ThemeProvider>
       </body>
     </html>

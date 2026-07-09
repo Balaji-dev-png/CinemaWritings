@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { History as HistoryIcon, X, Plus, PenTool, Layers, Upload, BookOpen } from "lucide-react";
 import { getScripts, createScript, deleteScript, Script, HistoryEvent, updateScript } from "@/lib/storage";
+import toast from "react-hot-toast";
 import { isAuthenticated } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -95,8 +96,10 @@ export default function Dashboard() {
 
     try {
       const newScript = await createScript(title);
-      router.push(`/editor/${newScript.id}`);
-      // Don't stop loading here; let it transition to the new page
+      if (newScript) {
+        toast.success("Script created successfully!");
+        router.push(`/editor/${newScript.id}`);
+      }
     } catch (err) {
       console.error("Failed to create script:", err);
       stopCreating();
@@ -133,6 +136,7 @@ export default function Dashboard() {
       // Single round-trip: create + save content
       const newScript = await createScript(title, html);
 
+      toast.success("Script imported successfully!");
       router.push(`/editor/${newScript.id}`);
     } catch (err: any) {
       console.error("Import failed:", err);
@@ -149,9 +153,14 @@ export default function Dashboard() {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    await deleteScript(id);
-    const updated = await getScripts();
-    setScripts(updated);
+    try {
+      await deleteScript(id);
+      setScripts(scripts.filter(s => s.id !== id));
+      toast.success("Script deleted successfully.");
+    } catch (error) {
+      console.error("Failed to delete script:", error);
+      toast.error("Failed to delete script.");
+    }
   };
 
   const handleShowHistory = (e: React.MouseEvent, script: Script) => {

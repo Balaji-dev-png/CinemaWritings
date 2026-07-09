@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 import { supabase } from "@/lib/supabase";
+import toast from "react-hot-toast";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -49,14 +50,17 @@ export default function SignupPage() {
       // Supabase returns a user with identities=[] if email already exists
       if (data.user && data.user.identities?.length === 0) {
         setError("An account with this email already exists. Please sign in.");
+        toast.error("Account already exists. Please sign in.");
         setLoading(false);
         return;
       }
 
       // Successfully signed up
+      toast.success("Account created successfully!");
       router.push("/");
     } catch (err: any) {
       setError(err.message || "Failed to sign up.");
+      toast.error(err.message || "Failed to sign up.");
     } finally {
       setLoading(false);
     }

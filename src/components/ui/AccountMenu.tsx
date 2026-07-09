@@ -8,6 +8,7 @@ import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { supabase } from "@/lib/supabase";
 import { getScripts, Script } from "@/lib/storage";
 import { ChangePasswordModal } from "./ChangePasswordModal";
+import toast from "react-hot-toast";
 
 export const AccountMenu = () => {
   const router = useRouter();
@@ -66,6 +67,7 @@ export const AccountMenu = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    toast.success("Signed out successfully!");
     router.push("/login");
   };
 

@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 import { supabase } from "@/lib/supabase";
+import toast from "react-hot-toast";
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────
 const MAX_ATTEMPTS = 5;
@@ -75,16 +76,19 @@ export default function LoginPage() {
           setError(
             `Invalid email or password. ${MAX_ATTEMPTS - newAttempts} attempt${MAX_ATTEMPTS - newAttempts === 1 ? "" : "s"} remaining.`
           );
+          toast.error("Invalid email or password.");
         }
         return;
       }
 
       // Success — clear password from state immediately
       setPassword("");
+      toast.success("Signed in successfully!");
       router.push("/");
     } catch {
       // Generic catch — never expose internal error details
       setError("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
