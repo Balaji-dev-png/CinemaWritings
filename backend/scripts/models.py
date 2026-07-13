@@ -73,7 +73,7 @@ class Scene(models.Model):
         unique_together = [("script", "order")]
 
     def __str__(self):
-        return f"Note: {self.title} by {self.owner.username}"
+        return self.slugline or f"Scene {self.order}"
 
 
 class TextFile(models.Model):
