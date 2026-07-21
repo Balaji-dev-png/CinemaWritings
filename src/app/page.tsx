@@ -182,10 +182,7 @@ export default function Dashboard() {
       {/* Centered content wrapper */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-8 w-full z-10">
         {/* Massive floating white pane mimicking the image container */}
-        <motion.div 
-          initial={{ opacity: 0, y: 40, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        <div 
           className="w-full max-w-6xl bg-white dark:bg-[#131416] rounded-2xl sm:rounded-[3rem] shadow-[0_30px_80px_-15px_rgba(0,0,0,0.06)] dark:shadow-black/50 overflow-hidden border border-white dark:border-[#222] flex flex-col p-5 sm:p-8 md:p-12 min-h-[85vh] relative transition-colors duration-500"
         >
           
@@ -448,27 +445,40 @@ export default function Dashboard() {
             </motion.div>
           )}
         </AnimatePresence>
-
-      </motion.div>
+      </div>
       </div>
 
       {/* ── Cinematic Footer ── */}
-      <footer
-        className="w-full mt-auto shrink-0 select-none"
+      <motion.footer
+        className="w-full mt-auto shrink-0 overflow-hidden relative"
         style={{ background: "#000", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        initial="rest"
+        animate="rest"
+        whileHover="hover"
+        variants={{
+          rest: {
+            backgroundColor: "#000",
+            boxShadow: "0px 0px 0px rgba(0,0,0,0)",
+          },
+          hover: {
+            backgroundColor: "#080808",
+            boxShadow: "0px -10px 40px rgba(255,255,255,0.03)",
+            transition: { duration: 0.4, ease: "easeOut" }
+          }
+        }}
       >
         {/* Top metadata strip */}
         <div className="flex items-start justify-between px-8 pt-8 pb-4">
           <div>
-            <p className="text-[11px] text-zinc-500 leading-relaxed">
+            <p className="text-[11px] text-zinc-500 leading-relaxed transition-colors duration-300 hover:text-zinc-300">
               Screenplay Editor · Director&apos;s Suite · Storyboard · Notes
             </p>
-            <p className="text-[11px] text-zinc-600 leading-relaxed">
+            <p className="text-[11px] text-zinc-600 leading-relaxed transition-colors duration-300 hover:text-zinc-400">
               WGA-Standard Formatting · Auto-Save
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-500 transition-colors duration-300 hover:text-zinc-300">
               Open source · Built for filmmakers
             </p>
             <a
@@ -481,23 +491,42 @@ export default function Dashboard() {
             </a>
           </div>
           <div className="text-right">
-            <p className="text-[11px] text-zinc-500">Built for filmmakers by DGARTSWORK</p>
+            <p className="text-[11px] text-zinc-500 transition-colors duration-300 hover:text-zinc-300">Built for filmmakers by DGARTSWORK</p>
             <p className="text-[11px] text-zinc-600">{new Date().getFullYear()}</p>
           </div>
         </div>
 
         {/* Big logotype */}
-        <div className="px-6 py-2 overflow-hidden">
-          <h2
-            className="font-black leading-none tracking-tight text-white"
+        <div className="px-6 py-2 overflow-hidden flex justify-center">
+          <motion.h2
+            className="font-black leading-none cursor-text origin-center"
             style={{
               fontSize: "clamp(3.5rem, 14vw, 9rem)",
-              letterSpacing: "-0.03em",
               lineHeight: 0.9,
+              letterSpacing: "-0.03em",
+              backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.1) 100%)",
+              backgroundSize: "200% auto",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              color: "transparent",
+            }}
+            variants={{
+              rest: {
+                backgroundPosition: "200% center",
+                scale: 1,
+              },
+              hover: {
+                backgroundPosition: "-200% center",
+                scale: 1.03,
+                transition: { 
+                  backgroundPosition: { duration: 2.5, repeat: Infinity, ease: "linear" },
+                  scale: { type: "spring", stiffness: 300, damping: 25 }
+                }
+              }
             }}
           >
             CinemaWritings
-          </h2>
+          </motion.h2>
         </div>
 
         {/* Bottom links */}
@@ -520,14 +549,14 @@ export default function Dashboard() {
               Report Issue
             </a>
           </div>
-          <p className="text-[11px] text-zinc-700">
+          <p className="text-[11px] text-zinc-700 hover:text-zinc-400 transition-colors duration-300">
             © {new Date().getFullYear()} CinemaWritings. Built with ❤️ for storytellers.
           </p>
           <div className="flex items-center gap-4">
-            <span className="text-[11px] text-zinc-600">Screenplay · Vision · Story</span>
+            <span className="text-[11px] text-zinc-600 hover:text-zinc-300 transition-colors duration-300">Screenplay · Vision · Story</span>
           </div>
         </div>
-      </footer>
+      </motion.footer>
     </div>
   );
 }

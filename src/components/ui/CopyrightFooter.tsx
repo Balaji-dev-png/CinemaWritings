@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { motion } from "framer-motion";
 
 /**
  * CopyrightFooter — Rendered globally on every page via the root layout.
@@ -43,38 +44,61 @@ export function CopyrightFooter() {
   if (authorName === null) return null;
 
   return (
-    <footer
-      aria-label="Site copyright"
+    <div
       style={{
         position: "fixed",
-        bottom: 0,
+        bottom: 12,
         left: 0,
         right: 0,
         zIndex: 9999,
-        pointerEvents: "none",
-        userSelect: "none",
-        padding: "6px 16px",
         display: "flex",
-        alignItems: "center",
         justifyContent: "center",
-        background:
-          "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)",
+        pointerEvents: "none",
       }}
     >
-      <p
+      <motion.footer
+        aria-label="Site copyright"
+        whileHover={{ 
+          scale: 1.05,
+          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          backdropFilter: "blur(12px)",
+          boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.2) inset",
+          y: -4
+        }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
         style={{
-          fontFamily: "var(--font-inter, sans-serif)",
-          fontSize: "10px",
-          fontWeight: 500,
-          letterSpacing: "0.14em",
-          color: "rgba(255,255,255,0.38)",
-          margin: 0,
-          lineHeight: 1,
-          textTransform: "uppercase",
+          pointerEvents: "auto",
+          padding: "8px 24px",
+          borderRadius: "999px",
+          background: "rgba(0,0,0,0.4)",
+          border: "1px solid rgba(255,255,255,0.05)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+          cursor: "text",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        © {year}&nbsp;{authorName}
-      </p>
-    </footer>
+        <motion.p
+          whileHover={{
+            color: "rgba(255,255,255,0.9)",
+            textShadow: "0px 0px 12px rgba(255,255,255,0.6)"
+          }}
+          style={{
+            fontFamily: "var(--font-inter, sans-serif)",
+            fontSize: "11px",
+            fontWeight: 500,
+            letterSpacing: "0.14em",
+            color: "rgba(255,255,255,0.45)",
+            margin: 0,
+            lineHeight: 1,
+            textTransform: "uppercase",
+          }}
+        >
+          © {year}&nbsp;{authorName}
+        </motion.p>
+      </motion.footer>
+    </div>
   );
 }
