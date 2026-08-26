@@ -41,9 +41,9 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
     connectorsRef.current = connectors;
     if (connectorTimerRef.current) clearTimeout(connectorTimerRef.current);
     connectorTimerRef.current = setTimeout(() => {
-      syncStoryboardConnectors(scriptId, connectorsRef.current).catch(console.error);
+      syncStoryboardConnectors(storyboard.id, connectorsRef.current).catch(console.error);
     }, 600);
-  }, [scriptId]);
+  }, [storyboard.id]);
 
   // ── addCard: card is already created in Supabase by caller (StoryboardView);
   //    we just insert it into local state.

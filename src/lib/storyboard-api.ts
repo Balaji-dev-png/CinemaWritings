@@ -14,15 +14,15 @@ import { supabase } from "./supabase";
 
 /**
  * Fetch connectors for a storyboard from the canvas_state table.
- * Uses a namespaced script_id ("sb:{scriptId}") so it doesn't collide with
- * the Director's Suite which uses the raw scriptId.
+ * We use the storyboard's UUID as the script_id to avoid collisions with
+ * the Director's Suite (which uses the script's UUID).
  */
-export async function getStoryboardConnectors(scriptId: string): Promise<Connector[]> {
+export async function getStoryboardConnectors(storyboardId: string): Promise<Connector[]> {
   const userId = await getUserId();
   const { data, error } = await supabase
     .from("canvas_state")
     .select("edges")
-    .eq("script_id", `sb:${scriptId}`)
+    .eq("script_id", storyboardId)
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -37,7 +37,7 @@ export async function getStoryboardConnectors(scriptId: string): Promise<Connect
  * Persist storyboard connectors to the canvas_state table.
  */
 export async function syncStoryboardConnectors(
-  scriptId: string,
+  storyboardId: string,
   connectors: Connector[]
 ): Promise<void> {
   const userId = await getUserId();
@@ -45,7 +45,7 @@ export async function syncStoryboardConnectors(
     .from("canvas_state")
     .upsert(
       {
-        script_id: `sb:${scriptId}`,
+        script_id: storyboardId,
         user_id: userId,
         edges: connectors,
       },
@@ -185,8 +185,8 @@ export async function getStoryboard(scriptId: string): Promise<Storyboard> {
       .map(normalizeCard)
       .sort((a: SceneCard, b: SceneCard) => a.order - b.order);
 
-    // Load persisted connectors from canvas_state
-    const connectors = await getStoryboardConnectors(scriptId);
+    // Load persisted connectors from canvas_state using the storyboard's UUID
+    const connectors = await getStoryboardConnectors(existing.id);
 
     return {
       id: existing.id,
