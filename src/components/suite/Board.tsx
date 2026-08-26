@@ -62,7 +62,6 @@ export const Board = memo(forwardRef<HTMLDivElement, Props>(
     };
     
     const [canvas, setCanvas] = useState<CanvasState>({ zoom: 1, pan: { x: 0, y: 0 } });
-    const [selectionRect, setSelectionRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
     const isSelecting = useRef(false);
     const selectStart = useRef({ x: 0, y: 0 });
 
@@ -167,35 +166,8 @@ export const Board = memo(forwardRef<HTMLDivElement, Props>(
             canvasRef.current.style.transform = `translate(${newPan.x}px, ${newPan.y}px) scale(${zoomRef.current})`;
           }
         } else if (isSelecting.current && viewportRef.current) {
-          const rect = viewportRef.current.getBoundingClientRect();
-          const curX = e.clientX - rect.left;
-          const curY = e.clientY - rect.top;
-          const originX = selectStart.current.x - rect.left;
-          const originY = selectStart.current.y - rect.top;
-          const x = Math.min(originX, curX);
-          const y = Math.min(originY, curY);
-          const w = Math.abs(curX - originX);
-          const h = Math.abs(curY - originY);
-          setSelectionRect({ x, y, w, h });
-          const zoom = zoomRef.current;
-          const pan = panRef.current;
-          const canvasX = (x - pan.x) / zoom;
-          const canvasY = (y - pan.y) / zoom;
-          const canvasW = w / zoom;
-          const canvasH = h / zoom;
-          const newSelectedIds: string[] = [];
-          elements.forEach(el => {
-            const overlapX = Math.max(0, Math.min(canvasX + canvasW, el.x + el.width) - Math.max(canvasX, el.x));
-            const overlapY = Math.max(0, Math.min(canvasY + canvasH, el.y + el.height) - Math.max(canvasY, el.y));
-            if (overlapX > 0 && overlapY > 0) {
-              newSelectedIds.push(el.id);
-            }
-          });
-          if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
-            setSelectedIds(newSelectedIds);
-          } else {
-            setSelectedIds(prev => Array.from(new Set([...prev, ...newSelectedIds])));
-          }
+          // Drag to select removed as per user request
+          // Keeping isSelecting flag so it doesn't trigger other actions
         }
       };
 
@@ -207,6 +179,9 @@ export const Board = memo(forwardRef<HTMLDivElement, Props>(
           }
           // Sync state at end of pan
           setCanvas({ zoom: zoomRef.current, pan: panRef.current });
+        }
+        if (isSelecting.current) {
+          isSelecting.current = false;
         }
       };
 
@@ -324,18 +299,6 @@ export const Board = memo(forwardRef<HTMLDivElement, Props>(
         }}
         onMouseDown={handleMouseDown}
       >
-        {/* Selection Rectangle */}
-        {selectionRect && (
-          <div
-            className="absolute border border-blue-500 bg-blue-500/20 z-50 pointer-events-none"
-            style={{
-              left: selectionRect.x,
-              top: selectionRect.y,
-              width: selectionRect.w,
-              height: selectionRect.h,
-            }}
-          />
-        )}
         <div
           ref={setCanvasRef}
           className="director-suite-canvas"
