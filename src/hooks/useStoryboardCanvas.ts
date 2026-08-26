@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Storyboard,
   SceneCard,
@@ -8,6 +8,7 @@ import {
   deleteSceneCard,
   bulkDeleteSceneCards,
   reorderSceneCards,
+  syncStoryboardConnectors,
 } from "@/lib/storyboard-api";
 
 export interface StoryboardCanvasState {
@@ -31,6 +32,18 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
       connectors: storyboard.connectors || [],
     });
   }, [storyboard]);
+
+  // ── Debounced connector sync ──
+  const connectorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectorsRef = useRef<Connector[]>(storyboard.connectors || []);
+
+  const scheduleConnectorSync = useCallback((connectors: Connector[]) => {
+    connectorsRef.current = connectors;
+    if (connectorTimerRef.current) clearTimeout(connectorTimerRef.current);
+    connectorTimerRef.current = setTimeout(() => {
+      syncStoryboardConnectors(scriptId, connectorsRef.current).catch(console.error);
+    }, 600);
+  }, [scriptId]);
 
   // ── addCard: card is already created in Supabase by caller (StoryboardView);
   //    we just insert it into local state.
@@ -59,16 +72,20 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
   // ── removeCard: delete from Supabase and remove from local state
   const removeCard = useCallback(
     (id: string) => {
-      setState((prev) => ({
-        ...prev,
-        cards: prev.cards.filter((c) => c.id !== id),
-        connectors: prev.connectors.filter(
+      setState((prev) => {
+        const nextConnectors = prev.connectors.filter(
           (conn) => conn.fromId !== id && conn.toId !== id
-        ),
-      }));
+        );
+        scheduleConnectorSync(nextConnectors);
+        return {
+          ...prev,
+          cards: prev.cards.filter((c) => c.id !== id),
+          connectors: nextConnectors,
+        };
+      });
       deleteSceneCard(storyboard.id, id).catch(console.error);
     },
-    [storyboard.id]
+    [storyboard.id, scheduleConnectorSync]
   );
 
   // ── moveCard: position is a card field — debounce DB write
@@ -90,16 +107,20 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
   // ── removeCards: bulk delete
   const removeCards = useCallback(
     (ids: string[]) => {
-      setState((prev) => ({
-        ...prev,
-        cards: prev.cards.filter((c) => !ids.includes(c.id)),
-        connectors: prev.connectors.filter(
+      setState((prev) => {
+        const nextConnectors = prev.connectors.filter(
           (conn) => !ids.includes(conn.fromId) && !ids.includes(conn.toId)
-        ),
-      }));
+        );
+        scheduleConnectorSync(nextConnectors);
+        return {
+          ...prev,
+          cards: prev.cards.filter((c) => !ids.includes(c.id)),
+          connectors: nextConnectors,
+        };
+      });
       bulkDeleteSceneCards(storyboard.id, ids).catch(console.error);
     },
-    [storyboard.id]
+    [storyboard.id, scheduleConnectorSync]
   );
 
   // ── removeAll: clear everything
@@ -110,22 +131,27 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
       if (ids.length > 0) {
         bulkDeleteSceneCards(storyboard.id, ids).catch(console.error);
       }
+      scheduleConnectorSync([]);
       return { ...prev, cards: [], connectors: [] };
     });
-  }, [storyboard.id]);
+  }, [storyboard.id, scheduleConnectorSync]);
 
-  // ── Connectors: stored in canvas_state via the suite API (not scene_cards).
-  //    For storyboard we keep them local-only for now (they're decorative).
+  // ── Connectors: persisted to canvas_state via syncStoryboardConnectors ──
   const addConnector = useCallback((conn: Connector) => {
-    setState((prev) => ({ ...prev, connectors: [...prev.connectors, conn] }));
-  }, []);
+    setState((prev) => {
+      const next = [...prev.connectors, conn];
+      scheduleConnectorSync(next);
+      return { ...prev, connectors: next };
+    });
+  }, [scheduleConnectorSync]);
 
   const removeConnector = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      connectors: prev.connectors.filter((c) => c.id !== id),
-    }));
-  }, []);
+    setState((prev) => {
+      const next = prev.connectors.filter((c) => c.id !== id);
+      scheduleConnectorSync(next);
+      return { ...prev, connectors: next };
+    });
+  }, [scheduleConnectorSync]);
 
   // ── Auto-Layout: reposition cards in a grid and persist new positions
   const autoLayout = useCallback(() => {

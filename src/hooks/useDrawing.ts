@@ -68,14 +68,42 @@ export function useDrawing({
   const rafId = useRef<number | null>(null);
   const isDirty = useRef(false);
 
-  // ── Load initial strokes from backend prop ────────────────────────────
+  // ── Load initial strokes from backend prop ────────────────────────
+  const initialStrokesLoaded = useRef(false);
   useEffect(() => {
-    if (initialStrokes && initialStrokes.length > 0) {
+    if (initialStrokes && initialStrokes.length > 0 && !initialStrokesLoaded.current) {
       strokes.current = initialStrokes;
-      // Redraw will happen when canvas mounts via the redrawAll effect
+      initialStrokesLoaded.current = true;
+      // Trigger a redraw after strokes are loaded
+      requestAnimationFrame(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const stroke of strokes.current) {
+          if (stroke.points.length < 2) continue;
+          ctx.save();
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.strokeStyle = stroke.color || "#c9a84c";
+          ctx.lineWidth = stroke.tool === "brush" ? (stroke.strokeWidth || 2) * 4 : (stroke.strokeWidth || 2);
+          ctx.globalAlpha = stroke.tool === "pencil" ? 0.8 : stroke.tool === "brush" ? 0.6 : 1;
+          ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
+          ctx.beginPath();
+          ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+          for (let i = 1; i < stroke.points.length - 1; i++) {
+            const midX = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
+            const midY = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
+            ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, midX, midY);
+          }
+          ctx.lineTo(stroke.points[stroke.points.length - 1].x, stroke.points[stroke.points.length - 1].y);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount only
+  }, [initialStrokes, canvasRef]);
 
   const persistStrokes = useCallback(() => {
     onStrokesChange?.([...strokes.current]);
@@ -231,8 +259,11 @@ export function useDrawing({
     // Drawing — incremental render (single segment per move = fastest)
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d", { willReadFrequently: false });
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    // Re-apply style every frame to ensure consistent drawing context
+    applyStyle(ctx);
 
     currentStroke.current.push(pos);
     const points = currentStroke.current;

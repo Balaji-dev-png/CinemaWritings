@@ -44,6 +44,8 @@ const EMPTY_STATE: SuiteState = {
 export function useSuiteState(scriptId: string) {
   const [state, setState] = useState<SuiteState>(EMPTY_STATE);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadedViewport, setLoadedViewport] = useState<ViewportState | null>(null);
+  const [loadedStrokes, setLoadedStrokes] = useState<any[]>([]);
 
   // These refs let the sync function always see the latest values without
   // being a dependency of the debounced timer callback.
@@ -84,6 +86,8 @@ export function useSuiteState(scriptId: string) {
         viewportRef.current = viewport;
         strokesRef.current = drawing_strokes as any[];
         setState(nextState);
+        setLoadedViewport(viewport);
+        setLoadedStrokes(drawing_strokes as any[]);
         setIsLoading(false);
       })
       .catch((err) => {
@@ -265,8 +269,8 @@ export function useSuiteState(scriptId: string) {
   return {
     state,
     isLoading,
-    initialViewport: viewportRef.current,
-    initialStrokes: strokesRef.current,
+    initialViewport: loadedViewport,
+    initialStrokes: loadedStrokes,
     addElement,
     updateElement,
     updateElementData,

@@ -21,6 +21,8 @@ export const DrawingCanvas = forwardRef<HTMLCanvasElement, Props>(
           zIndex: active ? 100 : -1,
           pointerEvents: active ? "all" : "none",
           background: "transparent",
+          touchAction: "none",
+          willChange: "auto",
         }}
       />
     );

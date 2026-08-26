@@ -10,6 +10,53 @@
 
 import { supabase } from "./supabase";
 
+// ─── Storyboard Connector Persistence ─────────────────────────────────────────
+
+/**
+ * Fetch connectors for a storyboard from the canvas_state table.
+ * Uses a namespaced script_id ("sb:{scriptId}") so it doesn't collide with
+ * the Director's Suite which uses the raw scriptId.
+ */
+export async function getStoryboardConnectors(scriptId: string): Promise<Connector[]> {
+  const userId = await getUserId();
+  const { data, error } = await supabase
+    .from("canvas_state")
+    .select("edges")
+    .eq("script_id", `sb:${scriptId}`)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[storyboard] Failed to load connectors:", error);
+    return [];
+  }
+  return (data?.edges as Connector[]) ?? [];
+}
+
+/**
+ * Persist storyboard connectors to the canvas_state table.
+ */
+export async function syncStoryboardConnectors(
+  scriptId: string,
+  connectors: Connector[]
+): Promise<void> {
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from("canvas_state")
+    .upsert(
+      {
+        script_id: `sb:${scriptId}`,
+        user_id: userId,
+        edges: connectors,
+      },
+      { onConflict: "script_id,user_id" }
+    );
+
+  if (error) {
+    console.error("[storyboard] Failed to sync connectors:", error);
+  }
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface Connector {
@@ -137,13 +184,17 @@ export async function getStoryboard(scriptId: string): Promise<Storyboard> {
     const cards = (existing.scene_cards ?? [])
       .map(normalizeCard)
       .sort((a: SceneCard, b: SceneCard) => a.order - b.order);
+
+    // Load persisted connectors from canvas_state
+    const connectors = await getStoryboardConnectors(scriptId);
+
     return {
       id: existing.id,
       script_title: existing.title || "Untitled",
       title: existing.title || "Storyboard",
       aspect_ratio: existing.aspect_ratio || "1.78:1",
       cards,
-      connectors: [],
+      connectors,
       created_at: existing.created_at,
       updated_at: existing.updated_at,
     };
