@@ -34,6 +34,7 @@ export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "
   const [connectSource, setConnectSource] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectionRect, setSelectionRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [clipboard, setClipboard] = useState<any[]>([]);
 
   // Viewport State
   const boardRef = useRef<HTMLDivElement>(null);
@@ -88,6 +89,47 @@ export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "
         setConnectMode(false);
         setConnectSource(null);
         setSelectedIds([]);
+      }
+      
+      // Copy
+      if (e.key === "c" && (e.ctrlKey || e.metaKey)) {
+        const activeEl = document.activeElement;
+        if (activeEl?.tagName !== "INPUT" && activeEl?.tagName !== "TEXTAREA") {
+          const copied = state.cards.filter(c => selectedIds.includes(c.id));
+          if (copied.length > 0) setClipboard(copied);
+        }
+      }
+      
+      // Paste
+      if (e.key === "v" && (e.ctrlKey || e.metaKey)) {
+        const activeEl = document.activeElement;
+        if (activeEl?.tagName !== "INPUT" && activeEl?.tagName !== "TEXTAREA") {
+          if (clipboard.length > 0) {
+            const newIds: string[] = [];
+            clipboard.forEach(async (card, idx) => {
+              const newOrder = state.cards.length + idx + 1;
+              const newCard = await createSceneCard(storyboard.id, {
+                shot_number: `${String(newOrder).padStart(2, "0")}`,
+                x: (card.x || 0) + 40,
+                y: (card.y || 0) + 40,
+                width: card.width || 320,
+                height: card.height || 500,
+                aspect_ratio: card.aspect_ratio || "1.78:1",
+                shot_type: card.shot_type,
+                camera_movement: card.camera_movement,
+                scene_heading: card.scene_heading,
+                lens: card.lens,
+                technical_notes: card.technical_notes,
+                image_url: card.image_url,
+              });
+              if (newCard) {
+                addCard(newCard);
+                newIds.push(newCard.id);
+              }
+            });
+            setSelectedIds(newIds);
+          }
+        }
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {

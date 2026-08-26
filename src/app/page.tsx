@@ -499,29 +499,19 @@ export default function Dashboard() {
         {/* Big logotype */}
         <div className="px-6 py-2 overflow-hidden flex justify-center">
           <motion.h2
-            className="font-black leading-none cursor-text origin-center"
+            className="font-black leading-none cursor-text origin-center text-white"
             style={{
               fontSize: "clamp(3.5rem, 14vw, 9rem)",
               lineHeight: 0.9,
               letterSpacing: "-0.03em",
-              backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.1) 100%)",
-              backgroundSize: "200% auto",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              color: "transparent",
             }}
             variants={{
               rest: {
-                backgroundPosition: "200% center",
                 scale: 1,
               },
               hover: {
-                backgroundPosition: "-200% center",
                 scale: 1.03,
-                transition: { 
-                  backgroundPosition: { duration: 2.5, repeat: Infinity, ease: "linear" },
-                  scale: { type: "spring", stiffness: 300, damping: 25 }
-                }
+                transition: { duration: 0.4, ease: "easeOut" }
               }
             }}
           >
