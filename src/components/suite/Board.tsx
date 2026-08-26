@@ -1,5 +1,5 @@
 "use client";
-import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useRef, useState, memo } from "react";
 import { SuiteElement, Connector } from "@/hooks/useSuiteState";
 import { IdeaCard } from "./IdeaCard";
 import { ShotCard } from "./ShotCard";
@@ -31,6 +31,8 @@ interface Props {
   initialViewport?: { zoom: number; pan: { x: number; y: number } } | null;
   /** Called (debounced) when the viewport changes so the parent can sync to backend */
   onViewportChange?: (vp: { zoom: number; pan: { x: number; y: number } }) => void;
+  selectedIds: string[];
+  setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 interface CanvasState {
@@ -38,21 +40,20 @@ interface CanvasState {
   pan: { x: number; y: number };
 }
 
-export const Board = forwardRef<HTMLDivElement, Props>(
+export const Board = memo(forwardRef<HTMLDivElement, Props>(
   function Board(
     {
       elements, connectors, drawMode, connectMode, connectSource, drawingCanvasRef,
       zoomRef, panRef, canvasRef: externalCanvasRef,
       onMoveElement, onResizeElement, onUpdateData, onRemoveElement,
       onRemoveConnector, onConnectClick, scriptId,
-      initialViewport, onViewportChange,
+      initialViewport, onViewportChange, selectedIds, setSelectedIds,
     },
     ref
   ) {
     const internalViewportRef = useRef<HTMLDivElement>(null);
     const viewportRef = (ref as React.RefObject<HTMLDivElement | null>) || internalViewportRef;
     const canvasRef = useRef<HTMLDivElement>(null);
-    // Wire external ref to the inner canvas div
     const setCanvasRef = (el: HTMLDivElement | null) => {
       (canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
       if (externalCanvasRef) {
@@ -60,21 +61,20 @@ export const Board = forwardRef<HTMLDivElement, Props>(
       }
     };
     
-    // Canvas State
     const [canvas, setCanvas] = useState<CanvasState>({ zoom: 1, pan: { x: 0, y: 0 } });
+    const [selectionRect, setSelectionRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+    const isSelecting = useRef(false);
+    const selectStart = useRef({ x: 0, y: 0 });
 
-    // Sync refs with state
     useEffect(() => {
       zoomRef.current = canvas.zoom;
       panRef.current = canvas.pan;
     }, [canvas, zoomRef, panRef]);
 
-    // Panning State
     const isPanning = useRef(false);
     const panStart = useRef({ x: 0, y: 0 });
     const isSpaceDown = useRef(false);
 
-    // Dropdown state
     const [isZoomMenuOpen, setIsZoomMenuOpen] = useState(false);
     const zoomMenuRef = useRef<HTMLDivElement>(null);
 
@@ -90,7 +90,6 @@ export const Board = forwardRef<HTMLDivElement, Props>(
       return () => window.removeEventListener("mousedown", handleClickOutside);
     }, [isZoomMenuOpen]);
 
-    // PERSISTENCE — restore initial viewport from backend prop
     const initialViewportLoaded = useRef(false);
     useEffect(() => {
       if (!initialViewport || initialViewportLoaded.current) return;
@@ -101,40 +100,28 @@ export const Board = forwardRef<HTMLDivElement, Props>(
       initialViewportLoaded.current = true;
     }, [initialViewport]);
 
-    // Notify parent of viewport changes so it can sync to backend
     useEffect(() => {
       onViewportChange?.({ zoom: canvas.zoom, pan: canvas.pan });
     }, [canvas.zoom, canvas.pan, onViewportChange]);
 
-    // ZOOM TOWARD CURSOR (Feature 1)
     const handleWheel = useCallback((e: WheelEvent) => {
       if ((e.target as HTMLElement).closest('.suite-scrollbar')) {
          return;
       }
-
       e.preventDefault();
-
-      // Zoom on scroll
-      const ZOOM_SENSITIVITY = 0.001; // reduced sensitivity
+      const ZOOM_SENSITIVITY = 0.001;
       const MIN_ZOOM = 0.1;
       const MAX_ZOOM = 3.0;
-
       const mouseX = e.clientX;
       const mouseY = e.clientY;
-
-      // Calculate delta and clamp to max 5% change per event
       let delta = -e.deltaY * ZOOM_SENSITIVITY;
       if (delta > 0.05) delta = 0.05;
       if (delta < -0.05) delta = -0.05;
-      
       const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current * (1 + delta)));
-
       const canvasPointX = (mouseX - panRef.current.x) / zoomRef.current;
       const canvasPointY = (mouseY - panRef.current.y) / zoomRef.current;
-
       const newPanX = mouseX - canvasPointX * newZoom;
       const newPanY = mouseY - canvasPointY * newZoom;
-
       setCanvas({ zoom: newZoom, pan: { x: newPanX, y: newPanY } });
     }, []);
 
@@ -145,8 +132,9 @@ export const Board = forwardRef<HTMLDivElement, Props>(
       return () => viewport.removeEventListener('wheel', handleWheel);
     }, [viewportRef, handleWheel]);
 
-    // PANNING LOGIC (Feature 2)
     const handleMouseDown = (e: React.MouseEvent) => {
+      if ((e.target as HTMLElement).closest('.suite-scrollbar')) return;
+
       if (e.button === 1 || (e.button === 0 && isSpaceDown.current && !drawMode)) {
         e.preventDefault();
         isPanning.current = true;
@@ -155,6 +143,15 @@ export const Board = forwardRef<HTMLDivElement, Props>(
           y: e.clientY - panRef.current.y
         };
         if (viewportRef.current) viewportRef.current.style.cursor = 'grabbing';
+      } else if (e.button === 0 && !drawMode && !connectMode) {
+        const target = e.target as HTMLElement;
+        if (target === viewportRef.current || target.classList.contains("suite-bg-pattern") || target.tagName.toLowerCase() === "svg") {
+          isSelecting.current = true;
+          selectStart.current = { x: e.clientX, y: e.clientY };
+          if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+            setSelectedIds([]);
+          }
+        }
       }
     };
 
@@ -166,13 +163,38 @@ export const Board = forwardRef<HTMLDivElement, Props>(
             y: e.clientY - panStart.current.y
           };
           panRef.current = newPan;
-
-          // Direct DOM mutation for 60fps panning
           if (canvasRef.current) {
             canvasRef.current.style.transform = `translate(${newPan.x}px, ${newPan.y}px) scale(${zoomRef.current})`;
           }
-          if (viewportRef.current) {
-            viewportRef.current.style.backgroundPosition = `${newPan.x}px ${newPan.y}px`;
+        } else if (isSelecting.current && viewportRef.current) {
+          const rect = viewportRef.current.getBoundingClientRect();
+          const curX = e.clientX - rect.left;
+          const curY = e.clientY - rect.top;
+          const originX = selectStart.current.x - rect.left;
+          const originY = selectStart.current.y - rect.top;
+          const x = Math.min(originX, curX);
+          const y = Math.min(originY, curY);
+          const w = Math.abs(curX - originX);
+          const h = Math.abs(curY - originY);
+          setSelectionRect({ x, y, w, h });
+          const zoom = zoomRef.current;
+          const pan = panRef.current;
+          const canvasX = (x - pan.x) / zoom;
+          const canvasY = (y - pan.y) / zoom;
+          const canvasW = w / zoom;
+          const canvasH = h / zoom;
+          const newSelectedIds: string[] = [];
+          elements.forEach(el => {
+            const overlapX = Math.max(0, Math.min(canvasX + canvasW, el.x + el.width) - Math.max(canvasX, el.x));
+            const overlapY = Math.max(0, Math.min(canvasY + canvasH, el.y + el.height) - Math.max(canvasY, el.y));
+            if (overlapX > 0 && overlapY > 0) {
+              newSelectedIds.push(el.id);
+            }
+          });
+          if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+            setSelectedIds(newSelectedIds);
+          } else {
+            setSelectedIds(prev => Array.from(new Set([...prev, ...newSelectedIds])));
           }
         }
       };
@@ -293,7 +315,7 @@ export const Board = forwardRef<HTMLDivElement, Props>(
     return (
       <div
         ref={viewportRef}
-        className={`flex-1 relative overflow-hidden select-none ${drawMode ? "draw-mode-active" : ""} bg-zinc-50 dark:bg-[#0d0d0d]`}
+        className={`flex-1 relative overflow-hidden select-none suite-bg-pattern ${drawMode ? "draw-mode-active" : ""} bg-zinc-50 dark:bg-[#0d0d0d]`}
         style={{
           backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
           backgroundSize: `${28 * canvas.zoom}px ${28 * canvas.zoom}px`,
@@ -302,6 +324,18 @@ export const Board = forwardRef<HTMLDivElement, Props>(
         }}
         onMouseDown={handleMouseDown}
       >
+        {/* Selection Rectangle */}
+        {selectionRect && (
+          <div
+            className="absolute border border-blue-500 bg-blue-500/20 z-50 pointer-events-none"
+            style={{
+              left: selectionRect.x,
+              top: selectionRect.y,
+              width: selectionRect.w,
+              height: selectionRect.h,
+            }}
+          />
+        )}
         <div
           ref={setCanvasRef}
           className="director-suite-canvas"
@@ -333,6 +367,15 @@ export const Board = forwardRef<HTMLDivElement, Props>(
           <div style={{ pointerEvents: drawMode ? "none" : "auto" }}>
             {elements.map((el) => {
               const isConnectSource = connectSource === el.id;
+              const isSelected = selectedIds.includes(el.id);
+              const onSelect = (multi: boolean) => {
+                if (multi) {
+                  setSelectedIds(prev => prev.includes(el.id) ? prev.filter(id => id !== el.id) : [...prev, el.id]);
+                } else {
+                  setSelectedIds([el.id]);
+                }
+              };
+              
               const commonProps = {
                 element: el,
                 onMove: onMoveElement,
@@ -344,6 +387,8 @@ export const Board = forwardRef<HTMLDivElement, Props>(
                 isConnectSource,
                 getZoom,
                 getPan,
+                isSelected,
+                onSelect
               };
 
               switch (el.type) {
@@ -418,4 +463,4 @@ export const Board = forwardRef<HTMLDivElement, Props>(
       </div>
     );
   }
-);
+));

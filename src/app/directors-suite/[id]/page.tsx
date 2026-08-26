@@ -28,9 +28,9 @@ export default function DirectorsSuitePage() {
   const [drawMode, setDrawMode] = useState(false);
   const [connectSource, setConnectSource] = useState<string | null>(null);
 
-  // Clipboard for copy-paste
-  const [clipboard, setClipboard] = useState<SuiteElement | null>(null);
-  const mouseRef = useRef({ x: 0, y: 0 });
+  // Clipboard and Selection for copy-paste
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [clipboard, setClipboard] = useState<SuiteElement[]>([]);
 
   // Instant navigation overlay
   const [isNavigating, setIsNavigating] = useState(false);
@@ -112,45 +112,48 @@ export default function DirectorsSuitePage() {
 
   // ── Global Mouse & Keyboard for Copy/Paste ──
   useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      mouseRef.current = { x: e.clientX, y: e.clientY };
-    };
-    window.addEventListener("mousemove", handleGlobalMouseMove);
-    return () => window.removeEventListener("mousemove", handleGlobalMouseMove);
-  }, []);
-
-  useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement;
       if (activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA") return;
       
-      if (e.key === "c" && (e.ctrlKey || e.metaKey)) {
-        const hoveredEl = document.elementFromPoint(mouseRef.current.x, mouseRef.current.y);
-        const cardEl = hoveredEl?.closest('[data-element-id]');
-        if (cardEl) {
-          const id = cardEl.getAttribute('data-element-id');
-          const elementToCopy = suite.state.elements.find(el => el.id === id);
-          if (elementToCopy) {
-            setClipboard(elementToCopy);
+      // Delete selected
+      if (e.key === "Backspace" || e.key === "Delete") {
+        if (selectedIds.length > 0) {
+          if (window.confirm(`Delete ${selectedIds.length} elements?`)) {
+            selectedIds.forEach(id => suite.removeElement(id));
+            setSelectedIds([]);
           }
+        }
+      }
+      
+      if (e.key === "c" && (e.ctrlKey || e.metaKey)) {
+        const copied = suite.state.elements.filter(el => selectedIds.includes(el.id));
+        if (copied.length > 0) {
+          setClipboard(copied);
         }
       }
 
       if (e.key === "v" && (e.ctrlKey || e.metaKey)) {
-        if (clipboard) {
-          suite.addElement({
-            ...clipboard,
-            id: uid(),
-            x: clipboard.x + 40,
-            y: clipboard.y + 40,
+        if (clipboard.length > 0) {
+          const newIds: string[] = [];
+          clipboard.forEach((el, idx) => {
+            const newId = uid();
+            newIds.push(newId);
+            suite.addElement({
+              ...el,
+              id: newId,
+              x: el.x + 40,
+              y: el.y + 40,
+            });
           });
+          setSelectedIds(newIds);
         }
       }
     };
     
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [clipboard, suite.state.elements, suite]);
+  }, [clipboard, suite.state.elements, suite, selectedIds]);
 
   // ── Add element helpers ──
   const addIdea = useCallback(() => {
@@ -323,6 +326,8 @@ export default function DirectorsSuitePage() {
           scriptId={scriptId}
           initialViewport={suite.initialViewport}
           onViewportChange={handleViewportChange}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
         />
 
         {/* Floating Drawing Toolbar */}

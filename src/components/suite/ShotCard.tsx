@@ -60,11 +60,14 @@ interface Props {
   isConnectSource?: boolean;
   getZoom: () => number;
   getPan: () => { x: number; y: number };
+  isSelected?: boolean;
+  onSelect?: (multi: boolean) => void;
 }
 
 export function ShotCard({
   element, onMove, onResize, onUpdate, onRemove,
   onConnectClick, connectMode, isConnectSource, getZoom, getPan,
+  isSelected, onSelect,
 }: Props) {
   const resizeRef = useRef({ startX: 0, startY: 0, startW: 0, startH: 0 });
 
@@ -115,7 +118,7 @@ export function ShotCard({
   return (
     <div
       data-element-id={element.id}
-      className={`absolute director-suite-card select-none overflow-hidden ${isConnectSource ? "suite-connect-source" : ""}`}
+      className={`absolute director-suite-card select-none overflow-hidden ${isConnectSource ? "suite-connect-source" : ""} ${isSelected ? "ring-2 ring-[#c9a84c] shadow-lg shadow-[#c9a84c]/20" : ""}`}
       style={{
         left: element.x, top: element.y,
         width: element.width, height: element.height,
@@ -124,7 +127,15 @@ export function ShotCard({
       }}
       onMouseDown={(e) => {
         if (connectMode) { e.stopPropagation(); onConnectClick?.(element.id); return; }
+        if (!isSelected) {
+          onSelect?.(e.shiftKey || e.metaKey || e.ctrlKey);
+        }
         handleMouseDown(e, element.x, element.y);
+      }}
+      onClick={(e) => {
+        if (!connectMode && !e.defaultPrevented) {
+          onSelect?.(e.shiftKey || e.metaKey || e.ctrlKey);
+        }
       }}
     >
       {/* Header */}
