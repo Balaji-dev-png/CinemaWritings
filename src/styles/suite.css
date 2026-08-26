@@ -50,6 +50,16 @@
   border-color: rgba(201, 168, 76, 0.35);
 }
 
+/* Selected state */
+.director-suite-card.suite-card-selected {
+  border-color: #c9a84c !important;
+  box-shadow:
+    0 24px 64px -8px rgba(0, 0, 0, 0.8),
+    0 0 0 1px #c9a84c,
+    0 0 30px rgba(201, 168, 76, 0.25) !important;
+  z-index: 50;
+}
+
 /* ─── Card Header ───────────────────────────────────────────── */
 .director-suite-card-header {
   background: rgba(0, 0, 0, 0.25);

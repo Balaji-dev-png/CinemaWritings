@@ -73,7 +73,7 @@ export function IdeaCard({
   return (
     <div
       data-element-id={element.id}
-      className={`absolute director-suite-card select-none flex flex-col overflow-hidden ${isConnectSource ? "suite-connect-source" : ""} ${isSelected ? "ring-2 ring-[#c9a84c] shadow-lg shadow-[#c9a84c]/20" : ""}`}
+      className={`absolute director-suite-card select-none flex flex-col overflow-hidden ${isConnectSource ? "suite-connect-source" : ""} ${isSelected ? "suite-card-selected" : ""}`}
       style={{
         left: element.x,
         top: element.y,
