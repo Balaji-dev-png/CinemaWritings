@@ -28,6 +28,10 @@ export default function DirectorsSuitePage() {
   const [drawMode, setDrawMode] = useState(false);
   const [connectSource, setConnectSource] = useState<string | null>(null);
 
+  // Clipboard for copy-paste
+  const [clipboard, setClipboard] = useState<SuiteElement | null>(null);
+  const mouseRef = useRef({ x: 0, y: 0 });
+
   // Instant navigation overlay
   const [isNavigating, setIsNavigating] = useState(false);
   const [navMessage, setNavMessage] = useState("");
@@ -105,6 +109,48 @@ export default function DirectorsSuitePage() {
     onStrokeComplete: suite.setDrawingDataUrl,
     onStrokesChange: suite.updateStrokes,
   });
+
+  // ── Global Mouse & Keyboard for Copy/Paste ──
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("mousemove", handleGlobalMouseMove);
+    return () => window.removeEventListener("mousemove", handleGlobalMouseMove);
+  }, []);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA") return;
+      
+      if (e.key === "c" && (e.ctrlKey || e.metaKey)) {
+        const hoveredEl = document.elementFromPoint(mouseRef.current.x, mouseRef.current.y);
+        const cardEl = hoveredEl?.closest('[data-element-id]');
+        if (cardEl) {
+          const id = cardEl.getAttribute('data-element-id');
+          const elementToCopy = suite.state.elements.find(el => el.id === id);
+          if (elementToCopy) {
+            setClipboard(elementToCopy);
+          }
+        }
+      }
+
+      if (e.key === "v" && (e.ctrlKey || e.metaKey)) {
+        if (clipboard) {
+          suite.addElement({
+            ...clipboard,
+            id: uid(),
+            x: clipboard.x + 40,
+            y: clipboard.y + 40,
+          });
+        }
+      }
+    };
+    
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [clipboard, suite.state.elements, suite]);
 
   // ── Add element helpers ──
   const addIdea = useCallback(() => {

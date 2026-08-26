@@ -114,6 +114,7 @@ export function ShotCard({
 
   return (
     <div
+      data-element-id={element.id}
       className={`absolute director-suite-card select-none overflow-hidden ${isConnectSource ? "suite-connect-source" : ""}`}
       style={{
         left: element.x, top: element.y,

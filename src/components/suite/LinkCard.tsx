@@ -48,6 +48,7 @@ export function LinkCard({ element, onMove, onResize, onUpdate, onRemove, onConn
 
   return (
     <div
+      data-element-id={element.id}
       className={`absolute director-suite-card select-none overflow-hidden ${isConnectSource ? "suite-connect-source" : ""}`}
       style={{ left: element.x, top: element.y, width: element.width, height: element.height, zIndex: 10, cursor: connectMode ? "crosshair" : "default" }}
       onMouseDown={(e) => { if (connectMode) { e.stopPropagation(); onConnectClick?.(element.id); return; } handleMouseDown(e, element.x, element.y); }}
