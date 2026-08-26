@@ -17,20 +17,23 @@ import { supabase } from "./supabase";
  * We use the storyboard's UUID as the script_id to avoid collisions with
  * the Director's Suite (which uses the script's UUID).
  */
-export async function getStoryboardConnectors(storyboardId: string): Promise<Connector[]> {
+export async function getStoryboardConnectors(storyboardId: string): Promise<{ connectors: Connector[]; viewport: any }> {
   const userId = await getUserId();
   const { data, error } = await supabase
     .from("canvas_state")
-    .select("edges")
+    .select("edges, viewport")
     .eq("script_id", storyboardId)
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
-    console.error("[storyboard] Failed to load connectors:", error);
-    return [];
+    console.error("[storyboard] Failed to load connectors/viewport:", error);
+    return { connectors: [], viewport: null };
   }
-  return (data?.edges as Connector[]) ?? [];
+  return {
+    connectors: (data?.edges as Connector[]) ?? [],
+    viewport: data?.viewport ?? null,
+  };
 }
 
 /**
@@ -54,6 +57,30 @@ export async function syncStoryboardConnectors(
 
   if (error) {
     console.error("[storyboard] Failed to sync connectors:", error);
+  }
+}
+
+/**
+ * Persist storyboard viewport to the canvas_state table.
+ */
+export async function syncStoryboardViewport(
+  storyboardId: string,
+  viewport: any
+): Promise<void> {
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from("canvas_state")
+    .upsert(
+      {
+        script_id: storyboardId,
+        user_id: userId,
+        viewport,
+      },
+      { onConflict: "script_id,user_id" }
+    );
+
+  if (error) {
+    console.error("[storyboard] Failed to sync viewport:", error);
   }
 }
 
@@ -85,13 +112,13 @@ export interface SceneCard {
 }
 
 export interface Storyboard {
-  /** Supabase storyboard UUID — use this for card operations */
   id: string;
   script_title: string;
   title: string;
   aspect_ratio: string;
   cards: SceneCard[];
   connectors?: Connector[];
+  viewport?: any;
   created_at: string;
   updated_at: string;
 }
@@ -185,8 +212,8 @@ export async function getStoryboard(scriptId: string): Promise<Storyboard> {
       .map(normalizeCard)
       .sort((a: SceneCard, b: SceneCard) => a.order - b.order);
 
-    // Load persisted connectors from canvas_state using the storyboard's UUID
-    const connectors = await getStoryboardConnectors(existing.id);
+    // Load persisted connectors and viewport from canvas_state using the storyboard's UUID
+    const { connectors, viewport } = await getStoryboardConnectors(existing.id);
 
     return {
       id: existing.id,
@@ -195,6 +222,7 @@ export async function getStoryboard(scriptId: string): Promise<Storyboard> {
       aspect_ratio: existing.aspect_ratio || "1.78:1",
       cards,
       connectors,
+      viewport,
       created_at: existing.created_at,
       updated_at: existing.updated_at,
     };

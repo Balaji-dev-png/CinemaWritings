@@ -42,7 +42,7 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
     if (connectorTimerRef.current) clearTimeout(connectorTimerRef.current);
     connectorTimerRef.current = setTimeout(() => {
       syncStoryboardConnectors(storyboard.id, connectorsRef.current).catch(console.error);
-    }, 600);
+    }, 300);
   }, [storyboard.id]);
 
   // ── addCard: card is already created in Supabase by caller (StoryboardView);
@@ -64,7 +64,7 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
       if (cardTimers[id]) clearTimeout(cardTimers[id]);
       cardTimers[id] = setTimeout(() => {
         updateSceneCard(storyboard.id, id, patch).catch(console.error);
-      }, 600);
+      }, 300);
     },
     [storyboard.id]
   );
@@ -99,7 +99,7 @@ export function useStoryboardCanvas(scriptId: string, storyboard: Storyboard) {
       if (cardTimers[id]) clearTimeout(cardTimers[id]);
       cardTimers[id] = setTimeout(() => {
         updateSceneCard(storyboard.id, id, { x, y }).catch(console.error);
-      }, 600);
+      }, 300);
     },
     [storyboard.id]
   );

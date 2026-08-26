@@ -91,14 +91,15 @@ export const Board = forwardRef<HTMLDivElement, Props>(
     }, [isZoomMenuOpen]);
 
     // PERSISTENCE — restore initial viewport from backend prop
+    const initialViewportLoaded = useRef(false);
     useEffect(() => {
-      if (!initialViewport) return;
+      if (!initialViewport || initialViewportLoaded.current) return;
       const { zoom, pan } = initialViewport;
       zoomRef.current = zoom;
       panRef.current = pan;
       setCanvas({ zoom, pan });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // run once on mount only
+      initialViewportLoaded.current = true;
+    }, [initialViewport]);
 
     // Notify parent of viewport changes so it can sync to backend
     useEffect(() => {

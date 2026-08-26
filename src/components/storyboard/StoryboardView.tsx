@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Plus, Loader2, Workflow, LayoutGrid, Minus, ChevronDown, Maximize, Home, Trash2 } from "lucide-react";
-import { Storyboard, createSceneCard } from "@/lib/storyboard-api";
+import { Storyboard, createSceneCard, syncStoryboardViewport } from "@/lib/storyboard-api";
 import { useStoryboardCanvas } from "@/hooks/useStoryboardCanvas";
 import { InlineSceneCard } from "./InlineSceneCard";
 import { StoryboardConnectorLayer } from "./StoryboardConnectorLayer";
@@ -38,11 +38,22 @@ export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "
   // Viewport State
   const boardRef = useRef<HTMLDivElement>(null);
   const innerCanvasRef = useRef<HTMLDivElement>(null); // inner transform layer for export
-  const zoomRef = useRef(1);
-  const panRef = useRef({ x: 0, y: 0 });
+  const zoomRef = useRef(storyboard.viewport?.zoom ?? 1);
+  const panRef = useRef(storyboard.viewport?.pan ?? { x: 0, y: 0 });
   const [forceRender, setForceRender] = useState(0);
 
   const triggerRender = useCallback(() => setForceRender((v) => v + 1), []);
+
+  const viewportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (viewportTimerRef.current) clearTimeout(viewportTimerRef.current);
+    viewportTimerRef.current = setTimeout(() => {
+      syncStoryboardViewport(storyboard.id, {
+        zoom: zoomRef.current,
+        pan: panRef.current,
+      }).catch(console.error);
+    }, 500);
+  }, [forceRender, storyboard.id]);
 
   const [isZoomMenuOpen, setIsZoomMenuOpen] = useState(false);
   const zoomMenuRef = useRef<HTMLDivElement>(null);
@@ -292,16 +303,16 @@ export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "
     triggerRender();
   }, [triggerRender]);
 
-  // Center canvas initially
+  // Center canvas initially if no viewport was saved
   useEffect(() => {
-    if (boardRef.current && panRef.current.x === 0 && panRef.current.y === 0 && state.cards.length === 0) {
+    if (boardRef.current && panRef.current.x === 0 && panRef.current.y === 0 && state.cards.length === 0 && !storyboard.viewport) {
       panRef.current = {
         x: boardRef.current.clientWidth / 2 - 200,
         y: boardRef.current.clientHeight / 2 - 200
       };
       triggerRender();
     }
-  }, [state.cards.length, triggerRender]);
+  }, [state.cards.length, triggerRender, storyboard.viewport]);
 
   const handleAddCard = async () => {
     setAdding(true);
@@ -361,7 +372,6 @@ export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "
         });
       }
       setConnectSource(null);
-      setConnectMode(false);
     }
   };
 

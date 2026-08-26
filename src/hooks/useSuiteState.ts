@@ -126,7 +126,7 @@ export function useSuiteState(scriptId: string) {
       } catch (err) {
         console.error("[useSuiteState] Sync failed:", err);
       }
-    }, 1500);
+    }, 300);
   }, [scriptId]);
 
   // ── Unified update helper ──
