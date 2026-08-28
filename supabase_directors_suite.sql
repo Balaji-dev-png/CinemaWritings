@@ -37,11 +37,13 @@ alter table public.canvas_state enable row level security;
 alter table public.workspace_assets enable row level security;
 
 -- 4. RLS Policies — users can only access their own rows
+DROP POLICY IF EXISTS "Users own canvas_state" ON public.canvas_state;
 create policy "Users own canvas_state"
   on public.canvas_state for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users own workspace_assets" ON public.workspace_assets;
 create policy "Users own workspace_assets"
   on public.workspace_assets for all
   using (auth.uid() = user_id)
@@ -56,10 +58,12 @@ begin
 end;
 $$;
 
+DROP TRIGGER IF EXISTS canvas_state_updated_at ON public.canvas_state;
 create trigger canvas_state_updated_at
   before update on public.canvas_state
   for each row execute function public.set_updated_at();
 
+DROP TRIGGER IF EXISTS workspace_assets_updated_at ON public.workspace_assets;
 create trigger workspace_assets_updated_at
   before update on public.workspace_assets
   for each row execute function public.set_updated_at();
@@ -101,20 +105,24 @@ create table if not exists public.scene_cards (
 alter table public.storyboards enable row level security;
 alter table public.scene_cards enable row level security;
 
+DROP POLICY IF EXISTS "Users own storyboards" ON public.storyboards;
 create policy "Users own storyboards"
   on public.storyboards for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users own scene_cards" ON public.scene_cards;
 create policy "Users own scene_cards"
   on public.scene_cards for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+DROP TRIGGER IF EXISTS storyboards_updated_at ON public.storyboards;
 create trigger storyboards_updated_at
   before update on public.storyboards
   for each row execute function public.set_updated_at();
 
+DROP TRIGGER IF EXISTS scene_cards_updated_at ON public.scene_cards;
 create trigger scene_cards_updated_at
   before update on public.scene_cards
   for each row execute function public.set_updated_at();

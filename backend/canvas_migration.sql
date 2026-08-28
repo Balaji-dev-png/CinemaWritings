@@ -17,18 +17,22 @@ CREATE TABLE IF NOT EXISTS canvas_states (
 ALTER TABLE canvas_states ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only access their own canvas states
+DROP POLICY IF EXISTS "Users can select their own canvas states" ON canvas_states;
 CREATE POLICY "Users can select their own canvas states"
   ON canvas_states FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own canvas states" ON canvas_states;
 CREATE POLICY "Users can insert their own canvas states"
   ON canvas_states FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own canvas states" ON canvas_states;
 CREATE POLICY "Users can update their own canvas states"
   ON canvas_states FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own canvas states" ON canvas_states;
 CREATE POLICY "Users can delete their own canvas states"
   ON canvas_states FOR DELETE
   USING (auth.uid() = user_id);
