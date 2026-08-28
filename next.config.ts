@@ -8,16 +8,17 @@ const isDev = process.env.NODE_ENV === "development";
 const cspDirectives = [
   "default-src 'self'",
   // Allow inline scripts for Next.js hydration; tighten after testing with nonces
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com",
   // Allow inline styles for Tailwind CSS utility classes
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   // Allow data URIs and blobs for PDF/canvas export, all HTTPS images
-  "img-src 'self' data: blob: https:",
+  "img-src 'self' data: blob: https: https://www.google-analytics.com",
   // Allow WebSocket and HTTPS connections to Supabase, Django API, and unpkg (for PDF.js cmaps/fonts)
   [
     "connect-src 'self'",
     "https://*.supabase.co",
+    "https://www.google-analytics.com",
     "wss://*.supabase.co",
     "https://unpkg.com",
     isDev ? "http://localhost:8000 ws://localhost:8000 http://127.0.0.1:8000 ws://127.0.0.1:8000" : "",
