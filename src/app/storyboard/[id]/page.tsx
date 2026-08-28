@@ -85,11 +85,11 @@ export default function StoryboardPage() {
             <input
               className="bg-transparent text-sm font-bold outline-none border-b border-transparent hover:border-[#c9a84c]/30 focus:border-[#c9a84c] transition-colors"
               style={{ color: "#c9a84c" }}
-              value={storyboard.script_title}
-              onChange={(e) => setStoryboard({ ...storyboard, script_title: e.target.value })}
+              value={storyboard.title}
+              onChange={(e) => setStoryboard({ ...storyboard, title: e.target.value })}
               onBlur={async () => {
                 if (storyboard) {
-                  await import("@/lib/storyboard-api").then((m) => m.updateStoryboard(scriptId, { script_title: storyboard.script_title }));
+                  await import("@/lib/storyboard-api").then((m) => m.updateStoryboard(scriptId, { title: storyboard.title }));
                 }
               }}
               placeholder="Storyboard Name"

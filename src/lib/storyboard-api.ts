@@ -197,6 +197,17 @@ function normalizeCard(card: any): SceneCard {
 export async function getStoryboard(scriptId: string): Promise<Storyboard> {
   const userId = await getUserId();
 
+  // Fetch the actual script title
+  let scriptTitle = "Untitled";
+  const { data: scriptData } = await supabase
+    .from("scripts")
+    .select("title")
+    .eq("id", scriptId)
+    .single();
+  if (scriptData && scriptData.title) {
+    scriptTitle = scriptData.title;
+  }
+
   // Try to fetch existing
   const { data: existing, error: fetchErr } = await supabase
     .from("storyboards")
@@ -217,8 +228,8 @@ export async function getStoryboard(scriptId: string): Promise<Storyboard> {
 
     return {
       id: existing.id,
-      script_title: existing.title || "Untitled",
-      title: existing.title || "Storyboard",
+      script_title: scriptTitle,
+      title: existing.title || scriptTitle,
       aspect_ratio: existing.aspect_ratio || "1.78:1",
       cards,
       connectors,
@@ -231,7 +242,7 @@ export async function getStoryboard(scriptId: string): Promise<Storyboard> {
   // Create new storyboard
   const { data: created, error: createErr } = await supabase
     .from("storyboards")
-    .insert({ script_id: scriptId, user_id: userId, title: "", aspect_ratio: "1.78:1" })
+    .insert({ script_id: scriptId, user_id: userId, title: scriptTitle, aspect_ratio: "1.78:1" })
     .select()
     .single();
 
@@ -239,8 +250,8 @@ export async function getStoryboard(scriptId: string): Promise<Storyboard> {
 
   return {
     id: created.id,
-    script_title: "",
-    title: "Storyboard",
+    script_title: scriptTitle,
+    title: scriptTitle,
     aspect_ratio: "1.78:1",
     cards: [],
     connectors: [],
