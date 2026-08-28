@@ -20,12 +20,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(false);
 
   // Rate limiting state
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const wakeUpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const startCooldown = () => {
     const until = Date.now() + COOLDOWN_MS;
@@ -53,7 +55,11 @@ export default function LoginPage() {
     if (isInCooldown) return;
 
     setLoading(true);
+    setIsWakingUp(false);
     setError("");
+
+    // If the Supabase free tier is paused, it can take up to a minute to wake up
+    wakeUpTimer.current = setTimeout(() => setIsWakingUp(true), 3000);
 
     try {
       const { error: authError } = await supabase.auth.signInWithPassword({
@@ -90,7 +96,9 @@ export default function LoginPage() {
       setError("Something went wrong. Please try again.");
       toast.error("Something went wrong. Please try again.");
     } finally {
+      if (wakeUpTimer.current) clearTimeout(wakeUpTimer.current);
       setLoading(false);
+      setIsWakingUp(false);
     }
   };
 
@@ -182,14 +190,22 @@ export default function LoginPage() {
             disabled={loading || isInCooldown}
             className="w-full group flex items-center justify-center gap-3 bg-[#1c1d20] dark:bg-zinc-100 hover:bg-black dark:hover:bg-white text-white dark:text-black py-4 rounded-xl font-medium shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
-            <span>{loading ? "Signing in..." : isInCooldown ? `Wait ${cooldownSeconds}s` : "Sign In"}</span>
+            <span>
+              {loading
+                ? isWakingUp
+                  ? "Waking up server (may take a minute)..."
+                  : "Signing in..."
+                : isInCooldown
+                ? `Wait ${cooldownSeconds}s`
+                : "Sign In"}
+            </span>
             {!loading && !isInCooldown && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
           </button>
         </form>
 
         <p className="mt-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
           Don&apos;t have an account?{" "}
-          <button onClick={() => router.push("/signup")} className="text-[#1c1d20] dark:text-white font-medium hover:underline">
+          <button type="button" onClick={() => router.push("/signup")} className="text-[#1c1d20] dark:text-white font-medium hover:underline">
             Create an account
           </button>
         </p>
