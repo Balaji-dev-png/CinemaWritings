@@ -61,7 +61,10 @@ export const Board = memo(forwardRef<HTMLDivElement, Props>(
       }
     };
     
-    const [canvas, setCanvas] = useState<CanvasState>({ zoom: 1, pan: { x: 0, y: 0 } });
+    const [canvas, setCanvas] = useState<CanvasState>({ 
+      zoom: zoomRef?.current ?? 1, 
+      pan: panRef?.current ?? { x: 0, y: 0 } 
+    });
     const isSelecting = useRef(false);
     const selectStart = useRef({ x: 0, y: 0 });
 

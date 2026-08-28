@@ -49,12 +49,11 @@ export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "
   useEffect(() => {
     if (viewportTimerRef.current) clearTimeout(viewportTimerRef.current);
     viewportTimerRef.current = setTimeout(() => {
-      syncStoryboardViewport(storyboard.id, {
-        zoom: zoomRef.current,
-        pan: panRef.current,
-      }).catch(console.error);
+      const newVp = { zoom: zoomRef.current, pan: panRef.current };
+      syncStoryboardViewport(storyboard.id, newVp).catch(console.error);
+      storyboard.viewport = newVp;
     }, 500);
-  }, [forceRender, storyboard.id]);
+  }, [forceRender, storyboard.id, storyboard]);
 
   const [isZoomMenuOpen, setIsZoomMenuOpen] = useState(false);
   const zoomMenuRef = useRef<HTMLDivElement>(null);
