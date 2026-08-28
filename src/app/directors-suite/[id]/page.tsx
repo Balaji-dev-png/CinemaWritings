@@ -11,8 +11,10 @@ import { useLoadingState } from "@/hooks/useLoadingState";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import "@/styles/suite.css";
 
-import { Layers, Home, BookOpen, FileCode } from "lucide-react";
+import { Layers, Home, BookOpen, FileCode, LayoutGrid } from "lucide-react";
 import { DrawingToolbar } from "@/components/suite/DrawingToolbar";
+import { StoryboardView } from "@/components/storyboard/StoryboardView";
+import { getStoryboard, Storyboard } from "@/lib/storyboard-api";
 
 function uid() {
   return crypto.randomUUID();
@@ -24,6 +26,9 @@ export default function DirectorsSuitePage() {
   const scriptId = params.id as string;
 
   const [scriptTitle, setScriptTitle] = useState("Untitled");
+  const [activeTab, setActiveTab] = useState<"suite" | "storyboard">("suite");
+  const [storyboard, setStoryboard] = useState<Storyboard | null>(null);
+  
   const [connectMode, setConnectMode] = useState(false);
   const [drawMode, setDrawMode] = useState(false);
   const [connectSource, setConnectSource] = useState<string | null>(null);
@@ -31,6 +36,9 @@ export default function DirectorsSuitePage() {
   // Clipboard and Selection for copy-paste
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [clipboard, setClipboard] = useState<SuiteElement[]>([]);
+  
+  // Mouse position for pasting at cursor
+  const lastMousePos = useRef({ x: 0, y: 0 });
 
   // Instant navigation overlay
   const [isNavigating, setIsNavigating] = useState(false);
@@ -63,6 +71,20 @@ export default function DirectorsSuitePage() {
       setScriptLoaded(true);
     });
   }, [scriptId]);
+
+  useEffect(() => {
+    if (activeTab === "storyboard" && !storyboard) {
+      getStoryboard(scriptId).then(setStoryboard).catch(console.error);
+    }
+  }, [activeTab, scriptId, storyboard]);
+
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("mousemove", handleGlobalMouseMove);
+    return () => window.removeEventListener("mousemove", handleGlobalMouseMove);
+  }, []);
 
   const { isLoading, message, startLoading, stopLoading } = useLoadingState();
   const [progress, setProgress] = useState(0);
@@ -136,14 +158,29 @@ export default function DirectorsSuitePage() {
       if (e.key === "v" && (e.ctrlKey || e.metaKey)) {
         if (clipboard.length > 0) {
           const newIds: string[] = [];
+          
+          let pasteX = 0, pasteY = 0;
+          const board = boardRef.current;
+          if (board) {
+            const rect = board.getBoundingClientRect();
+            const mouseX = lastMousePos.current.x - rect.left;
+            const mouseY = lastMousePos.current.y - rect.top;
+            pasteX = (mouseX - panRef.current.x) / zoomRef.current;
+            pasteY = (mouseY - panRef.current.y) / zoomRef.current;
+          }
+          
+          const firstEl = clipboard[0];
+          const offsetX = board ? (pasteX - firstEl.x) : 40;
+          const offsetY = board ? (pasteY - firstEl.y) : 40;
+
           clipboard.forEach((el, idx) => {
             const newId = uid();
             newIds.push(newId);
             suite.addElement({
               ...el,
               id: newId,
-              x: el.x + 40,
-              y: el.y + 40,
+              x: el.x + offsetX,
+              y: el.y + offsetY,
             });
           });
           setSelectedIds(newIds);
@@ -253,22 +290,35 @@ export default function DirectorsSuitePage() {
             ← Editor
           </button>
           <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+          
           <button
-            onClick={() => navigateTo(`/storyboard/${scriptId}`, "Opening Storyboard...")}
-            className="text-xs text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1"
+            onClick={() => setActiveTab("suite")}
+            className={`text-xs flex items-center gap-1 transition-colors ${activeTab === 'suite' ? 'text-zinc-900 dark:text-white font-bold' : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
+          >
+            <LayoutGrid className="w-3 h-3" /> Director's Suite
+          </button>
+          
+          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+
+          <button
+            onClick={() => setActiveTab("storyboard")}
+            className={`text-xs flex items-center gap-1 transition-colors ${activeTab === 'storyboard' ? 'text-zinc-900 dark:text-white font-bold' : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
           >
             <Layers className="w-3 h-3" /> Storyboard
           </button>
 
-
           <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1"
-          >
-            {sidebarOpen ? "◀ Hide Tools" : "▶ Show Tools"}
-          </button>
-          <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+          {activeTab === "suite" && (
+            <>
+              <button
+                onClick={() => setSidebarOpen((v) => !v)}
+                className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors flex items-center gap-1"
+              >
+                {sidebarOpen ? "◀ Hide Tools" : "▶ Show Tools"}
+              </button>
+              <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+            </>
+          )}
           <span className="text-sm font-bold text-zinc-900 dark:text-white truncate max-w-[300px]">
             {scriptTitle}
           </span>
@@ -277,71 +327,86 @@ export default function DirectorsSuitePage() {
 
       {/* Main workspace */}
       <div className="flex flex-1 overflow-hidden relative">
-        <SuiteToolbar
-          onAddIdea={addIdea}
-          onAddShot={addShot}
-          onAddImage={addImage}
-          onAddLink={addLink}
-          onClearBoard={suite.clearBoard}
-          connectMode={connectMode}
-          onToggleConnect={() => {
-            setConnectMode((v) => !v);
-            setConnectSource(null);
-            if (drawMode) setDrawMode(false);
-          }}
-          drawMode={drawMode}
-          onToggleDraw={() => {
-            setDrawMode((v) => !v);
-            if (connectMode) setConnectMode(false);
-          }}
-          scriptTitle={scriptTitle}
-          isOpen={sidebarOpen}
-          drawTool={"pen"}
-          onSetDrawTool={() => {}}
-          drawColor={"#000"}
-          onSetDrawColor={() => {}}
-          drawWidth={2}
-          onSetDrawWidth={() => {}}
-          onDrawUndo={() => {}}
-          onDrawClear={() => {}}
-        />
+        {activeTab === "suite" ? (
+          <>
+            <SuiteToolbar
+              onAddIdea={addIdea}
+              onAddShot={addShot}
+              onAddImage={addImage}
+              onAddLink={addLink}
+              onClearBoard={suite.clearBoard}
+              connectMode={connectMode}
+              onToggleConnect={() => {
+                setConnectMode((v) => !v);
+                setConnectSource(null);
+                if (drawMode) setDrawMode(false);
+              }}
+              drawMode={drawMode}
+              onToggleDraw={() => {
+                setDrawMode((v) => !v);
+                if (connectMode) setConnectMode(false);
+              }}
+              scriptTitle={scriptTitle}
+              isOpen={sidebarOpen}
+              drawTool={"pen"}
+              onSetDrawTool={() => {}}
+              drawColor={"#000"}
+              onSetDrawColor={() => {}}
+              drawWidth={2}
+              onSetDrawWidth={() => {}}
+              onDrawUndo={() => {}}
+              onDrawClear={() => {}}
+            />
 
-        <Board
-          ref={boardRef}
-          canvasRef={innerCanvasRef}
-          elements={suite.state.elements}
-          connectors={suite.state.connectors}
-          drawMode={drawMode}
-          connectMode={connectMode}
-          connectSource={connectSource}
-          drawingCanvasRef={drawingCanvasRef}
-          zoomRef={zoomRef}
-          panRef={panRef}
-          onMoveElement={suite.moveElement}
-          onResizeElement={suite.resizeElement}
-          onUpdateData={suite.updateElementData}
-          onRemoveElement={suite.removeElement}
-          onRemoveConnector={suite.removeConnector}
-          onConnectClick={handleConnectClick}
-          scriptId={scriptId}
-          initialViewport={suite.initialViewport}
-          onViewportChange={handleViewportChange}
-          selectedIds={selectedIds}
-          setSelectedIds={setSelectedIds}
-        />
+            <Board
+              ref={boardRef}
+              canvasRef={innerCanvasRef}
+              elements={suite.state.elements}
+              connectors={suite.state.connectors}
+              drawMode={drawMode}
+              connectMode={connectMode}
+              connectSource={connectSource}
+              drawingCanvasRef={drawingCanvasRef}
+              zoomRef={zoomRef}
+              panRef={panRef}
+              onMoveElement={suite.moveElement}
+              onResizeElement={suite.resizeElement}
+              onUpdateData={suite.updateElementData}
+              onRemoveElement={suite.removeElement}
+              onRemoveConnector={suite.removeConnector}
+              onConnectClick={handleConnectClick}
+              scriptId={scriptId}
+              initialViewport={suite.initialViewport}
+              onViewportChange={handleViewportChange}
+              selectedIds={selectedIds}
+              setSelectedIds={setSelectedIds}
+            />
 
-        {/* Floating Drawing Toolbar */}
-        {drawMode && (
-          <DrawingToolbar
-            tool={drawing.tool}
-            setTool={drawing.setTool}
-            color={drawing.color}
-            setColor={drawing.setColor}
-            strokeWidth={drawing.strokeWidth}
-            setStrokeWidth={drawing.setStrokeWidth}
-            undo={drawing.undo}
-            clearAll={drawing.clearAll}
-          />
+            {/* Floating Drawing Toolbar */}
+            {drawMode && (
+              <DrawingToolbar
+                tool={drawing.tool}
+                setTool={drawing.setTool}
+                color={drawing.color}
+                setColor={drawing.setColor}
+                strokeWidth={drawing.strokeWidth}
+                setStrokeWidth={drawing.setStrokeWidth}
+                undo={drawing.undo}
+                clearAll={drawing.clearAll}
+              />
+            )}
+          </>
+        ) : (
+          storyboard && (
+            <div className="flex-1 flex flex-col w-full h-full">
+              <StoryboardView
+                storyboard={storyboard}
+                onStoryboardChange={setStoryboard}
+                scriptTitle={scriptTitle}
+                scriptId={scriptId}
+              />
+            </div>
+          )
         )}
       </div>
     </div>

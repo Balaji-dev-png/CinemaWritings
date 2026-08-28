@@ -72,6 +72,16 @@ export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "
 
   // Keyboard listeners for Pan (Space) and Delete
   const isSpaceDown = useRef(false);
+  const lastMousePos = useRef({ x: 0, y: 0 });
+  
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      lastMousePos.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("mousemove", handleGlobalMouseMove);
+    return () => window.removeEventListener("mousemove", handleGlobalMouseMove);
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space") isSpaceDown.current = true;
@@ -106,12 +116,27 @@ export function StoryboardView({ storyboard, onStoryboardChange, scriptTitle = "
         if (activeEl?.tagName !== "INPUT" && activeEl?.tagName !== "TEXTAREA") {
           if (clipboard.length > 0) {
             const newIds: string[] = [];
+            
+            let pasteX = 0, pasteY = 0;
+            const board = boardRef.current;
+            if (board) {
+              const rect = board.getBoundingClientRect();
+              const mouseX = lastMousePos.current.x - rect.left;
+              const mouseY = lastMousePos.current.y - rect.top;
+              pasteX = (mouseX - panRef.current.x) / zoomRef.current;
+              pasteY = (mouseY - panRef.current.y) / zoomRef.current;
+            }
+            
+            const firstCard = clipboard[0];
+            const offsetX = board ? (pasteX - (firstCard.x || 0)) : 40;
+            const offsetY = board ? (pasteY - (firstCard.y || 0)) : 40;
+
             clipboard.forEach(async (card, idx) => {
               const newOrder = state.cards.length + idx + 1;
               const newCard = await createSceneCard(storyboard.id, {
                 shot_number: `${String(newOrder).padStart(2, "0")}`,
-                x: (card.x || 0) + 40,
-                y: (card.y || 0) + 40,
+                x: (card.x || 0) + offsetX,
+                y: (card.y || 0) + offsetY,
                 width: card.width || 320,
                 height: card.height || 500,
                 aspect_ratio: card.aspect_ratio || "1.78:1",
