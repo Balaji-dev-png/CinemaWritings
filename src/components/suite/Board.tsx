@@ -102,8 +102,16 @@ export const Board = memo(forwardRef<HTMLDivElement, Props>(
       initialViewportLoaded.current = true;
     }, [initialViewport]);
 
+    const prevCanvas = useRef(canvas);
     useEffect(() => {
-      onViewportChange?.({ zoom: canvas.zoom, pan: canvas.pan });
+      if (
+        prevCanvas.current.zoom !== canvas.zoom ||
+        prevCanvas.current.pan.x !== canvas.pan.x ||
+        prevCanvas.current.pan.y !== canvas.pan.y
+      ) {
+        onViewportChange?.({ zoom: canvas.zoom, pan: canvas.pan });
+        prevCanvas.current = canvas;
+      }
     }, [canvas.zoom, canvas.pan, onViewportChange]);
 
     const handleWheel = useCallback((e: WheelEvent) => {

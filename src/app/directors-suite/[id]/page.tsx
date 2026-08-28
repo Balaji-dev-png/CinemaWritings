@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSuiteState, SuiteElement, ViewportState } from "@/hooks/useSuiteState";
 import { Stroke } from "@/hooks/useDrawing";
 import { useDrawing } from "@/hooks/useDrawing";
@@ -23,10 +23,12 @@ function uid() {
 export default function DirectorsSuitePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const scriptId = params.id as string;
 
   const [scriptTitle, setScriptTitle] = useState("Untitled");
-  const [activeTab, setActiveTab] = useState<"suite" | "storyboard">("suite");
+  const initialTab = searchParams.get("tab") === "storyboard" ? "storyboard" : "suite";
+  const [activeTab, setActiveTab] = useState<"suite" | "storyboard">(initialTab);
   const [storyboard, setStoryboard] = useState<Storyboard | null>(null);
   
   const [connectMode, setConnectMode] = useState(false);

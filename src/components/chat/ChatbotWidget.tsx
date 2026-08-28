@@ -234,7 +234,7 @@ export function ChatbotWidget() {
     
     if (currentId) {
       if (path === "/directors-suite") return `/directors-suite/${currentId}`;
-      if (path === "/storyboard") return `/storyboard/${currentId}`;
+      if (path === "/storyboard") return `/directors-suite/${currentId}?tab=storyboard`;
       if (path === "/editor") return `/editor/${currentId}`;
       if (path === "/notes") return `/notes/${currentId}`;
     }

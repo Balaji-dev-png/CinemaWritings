@@ -700,7 +700,7 @@ export default function EditorPage() {
               <FaceWithCap className="w-4 h-4 group-hover:text-blue-400 transition-colors" />
             </button>
             <button
-              onClick={() => navigateTo(`/storyboard/${params.id}`, "Opening Storyboard...")}
+              onClick={() => navigateTo(`/directors-suite/${params.id}?tab=storyboard`, "Opening Storyboard...")}
               className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all group"
               title="Storyboard"
             >

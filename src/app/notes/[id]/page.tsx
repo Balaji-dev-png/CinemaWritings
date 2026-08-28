@@ -160,7 +160,7 @@ export default function NotesPage() {
           <LayoutGrid className="w-3.5 h-3.5" /> Director&apos;s Suite
         </button>
         <span className="text-zinc-800">|</span>
-        <button onClick={() => navigateTo(`/storyboard/${scriptId}`, "Opening Storyboard...")} className="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1">
+        <button onClick={() => navigateTo(`/directors-suite/${scriptId}?tab=storyboard`, "Opening Storyboard...")} className="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1">
           <Layers className="w-3.5 h-3.5" /> Storyboard
         </button>
         <div className="flex-1" />
