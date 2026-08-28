@@ -54,6 +54,7 @@ export function useSuiteState(scriptId: string) {
   const strokesRef = useRef<any[]>([]);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(false);
+  const isInitialLoadComplete = useRef(false);
 
   // ── Load from backend on mount ──
   useEffect(() => {
@@ -89,6 +90,7 @@ export function useSuiteState(scriptId: string) {
         setLoadedViewport(viewport);
         setLoadedStrokes(drawing_strokes as any[]);
         setIsLoading(false);
+        isInitialLoadComplete.current = true;
       })
       .catch((err) => {
         console.error("[useSuiteState] Failed to load workspace:", err);
@@ -102,6 +104,7 @@ export function useSuiteState(scriptId: string) {
 
   // ── Debounced backend sync (1.5s) ──
   const scheduleSync = useCallback(() => {
+    if (!isInitialLoadComplete.current) return;
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     syncTimerRef.current = setTimeout(async () => {
       try {

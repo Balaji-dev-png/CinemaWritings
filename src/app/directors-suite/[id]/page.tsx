@@ -111,8 +111,10 @@ export default function DirectorsSuitePage() {
   }, [scriptLoaded, suite.isLoading, stopLoading]);
 
   // ── Viewport change handler (from Board → suite → backend) ──
+  const viewportInitialized = useRef(false);
   const handleViewportChange = useCallback(
     (vp: ViewportState) => {
+      viewportInitialized.current = true;
       suite.updateViewport(vp);
     },
     [suite]
@@ -376,7 +378,7 @@ export default function DirectorsSuitePage() {
               onRemoveConnector={suite.removeConnector}
               onConnectClick={handleConnectClick}
               scriptId={scriptId}
-              initialViewport={suite.initialViewport}
+              initialViewport={viewportInitialized.current ? null : suite.initialViewport}
               onViewportChange={handleViewportChange}
               selectedIds={selectedIds}
               setSelectedIds={setSelectedIds}
